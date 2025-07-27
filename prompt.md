@@ -15,9 +15,10 @@ External Docs
 
 * read @docs/terms.md                - Dictionary of acronyms and definitions.
 * read @docs/the-org.md              - Information about the org's structure and people.
-* read @docs/proposed-solution.md    - Overview of the proposed PSA solution.
 * read @docs/word-whitepaper.md      - The first whitepaper draft.
 * read @docs/miro-whitepaper.md      - The second whitepaper draft.
+* read @docs/psa-spec.md             - Overview of the proposed PSA solution.
+
 
 History
 =======
@@ -28,10 +29,16 @@ The org has made multiple attempts in recent years to modernize its offering thr
   * The orgs current structure does not lend it's self to a modern IDP structure.  The components of the IDP would live under the pervue of at least 7 Sr. Directors all reporting to the same Sr. Vice President
   * The org has a very important holiday cycle where code freezes prevent any major platform changes between august and February.  This makes any kind of big-bing change super difficult.  All existing resources need to remain focused on keeping the existing platform running in that freeze period so they tend to resist changes to support any new effort meant to replace them, intentionally or not.
 
+Guidance
+========
 
 Hannah and I would like to propose a much more progressive approach that stays focused on satisfying the customer needs that doesn't rely upon a restructure of the org.  Keeping that customers for us are internal developer teams.
 
 The core idea of our orchestration solution is that we use a centralized Github repo to coordinate the offerings of all the platforms teams.  Each team would define it's offering in a Json document.  This document would both indicate what questions have to be answered by the customer to request it and how that request gets forwarded to the specific platform team offering it.  The orchestration solution provides a uniform interface to the developer portal to present the catalog of offerings to customers.  The same JSON document provides the necessary information for the orchestration software to dispatch the request to the correct platform team.
+
+The final document will be a word document that ideally should be 8 pages or less.
+
+Do not incldue execssive technical detail in the final white paper.  The docs/psa-spec.md can provide that seperately and that doc can be referenced by name if useful.
 
 Constraints
 ===========
