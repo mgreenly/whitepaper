@@ -45,7 +45,7 @@ Constraints
 
 Actions
 =======
-  * increment the numeric value in the ./COUNT file by +1
+  * increment the numeric value in the ./.count file by +1
   * read the current version of ./whitepaper.md and ./hints.md
   * Analyze all the provided context and synthesize it into a a new professionally structure whitepaper.
   * write that paper to ./whitepaper.md
