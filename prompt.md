@@ -40,13 +40,14 @@ Constraints
   * Do NOT use the name Humanitec.
   * Do NOT use the term re-org.
   * Do NOT use the term big-bang.
+  * DO focus on the context that's changed since the last iteration.
+  * DO include citations to the sources of data.
 
 Actions
 =======
   * increment the numeric value in the ./COUNT file by +1
   * read the current version of ./whitepaper.md and ./hints.md
-  * delete the current version of ./whitepaper.md and ./hints.md
-  * Focus on the context that's changed since the last iteration.
-  * Synthesize all of the information to generate a professionally structured business whitepaper in the file ./whitepaper.md.
-  * Provide suggestions about what missing information would provide necessary context to improve the document in ./hints.md
+  * Analyze all the provided context and synthesize it into a a new professionally structure whitepaper.
+  * write that paper to ./whitepaper.md
+  * proceed to the end of the task without asking for permission to read, write or delete files in the project directory. 
 
