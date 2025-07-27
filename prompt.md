@@ -1,4 +1,35 @@
-I am Michael Greenly a sr. engineering manager, my partner is Hannah Stone a sr. product manager.  We work for a major U.S. big box, home appliance, and electronics focused retailer.  Our team's purpose is to build the orchestration portion of an internal developer platform (IDP).  So our team is primarily focused on providing a single point of contact for the CD portion of the CI/CD worklow.  As well as provoding a single API point of contact for the teams creating the Developer Portal.
+Introduction
+============
+
+I am Mike a sr. engineering manager, my partner is Hannah a sr. product manager.  We work for a major U.S. big box, home appliance, and electronics focused retailer which I'll refer to as the "org" from here out.  Our team, "Pipelines & Orchestration", is responsible for building the orchestration layer of an Internal Developer Platform (IDP).
+
+Our goal here is to create business whitepaper to sell our desired approach to this task.
+
+First we'll provide a bunch of relevant information, then provide specific instructions for generating documents.
+
+The Org and the People
+======================
+
+The relevant organization structure and leaders
+  * Mike, Sr. Engineering Manager for the "Pipelines & Orchestration" team, reports to Stephanie.
+  * Hannah, Sr. Product Manager, for the "Pipelines & Orchestration" team, reports to Tina.
+  * Stephanie, Engineering Director, reports to Gerry.
+  * Gerry, Sr. Engineering Director, reports to Adam.
+  * Tina, Sr. Product Directory, reports to Adam.
+  * Adam, Sr. Vice President, reports to Neil.
+  * Neil, the Chief Technology Officer.
+  * Michelle, Director, reports to Tanmay.
+  * Tanmay, Sr. Director, reports to Adam.
+  * Jason, Director, reports to Gerry.
+  * Ivan, Associate Director, reports to Jason.
+  * Dhoda, Sr. Engineering Manager, reports to Jason.
+  * Anil, Engineering Manager, reprots to Gerry
+  * JJJJ, Engineering Manager, reports to Gerry
+  * Pete, engineering Manasger of Observability, reports to ????
+  * Aurtiro, Associate Director of the Networking teaam, reports to ???
+  * Hendricks, Sr. Director of ???, reports to ??? 
+
+
 
 The orgs currently has no real IDP.  Instead if facilities this work through JIRA where teams are required to submit many tickets to the many different platform teams; compute, storage, messaging, networking, etc... to create a new app.  This often takes 3-7 weeks to provision an application.
 
@@ -18,7 +49,16 @@ The ./docs folder containers two eary draft documents.  Read these.
 
 In the draft documents there is a comparison carefully engineer the customer experience but don't do that at all for our engineers.  This is a power point.  It needs to be used with impactful timing in the final document.
 
-Never use the name Humanitec.
 
+Actions
+=======
+  * delete ./whitepaper.md and ./hinst.md
+  * Synthesize all of the information above to generate profesionally structured business whitepaper in the file ./whitepaper.md.
+  * Provide suggestions about what missing information would provide necessary context to improve the document in ./hints.md
 
-Synthesize all of the information above to generate ./whitepaper.md, then review the generated whitepaper and make suggestions to ./review.md about what addition al information or instructions would be helpful to improve future iterations.
+Constraints
+===========
+  * Never use the names of individuals except Hannah and I for attribution.
+  * Never use the name Humanitec.
+  * Never use the term re-org.
+  * Never use the term big-bang.
