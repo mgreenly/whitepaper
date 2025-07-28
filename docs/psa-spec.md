@@ -1,22 +1,22 @@
 # Platform Solutions Automation (PSA) Specification
 
 > **⚠️ DRAFT SPECIFICATION - IN ACTIVE DEVELOPMENT**
-> 
+>
 > This document represents a work-in-progress specification that is subject to significant changes. It should not be considered final or used for production implementations without further review and approval.
 >
-> **Status**: Draft v0.1  
-> **Last Updated**: In Progress  
+> **Status**: Draft v0.1
+> **Last Updated**: In Progress
 > **Review State**: Not Approved
 
 ## 1. Overview
 
-Platform Solutions Automation (PSA) is a lightweight orchestration system designed to standardize and automate infrastructure provisioning requests across multiple platform teams. The system achieves coordination through a shared Git repository containing the Platform Solutions Catalog—a collection of JSON-based platform solution definitions that eliminate the need for organizational restructuring while enabling progressive automation.
+Platform Solutions Automation (PSA) is a lightweight orchestration system designed to standardize and automate infrastructure provisioning requests across multiple platform teams. The system achieves coordination through a shared Git repository containing the Platform Solutions Catalog—a collection of YAML-based platform solution definitions validated against JSON Schemas, eliminating the need for organizational restructuring while enabling progressive automation.
 
 ### 1.1 Core Components
 
 PSA consists of three primary components:
 
-1. **Platform Solutions Catalog**: A collection of platform solution definitions (JSON documents) that describe available platform solutions, their required inputs, validation rules, and fulfillment mechanisms
+1. **Platform Solutions Catalog**: A collection of platform solution definitions (YAML documents) that describe available platform solutions, their required inputs, validation rules, and fulfillment mechanisms
 2. **Application Templates**: Source code templates that provide developers with best-practice starting points for applications using specific platform solutions or bundles
 3. **Orchestration API**: A RESTful interface that processes requests based on the platform solution definitions and routes them to appropriate fulfillment channels
 
@@ -36,28 +36,28 @@ PSA consists of three primary components:
 ```
 platform-solutions-catalog/
 ├── schemas/
-│   ├── solution-schema.json       # Master schema for platform solution definitions
-│   ├── bundle-schema.json         # Schema for solution bundles
+│   ├── solution-schema.json       # Master JSON Schema for platform solution definitions
+│   ├── bundle-schema.json         # JSON Schema for solution bundles
 │   ├── field-types.json          # Reusable field type definitions
-│   └── disposition-types.json    # Fulfillment mechanism schemas
+│   └── fulfillment-types.json    # Fulfillment mechanism schemas
 ├── solutions/
 │   ├── compute/
-│   │   ├── ec2-instance.json
-│   │   ├── eks-cluster.json
-│   │   └── lambda-function.json
+│   │   ├── ec2-instance.yaml
+│   │   ├── eks-cluster.yaml
+│   │   └── lambda-function.yaml
 │   ├── storage/
-│   │   ├── rds-postgres.json
-│   │   └── s3-bucket.json
+│   │   ├── rds-postgres.yaml
+│   │   └── s3-bucket.yaml
 │   └── networking/
-│       ├── vpc.json
-│       └── load-balancer.json
+│       ├── vpc.yaml
+│       └── load-balancer.yaml
 ├── bundles/
-│   ├── microservice-standard.json
-│   ├── web-application.json
-│   └── data-pipeline.json
+│   ├── microservice-standard.yaml
+│   ├── web-application.yaml
+│   └── data-pipeline.yaml
 ├── templates/
-│   ├── example-solution.json
-│   └── example-bundle.json
+│   ├── example-solution.yaml
+│   └── example-bundle.yaml
 ├── app-templates/
 │   ├── microservice-standard/
 │   │   ├── README.md
@@ -82,67 +82,57 @@ platform-solutions-catalog/
 
 ### 2.2 Platform Solution Definition Schema
 
-Each platform solution in the catalog is defined by a JSON document with three required sections:
+Each platform solution in the catalog is defined by a YAML document validated against JSON Schema with three required sections:
 
-```json
-{
-  "metadata": {
-    "id": "string",
-    "version": "string",
-    "team": "string",
-    "category": "string"
-  },
-  "fields": {
-    // Field definitions
-  },
-  "dispositions": [
-    // Fulfillment mechanisms (JIRA required)
-  ],
-  "presentation": {
-    // UI rendering instructions
-  }
-}
+```yaml
+# Validated against schemas/solution-schema.json
+metadata:
+  id: string
+  version: string
+  team: string
+  category: string
+
+fields:
+  # Field definitions
+
+fulfillments:
+  # Fulfillment mechanisms (JIRA required)
+
+presentation:
+  # UI rendering instructions
 ```
 
 ### 2.3 Bundle Definition Schema
 
 Bundles group multiple platform solutions into a single requestable package:
 
-```json
-{
-  "metadata": {
-    "id": "string",
-    "version": "string",
-    "name": "string",
-    "description": "string",
-    "category": "string"
-  },
-  "solutions": [
-    {
-      "solution_id": "compute/ec2-instance",
-      "required": true,
-      "defaults": {
-        // Override default field values
-      }
-    },
-    {
-      "solution_id": "storage/rds-postgres",
-      "required": true,
-      "defaults": {
-        "size": "medium"
-      }
-    }
-  ],
-  "presentation": {
-    "title": "Microservice Standard Bundle",
-    "description": "Complete infrastructure for a standard microservice",
-    "estimatedCost": "$850/month"
-  },
-  "appTemplate": {
-    "repository": "app-templates/microservice-standard",
-    "description": "Python-based microservice with FastAPI, Docker, and CI/CD"
-  }
-}
+```yaml
+# Validated against schemas/bundle-schema.json
+metadata:
+  id: string
+  version: string
+  name: string
+  description: string
+  category: string
+
+solutions:
+  - solution_id: compute/ec2-instance
+    required: true
+    defaults:
+      # Override default field values
+  - solution_id: storage/rds-postgres
+    required: true
+    defaults:
+      size: medium
+
+presentation:
+  title: Microservice Standard Bundle
+  description: Complete infrastructure for a standard microservice
+  estimatedCost: $850/month
+
+appTemplate:
+  repository: app-templates/microservice-standard
+  description: Python-based microservice with FastAPI, Docker, and CI/CD
 ```
 
 ## 3. Field Definitions
@@ -151,182 +141,150 @@ Bundles group multiple platform solutions into a single requestable package:
 
 Each field in the `fields` section must specify:
 
-```json
-{
-  "fieldName": {
-    "type": "string|integer|float|select|boolean",
-    "required": true|false,
-    "default": "value",
-    "validation": {
-      // Type-specific validation rules
-    },
-    "description": "Human-readable field description",
-    "helpText": "Extended help for UI display"
-  }
-}
+```yaml
+fieldName:
+  type: string|integer|float|select|boolean
+  required: true|false
+  default: value
+  validation:
+    # Type-specific validation rules
+  description: Human-readable field description
+  helpText: Extended help for UI display
 ```
 
 ### 3.2 Supported Field Types
 
 #### 3.2.1 String Fields
-```json
-{
-  "type": "string",
-  "validation": {
-    "pattern": "^[a-z0-9-]{3,63}$",
-    "minLength": 3,
-    "maxLength": 63
-  }
-}
+```yaml
+type: string
+validation:
+  pattern: ^[a-z0-9-]{3,63}$
+  minLength: 3
+  maxLength: 63
 ```
 
 #### 3.2.2 Integer Fields
-```json
-{
-  "type": "integer",
-  "validation": {
-    "minimum": 1,
-    "maximum": 1000
-  }
-}
+```yaml
+type: integer
+validation:
+  minimum: 1
+  maximum: 1000
 ```
 
 #### 3.2.3 Float Fields
-```json
-{
-  "type": "float",
-  "validation": {
-    "minimum": 0.0,
-    "maximum": 100.0,
-    "precision": 2
-  }
-}
+```yaml
+type: float
+validation:
+  minimum: 0.0
+  maximum: 100.0
+  precision: 2
 ```
 
 #### 3.2.4 Selection Fields
-```json
-{
-  "type": "select",
-  "validation": {
-    "options": [
-      {"value": "t3.micro", "label": "T3 Micro (1 vCPU, 1GB RAM)"},
-      {"value": "t3.small", "label": "T3 Small (2 vCPU, 2GB RAM)"}
-    ],
-    "multiple": false
-  }
-}
+```yaml
+type: select
+validation:
+  options:
+    - value: t3.micro
+      label: T3 Micro (1 vCPU, 1GB RAM)
+    - value: t3.small
+      label: T3 Small (2 vCPU, 2GB RAM)
+  multiple: false
 ```
 
 #### 3.2.5 Boolean Fields
-```json
-{
-  "type": "boolean",
-  "default": false
-}
+```yaml
+type: boolean
+default: false
 ```
 
-## 4. Disposition Mechanisms
+## 4. Fulfillment Mechanisms
 
-### 4.1 Disposition Array
+### 4.1 Fulfillment Array
 
-The `dispositions` array defines how requests are fulfilled. At least one JIRA disposition is required:
+The `fulfillments` array defines how requests are fulfilled. At least one JIRA fulfillment is required:
 
-```json
-"dispositions": [
-  {
-    "type": "jira",
-    "config": {
-      // JIRA-specific configuration
-    }
-  },
-  {
-    "type": "terraform",
-    "config": {
-      // Terraform generation configuration
-    }
-  },
-  {
-    "type": "workflow",
-    "config": {
-      // GitHub Actions workflow trigger
-    }
-  }
-]
+```yaml
+fulfillments:
+  - type: jira
+    config:
+      # JIRA-specific configuration
+
+  - type: terraform
+    config:
+      # Terraform generation configuration
+
+  - type: workflow
+    config:
+      # GitHub Actions workflow trigger
 ```
 
-### 4.2 JIRA Disposition (Required)
+### 4.2 JIRA Fulfillment (Required)
 
-Every platform solution must include a JIRA disposition for fallback processing:
+Every platform solution must include a JIRA fulfillment for fallback processing:
 
-```json
-{
-  "type": "jira",
-  "config": {
-    "project": "PLATFORM",
-    "issueType": "Service Request",
-    "templates": {
-      "summary": "{{requestType}} - {{applicationName}}",
-      "description": "## Request Details\n\n**Application**: {{applicationName}}\n**Environment**: {{environment}}\n**Instance Type**: {{instanceType}}\n\n## Business Justification\n{{businessJustification}}",
-      "customFields": {
-        "customfield_10001": "{{teamId}}",
-        "customfield_10002": "{{costCenter}}"
-      }
-    },
-    "routing": {
-      "assignee": "platform-team-queue",
-      "labels": ["psa-request", "{{category}}"]
-    }
-  }
-}
+```yaml
+type: jira
+config:
+  project: PLATFORM
+  issueType: Service Request
+  templates:
+    summary: "{{requestType}} - {{applicationName}}"
+    description: |
+      ## Request Details
+
+      **Application**: {{applicationName}}
+      **Environment**: {{environment}}
+      **Instance Type**: {{instanceType}}
+
+      ## Business Justification
+      {{businessJustification}}
+    customFields:
+      customfield_10001: "{{teamId}}"
+      customfield_10002: "{{costCenter}}"
+  routing:
+    assignee: platform-team-queue
+    labels:
+      - psa-request
+      - "{{category}}"
 ```
 
-### 4.3 Terraform Disposition
+### 4.3 Terraform Fulfillment
 
 For automated infrastructure provisioning:
 
-```json
-{
-  "type": "terraform",
-  "config": {
-    "moduleSource": "git::https://github.com/org/terraform-modules//ec2",
-    "moduleVersion": "v2.1.0",
-    "templates": {
-      "instance_type": "{{instanceType}}",
-      "instance_count": "{{instanceCount}}",
-      "subnet_ids": "data.terraform_remote_state.network.outputs.{{environment}}_subnets",
-      "tags": {
-        "Name": "{{applicationName}}-{{environment}}",
-        "Team": "{{teamId}}",
-        "CostCenter": "{{costCenter}}"
-      }
-    },
-    "backend": {
-      "s3": {
-        "bucket": "terraform-state-{{accountId}}",
-        "key": "psa/{{requestId}}/terraform.tfstate"
-      }
-    }
-  }
-}
+```yaml
+type: terraform
+config:
+  moduleSource: "git::https://github.com/org/terraform-modules//ec2"
+  moduleVersion: v2.1.0
+  templates:
+    instance_type: "{{instanceType}}"
+    instance_count: "{{instanceCount}}"
+    subnet_ids: "data.terraform_remote_state.network.outputs.{{environment}}_subnets"
+    tags:
+      Name: "{{applicationName}}-{{environment}}"
+      Team: "{{teamId}}"
+      CostCenter: "{{costCenter}}"
+  backend:
+    s3:
+      bucket: "terraform-state-{{accountId}}"
+      key: "psa/{{requestId}}/terraform.tfstate"
 ```
 
-### 4.4 Workflow Disposition
+### 4.4 Workflow Fulfillment
 
 For triggering automated workflows:
 
-```json
-{
-  "type": "workflow",
-  "config": {
-    "repository": "org/platform-automation",
-    "workflow": "provision-infrastructure.yml",
-    "inputs": {
-      "request_type": "{{_solution.id}}",
-      "request_id": "{{_request.id}}",
-      "parameters": "{{_json_encode(_request.fields)}}"
-    }
-  }
-}
+```yaml
+type: workflow
+config:
+  repository: org/platform-automation
+  workflow: provision-infrastructure.yml
+  inputs:
+    request_type: "{{_solution.id}}"
+    request_id: "{{_request.id}}"
+    parameters: "{{_json_encode(_request.fields)}}"
 ```
 
 ## 5. Presentation Layer
@@ -335,82 +293,78 @@ For triggering automated workflows:
 
 The `presentation` section defines how fields are rendered in user interfaces:
 
-```json
-"presentation": {
-  "title": "EC2 Instance Request",
-  "description": "Request a new EC2 instance for your application",
-  "groups": [
-    {
-      "name": "basic_info",
-      "label": "Basic Information",
-      "order": 1,
-      "fields": [
-        {
-          "field": "applicationName",
-          "order": 1,
-          "width": "half"
-        },
-        {
-          "field": "environment",
-          "order": 2,
-          "width": "half"
-        }
-      ]
-    },
-    {
-      "name": "instance_config",
-      "label": "Instance Configuration",
-      "order": 2,
-      "collapsible": true,
-      "fields": [
-        {
-          "field": "instanceType",
-          "order": 1,
-          "width": "full"
-        }
-      ]
-    }
-  ],
-  "actions": {
-    "submit": {
-      "label": "Submit Request",
-      "confirmation": "Are you sure you want to submit this request?"
-    },
-    "saveDraft": {
-      "label": "Save as Draft",
-      "enabled": true
-    }
-  }
-}
+```yaml
+presentation:
+  title: EC2 Instance Request
+  description: Request a new EC2 instance for your application
+  groups:
+    - name: basic_info
+      label: Basic Information
+      order: 1
+      fields:
+        - field: applicationName
+          order: 1
+          width: half
+        - field: environment
+          order: 2
+          width: half
+
+    - name: instance_config
+      label: Instance Configuration
+      order: 2
+      collapsible: true
+      fields:
+        - field: instanceType
+          order: 1
+          width: full
+
+  actions:
+    submit:
+      label: Submit Request
+      confirmation: Are you sure you want to submit this request?
+    saveDraft:
+      label: Save as Draft
+      enabled: true
 ```
 
 ### 5.2 YAML Input Support
 
 Platform solutions can optionally support YAML-based bulk input:
 
-```json
-"presentation": {
-  "yamlSchema": {
-    "enabled": true,
-    "example": "applicationName: my-app\nenvironment: production\ninstanceType: t3.medium\ninstanceCount: 3",
-    "schema": {
-      "$ref": "#/definitions/RequestInput"
-    }
-  }
-}
+```yaml
+presentation:
+  yamlSchema:
+    enabled: true
+    example: |
+      applicationName: my-app
+      environment: production
+      instanceType: t3.medium
+      instanceCount: 3
+    schema:
+      $ref: "#/definitions/RequestInput"
 ```
 
 ## 6. Validation and Processing
 
-### 6.1 Request Validation Flow
+### 6.1 YAML Validation
 
-1. **Schema Validation**: Verify request conforms to platform solution schema
-2. **Field Validation**: Apply field-specific validation rules
-3. **Business Rules**: Execute any custom validation logic
-4. **Cost Estimation**: Calculate and display estimated costs
-5. **Approval Rules**: Check if request requires additional approvals
+All YAML files in the catalog must be validated against their corresponding JSON Schemas:
 
-### 6.2 Processing Pipeline
+1. **Solution Definitions**: Validated against `schemas/solution-schema.json`
+2. **Bundle Definitions**: Validated against `schemas/bundle-schema.json`
+3. **Validation Tools**: Use standard JSON Schema validators that support YAML input
+4. **CI/CD Integration**: Validate all YAML files on commit/merge
+
+### 6.2 Request Validation Flow
+
+1. **YAML Parsing**: Parse YAML to internal data structure
+2. **Schema Validation**: Verify request conforms to platform solution schema
+3. **Field Validation**: Apply field-specific validation rules
+4. **Business Rules**: Execute any custom validation logic
+5. **Cost Estimation**: Calculate and display estimated costs
+6. **Approval Rules**: Check if request requires additional approvals
+
+### 6.3 Processing Pipeline
 
 ```
 Request Submission
@@ -423,7 +377,7 @@ Cost Estimation
        ↓
 Approval Check
        ↓
-Disposition Selection
+Fulfillment Selection
        ↓
     ┌─────┴─────┐
     ↓           ↓
@@ -453,83 +407,66 @@ POST   /api/v1/estimate               # Get cost estimate for solutions/bundles
 
 #### 7.2.1 Single Solution Request
 
-```json
+```yaml
 POST /api/v1/requests
-{
-  "solutions": [
-    {
-      "solution_id": "compute/ec2-instance",
-      "fields": {
-        "applicationName": "my-app",
-        "environment": "production",
-        "instanceType": "t3.medium",
-        "instanceCount": 2
-      }
-    }
-  ],
-  "metadata": {
-    "requestor": "user@company.com",
-    "team": "mobile-team",
-    "ticket": "PROJ-1234"
-  }
-}
+Content-Type: application/yaml
+
+solutions:
+  - solution_id: compute/ec2-instance
+    fields:
+      applicationName: my-app
+      environment: production
+      instanceType: t3.medium
+      instanceCount: 2
+
+metadata:
+  requestor: user@company.com
+  team: mobile-team
+  ticket: PROJ-1234
 ```
 
 #### 7.2.2 Bundle Request
 
-```json
+```yaml
 POST /api/v1/requests
-{
-  "bundles": [
-    {
-      "bundle_id": "microservice-standard",
-      "overrides": {
-        "compute/ec2-instance": {
-          "instanceType": "t3.large"
-        }
-      }
-    }
-  ],
-  "metadata": {
-    "requestor": "user@company.com",
-    "team": "mobile-team",
-    "ticket": "PROJ-1234"
-  }
-}
+Content-Type: application/yaml
+
+bundles:
+  - bundle_id: microservice-standard
+    overrides:
+      compute/ec2-instance:
+        instanceType: t3.large
+
+metadata:
+  requestor: user@company.com
+  team: mobile-team
+  ticket: PROJ-1234
 ```
 
 #### 7.2.3 Mixed Request (Bundle + Individual Solutions)
 
-```json
+```yaml
 POST /api/v1/requests
-{
-  "bundles": [
-    {
-      "bundle_id": "microservice-standard"
-    }
-  ],
-  "solutions": [
-    {
-      "solution_id": "monitoring/datadog-integration",
-      "fields": {
-        "serviceName": "my-app",
-        "alertingEnabled": true
-      }
-    },
-    {
-      "solution_id": "storage/s3-bucket",
-      "fields": {
-        "bucketName": "my-app-assets",
-        "versioning": true
-      }
-    }
-  ],
-  "metadata": {
-    "requestor": "user@company.com",
-    "team": "mobile-team",
-    "ticket": "PROJ-1234"
-  }
-}
+Content-Type: application/yaml
+
+bundles:
+  - bundle_id: microservice-standard
+
+solutions:
+  - solution_id: monitoring/datadog-integration
+    fields:
+      serviceName: my-app
+      alertingEnabled: true
+
+  - solution_id: storage/s3-bucket
+    fields:
+      bucketName: my-app-assets
+      versioning: true
+
+metadata:
+  requestor: user@company.com
+  team: mobile-team
+  ticket: PROJ-1234
 ```
 
 ## 8. Security and Compliance
@@ -554,8 +491,8 @@ Authorization is required for all operations.
 
 ### 9.1 Platform Team Responsibilities
 
-1. Define platform solutions in JSON format
-2. Validate solution definitions against master schema
+1. Define platform solutions in YAML format
+2. Validate solution definitions against JSON Schema
 3. Implement fulfillment mechanisms (start with JIRA)
 4. Provide cost models for estimation
 5. Support progressive automation
@@ -580,8 +517,8 @@ Authorization is required for all operations.
 
 ### 9.4 Migration Strategy
 
-1. **Phase 1**: Define platform solutions, manual JIRA fulfillment
-2. **Phase 2**: Add cost estimation and validation, initial app templates
+1. **Phase 1**: Define platform solutions in YAML, manual JIRA fulfillment
+2. **Phase 2**: Add cost estimation and JSON Schema validation, initial app templates
 3. **Phase 3**: Implement automated fulfillment, expand template library
 4. **Phase 4**: Advanced features (recommendations, optimization, template generation)
 
@@ -589,289 +526,260 @@ Authorization is required for all operations.
 
 ### 10.1 Complete EC2 Platform Solution Definition
 
-```json
-{
-  "metadata": {
-    "id": "compute/ec2-instance",
-    "version": "1.2.0",
-    "team": "compute-platform",
-    "category": "compute",
-    "name": "EC2 Instance",
-    "description": "Provision EC2 instances with standard configurations"
-  },
-  "fields": {
-    "applicationName": {
-      "type": "string",
-      "required": true,
-      "validation": {
-        "pattern": "^[a-z][a-z0-9-]{2,39}$"
-      },
-      "description": "Application identifier",
-      "helpText": "Lowercase letters, numbers, and hyphens only"
-    },
-    "environment": {
-      "type": "select",
-      "required": true,
-      "validation": {
-        "options": [
-          {"value": "dev", "label": "Development"},
-          {"value": "staging", "label": "Staging"},
-          {"value": "prod", "label": "Production"}
-        ]
-      },
-      "description": "Target environment"
-    },
-    "instanceType": {
-      "type": "select",
-      "required": true,
-      "default": "t3.micro",
-      "validation": {
-        "options": [
-          {"value": "t3.micro", "label": "T3 Micro (1 vCPU, 1GB RAM) - $0.0104/hour"},
-          {"value": "t3.small", "label": "T3 Small (2 vCPU, 2GB RAM) - $0.0208/hour"},
-          {"value": "t3.medium", "label": "T3 Medium (2 vCPU, 4GB RAM) - $0.0416/hour"}
-        ]
-      },
-      "description": "EC2 instance type"
-    },
-    "instanceCount": {
-      "type": "integer",
-      "required": true,
-      "default": 1,
-      "validation": {
-        "minimum": 1,
-        "maximum": 10
-      },
-      "description": "Number of instances"
-    },
-    "storage": {
-      "type": "integer",
-      "required": true,
-      "default": 20,
-      "validation": {
-        "minimum": 8,
-        "maximum": 1000
-      },
-      "description": "Root volume size in GB"
-    },
-    "businessJustification": {
-      "type": "string",
-      "required": true,
-      "validation": {
-        "minLength": 10,
-        "maxLength": 500
-      },
-      "description": "Business reason for this request"
-    }
-  },
-  "dispositions": [
-    {
-      "type": "jira",
-      "config": {
-        "project": "PLATFORM",
-        "issueType": "Service Request",
-        "templates": {
-          "summary": "EC2 Instance - {{applicationName}} ({{environment}})",
-          "description": "## EC2 Instance Request\n\n**Application**: {{applicationName}}\n**Environment**: {{environment}}\n**Instance Type**: {{instanceType}}\n**Count**: {{instanceCount}}\n**Storage**: {{storage}}GB\n\n**Business Justification**:\n{{businessJustification}}\n\n**Estimated Monthly Cost**: ${{_cost.monthly}}",
-          "customFields": {
-            "customfield_10001": "{{_metadata.team}}",
-            "customfield_10002": "{{_metadata.requestor}}"
-          }
-        }
-      }
-    },
-    {
-      "type": "terraform",
-      "config": {
-        "moduleSource": "git::https://github.com/company/terraform-modules//ec2",
-        "templates": {
-          "instance_type": "{{instanceType}}",
-          "instance_count": "{{instanceCount}}",
-          "root_volume_size": "{{storage}}",
-          "application_name": "{{applicationName}}",
-          "environment": "{{environment}}"
-        }
-      }
-    }
-  ],
-  "presentation": {
-    "title": "Request EC2 Instance",
-    "description": "Provision EC2 instances using approved configurations",
-    "groups": [
-      {
-        "name": "application",
-        "label": "Application Details",
-        "order": 1,
-        "fields": [
-          {"field": "applicationName", "order": 1},
-          {"field": "environment", "order": 2},
-          {"field": "businessJustification", "order": 3}
-        ]
-      },
-      {
-        "name": "infrastructure",
-        "label": "Infrastructure Configuration",
-        "order": 2,
-        "fields": [
-          {"field": "instanceType", "order": 1},
-          {"field": "instanceCount", "order": 2},
-          {"field": "storage", "order": 3}
-        ]
-      }
-    ],
-    "costEstimate": {
-      "enabled": true,
-      "formula": "instanceCount * instanceTypeHourlyRate * 730 + (storage - 20) * 0.10"
-    }
-  }
-}
+```yaml
+# Validated against schemas/solution-schema.json
+metadata:
+  id: compute/ec2-instance
+  version: 1.2.0
+  team: compute-platform
+  category: compute
+  name: EC2 Instance
+  description: Provision EC2 instances with standard configurations
+fields:
+  applicationName:
+    type: string
+    required: true
+    validation:
+      pattern: ^[a-z][a-z0-9-]{2,39}$
+    description: Application identifier
+    helpText: Lowercase letters, numbers, and hyphens only
+
+  environment:
+    type: select
+    required: true
+    validation:
+      options:
+        - value: dev
+          label: Development
+        - value: staging
+          label: Staging
+        - value: prod
+          label: Production
+    description: Target environment
+
+  instanceType:
+    type: select
+    required: true
+    default: t3.micro
+    validation:
+      options:
+        - value: t3.micro
+          label: T3 Micro (1 vCPU, 1GB RAM) - $0.0104/hour
+        - value: t3.small
+          label: T3 Small (2 vCPU, 2GB RAM) - $0.0208/hour
+        - value: t3.medium
+          label: T3 Medium (2 vCPU, 4GB RAM) - $0.0416/hour
+    description: EC2 instance type
+
+  instanceCount:
+    type: integer
+    required: true
+    default: 1
+    validation:
+      minimum: 1
+      maximum: 10
+    description: Number of instances
+
+  storage:
+    type: integer
+    required: true
+    default: 20
+    validation:
+      minimum: 8
+      maximum: 1000
+    description: Root volume size in GB
+
+  businessJustification:
+    type: string
+    required: true
+    validation:
+      minLength: 10
+      maxLength: 500
+    description: Business reason for this request
+fulfillments:
+  - type: jira
+    config:
+      project: PLATFORM
+      issueType: Service Request
+      templates:
+        summary: "EC2 Instance - {{applicationName}} ({{environment}})"
+        description: |
+          ## EC2 Instance Request
+
+          **Application**: {{applicationName}}
+          **Environment**: {{environment}}
+          **Instance Type**: {{instanceType}}
+          **Count**: {{instanceCount}}
+          **Storage**: {{storage}}GB
+
+          **Business Justification**:
+          {{businessJustification}}
+
+          **Estimated Monthly Cost**: ${{_cost.monthly}}
+        customFields:
+          customfield_10001: "{{_metadata.team}}"
+          customfield_10002: "{{_metadata.requestor}}"
+
+  - type: terraform
+    config:
+      moduleSource: "git::https://github.com/company/terraform-modules//ec2"
+      templates:
+        instance_type: "{{instanceType}}"
+        instance_count: "{{instanceCount}}"
+        root_volume_size: "{{storage}}"
+        application_name: "{{applicationName}}"
+        environment: "{{environment}}"
+presentation:
+  title: Request EC2 Instance
+  description: Provision EC2 instances using approved configurations
+  groups:
+    - name: application
+      label: Application Details
+      order: 1
+      fields:
+        - field: applicationName
+          order: 1
+        - field: environment
+          order: 2
+        - field: businessJustification
+          order: 3
+
+    - name: infrastructure
+      label: Infrastructure Configuration
+      order: 2
+      fields:
+        - field: instanceType
+          order: 1
+        - field: instanceCount
+          order: 2
+        - field: storage
+          order: 3
+
+  costEstimate:
+    enabled: true
+    formula: instanceCount * instanceTypeHourlyRate * 730 + (storage - 20) * 0.10
 ```
 
 ### 10.2 Microservice Standard Bundle Definition
 
-```json
-{
-  "metadata": {
-    "id": "bundles/microservice-standard",
-    "version": "1.0.0",
-    "name": "Microservice Standard Bundle",
-    "description": "Complete infrastructure setup for a standard microservice including compute, database, and networking",
-    "category": "bundles"
-  },
-  "solutions": [
-    {
-      "solution_id": "compute/eks-container",
-      "required": true,
-      "defaults": {
-        "cpu": "2",
-        "memory": "4Gi",
-        "replicas": "2"
-      }
-    },
-    {
-      "solution_id": "storage/rds-postgres",
-      "required": true,
-      "defaults": {
-        "instanceClass": "db.t3.medium",
-        "storage": "100",
-        "multiAZ": true
-      }
-    },
-    {
-      "solution_id": "networking/load-balancer",
-      "required": true,
-      "defaults": {
-        "type": "application",
-        "scheme": "internal"
-      }
-    },
-    {
-      "solution_id": "monitoring/basic-observability",
-      "required": false,
-      "defaults": {
-        "logRetention": "30",
-        "metricsEnabled": true
-      }
-    }
-  ],
-  "presentation": {
-    "title": "Microservice Standard Bundle",
-    "description": "Everything you need to deploy a production-ready microservice",
-    "icon": "microservice",
-    "estimatedCost": {
-      "monthly": "$850",
-      "breakdown": {
-        "compute": "$250",
-        "database": "$400",
-        "networking": "$150",
-        "monitoring": "$50"
-      }
-    },
-    "tags": ["recommended", "production-ready", "best-practice"]
-  },
-  "appTemplate": {
-    "repository": "app-templates/microservice-standard",
-    "description": "Production-ready microservice with monitoring, logging, and CI/CD",
-    "features": [
-      "Health checks and readiness probes",
-      "Structured logging with correlation IDs",
-      "Metrics collection for Prometheus",
-      "OpenAPI documentation",
-      "GitHub Actions deployment pipeline"
-    ]
-  }
-}
+```yaml
+# Validated against schemas/bundle-schema.json
+metadata:
+  id: bundles/microservice-standard
+  version: 1.0.0
+  name: Microservice Standard Bundle
+  description: Complete infrastructure setup for a standard microservice including compute, database, and networking
+  category: bundles
+solutions:
+  - solution_id: compute/eks-container
+    required: true
+    defaults:
+      cpu: "2"
+      memory: 4Gi
+      replicas: 2
+
+  - solution_id: storage/rds-postgres
+    required: true
+    defaults:
+      instanceClass: db.t3.medium
+      storage: 100
+      multiAZ: true
+
+  - solution_id: networking/load-balancer
+    required: true
+    defaults:
+      type: application
+      scheme: internal
+
+  - solution_id: monitoring/basic-observability
+    required: false
+    defaults:
+      logRetention: 30
+      metricsEnabled: true
+presentation:
+  title: Microservice Standard Bundle
+  description: Everything you need to deploy a production-ready microservice
+  icon: microservice
+  estimatedCost:
+    monthly: $850
+    breakdown:
+      compute: $250
+      database: $400
+      networking: $150
+      monitoring: $50
+  tags:
+    - recommended
+    - production-ready
+    - best-practice
+
+appTemplate:
+  repository: app-templates/microservice-standard
+  description: Production-ready microservice with monitoring, logging, and CI/CD
+  features:
+    - Health checks and readiness probes
+    - Structured logging with correlation IDs
+    - Metrics collection for Prometheus
+    - OpenAPI documentation
+    - GitHub Actions deployment pipeline
 ```
 
 ### 10.3 Web Application Bundle with Nested Bundles
 
-```json
-{
-  "metadata": {
-    "id": "bundles/web-application-complete",
-    "version": "2.0.0",
-    "name": "Complete Web Application Stack",
-    "description": "Full-stack web application with frontend, backend, and data layer",
-    "category": "bundles"
-  },
-  "bundles": [
-    {
-      "bundle_id": "bundles/microservice-standard",
-      "required": true,
-      "label": "Backend Services"
-    }
-  ],
-  "solutions": [
-    {
-      "solution_id": "compute/cloudfront-distribution",
-      "required": true,
-      "label": "Frontend CDN",
-      "defaults": {
-        "priceClass": "PriceClass_100"
-      }
-    },
-    {
-      "solution_id": "storage/s3-static-website",
-      "required": true,
-      "label": "Frontend Assets",
-      "defaults": {
-        "versioning": true,
-        "lifecycle": "90days"
-      }
-    },
-    {
-      "solution_id": "security/waf-rules",
-      "required": false,
-      "label": "Web Application Firewall",
-      "defaults": {
-        "ruleSet": "standard"
-      }
-    }
-  ],
-  "presentation": {
-    "title": "Complete Web Application Stack",
-    "description": "Production-ready web application with CDN, backend services, and security",
-    "groups": [
-      {
-        "name": "frontend",
-        "label": "Frontend Infrastructure",
-        "solutions": ["compute/cloudfront-distribution", "storage/s3-static-website"]
-      },
-      {
-        "name": "backend",
-        "label": "Backend Infrastructure",
-        "bundles": ["bundles/microservice-standard"]
-      },
-      {
-        "name": "security",
-        "label": "Security & Compliance",
-        "solutions": ["security/waf-rules"]
-      }
-    ],
-    "estimatedCost": {
-      "monthly": "$1,200",
-      "note": "Includes all nested bundle costs"
-    }
-  }
-}
+```yaml
+# Validated against schemas/bundle-schema.json
+metadata:
+  id: bundles/web-application-complete
+  version: 2.0.0
+  name: Complete Web Application Stack
+  description: Full-stack web application with frontend, backend, and data layer
+  category: bundles
+
+bundles:
+  - bundle_id: bundles/microservice-standard
+    required: true
+    label: Backend Services
+
+solutions:
+  - solution_id: compute/cloudfront-distribution
+    required: true
+    label: Frontend CDN
+    defaults:
+      priceClass: PriceClass_100
+
+  - solution_id: storage/s3-static-website
+    required: true
+    label: Frontend Assets
+    defaults:
+      versioning: true
+      lifecycle: 90days
+
+  - solution_id: security/waf-rules
+    required: false
+    label: Web Application Firewall
+    defaults:
+      ruleSet: standard
+
+presentation:
+  title: Complete Web Application Stack
+  description: Production-ready web application with CDN, backend services, and security
+  groups:
+    - name: frontend
+      label: Frontend Infrastructure
+      solutions:
+        - compute/cloudfront-distribution
+        - storage/s3-static-website
+
+    - name: backend
+      label: Backend Infrastructure
+      bundles:
+        - bundles/microservice-standard
+
+    - name: security
+      label: Security & Compliance
+      solutions:
+        - security/waf-rules
+
+  estimatedCost:
+    monthly: $1,200
+    note: Includes all nested bundle costs
 ```
