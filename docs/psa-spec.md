@@ -1,15 +1,24 @@
 # Platform Solutions Automation (PSA) Specification
 
+> **⚠️ DRAFT SPECIFICATION - IN ACTIVE DEVELOPMENT**
+> 
+> This document represents a work-in-progress specification that is subject to significant changes. It should not be considered final or used for production implementations without further review and approval.
+>
+> **Status**: Draft v0.1  
+> **Last Updated**: In Progress  
+> **Review State**: Not Approved
+
 ## 1. Overview
 
 Platform Solutions Automation (PSA) is a lightweight orchestration system designed to standardize and automate infrastructure provisioning requests across multiple platform teams. The system achieves coordination through a shared Git repository containing the Platform Solutions Catalog—a collection of JSON-based platform solution definitions that eliminate the need for organizational restructuring while enabling progressive automation.
 
 ### 1.1 Core Components
 
-PSA consists of two primary components:
+PSA consists of three primary components:
 
 1. **Platform Solutions Catalog**: A collection of platform solution definitions (JSON documents) that describe available platform solutions, their required inputs, validation rules, and fulfillment mechanisms
-2. **Orchestration API**: A RESTful interface that processes requests based on the platform solution definitions and routes them to appropriate fulfillment channels
+2. **Application Templates**: Source code templates that provide developers with best-practice starting points for applications using specific platform solutions or bundles
+3. **Orchestration API**: A RESTful interface that processes requests based on the platform solution definitions and routes them to appropriate fulfillment channels
 
 ### 1.2 Design Principles
 
@@ -18,6 +27,7 @@ PSA consists of two primary components:
 - **Backwards Compatibility**: All platform solutions must support JIRA ticketing as a fallback
 - **Schema-Driven**: All interactions validated against formal JSON schemas
 - **Audit Trail**: Git provides complete versioning and compliance history
+- **Developer Experience**: Application templates accelerate development with proven patterns
 
 ## 2. Architecture
 
@@ -48,6 +58,25 @@ platform-solutions-catalog/
 ├── templates/
 │   ├── example-solution.json
 │   └── example-bundle.json
+├── app-templates/
+│   ├── microservice-standard/
+│   │   ├── README.md
+│   │   ├── Dockerfile
+│   │   ├── docker-compose.yml
+│   │   ├── src/
+│   │   │   └── main.py
+│   │   ├── tests/
+│   │   │   └── test_main.py
+│   │   └── .github/
+│   │       └── workflows/
+│   │           └── deploy.yml
+│   ├── web-application/
+│   │   ├── backend/
+│   │   ├── frontend/
+│   │   └── infrastructure/
+│   └── data-pipeline/
+│       ├── etl/
+│       └── config/
 └── README.md
 ```
 
@@ -108,6 +137,10 @@ Bundles group multiple platform solutions into a single requestable package:
     "title": "Microservice Standard Bundle",
     "description": "Complete infrastructure for a standard microservice",
     "estimatedCost": "$850/month"
+  },
+  "appTemplate": {
+    "repository": "app-templates/microservice-standard",
+    "description": "Python-based microservice with FastAPI, Docker, and CI/CD"
   }
 }
 ```
@@ -526,6 +559,7 @@ Authorization is required for all operations.
 3. Implement fulfillment mechanisms (start with JIRA)
 4. Provide cost models for estimation
 5. Support progressive automation
+6. Collaborate with application teams to create relevant app templates
 
 ### 9.2 Central Team Responsibilities
 
@@ -534,13 +568,22 @@ Authorization is required for all operations.
 3. Integrate with developer portal (Stratus)
 4. Provide libraries and tooling
 5. Monitor adoption and usage
+6. Coordinate app template contributions across teams
 
-### 9.3 Migration Strategy
+### 9.3 Application Team Responsibilities
+
+1. Contribute app templates for common use cases
+2. Maintain templates with security updates and best practices
+3. Provide documentation and examples
+4. Test templates with platform solutions
+5. Gather feedback from template users
+
+### 9.4 Migration Strategy
 
 1. **Phase 1**: Define platform solutions, manual JIRA fulfillment
-2. **Phase 2**: Add cost estimation and validation
-3. **Phase 3**: Implement automated fulfillment
-4. **Phase 4**: Advanced features (recommendations, optimization)
+2. **Phase 2**: Add cost estimation and validation, initial app templates
+3. **Phase 3**: Implement automated fulfillment, expand template library
+4. **Phase 4**: Advanced features (recommendations, optimization, template generation)
 
 ## 10. Examples
 
@@ -745,6 +788,17 @@ Authorization is required for all operations.
       }
     },
     "tags": ["recommended", "production-ready", "best-practice"]
+  },
+  "appTemplate": {
+    "repository": "app-templates/microservice-standard",
+    "description": "Production-ready microservice with monitoring, logging, and CI/CD",
+    "features": [
+      "Health checks and readiness probes",
+      "Structured logging with correlation IDs",
+      "Metrics collection for Prometheus",
+      "OpenAPI documentation",
+      "GitHub Actions deployment pipeline"
+    ]
   }
 }
 ```
