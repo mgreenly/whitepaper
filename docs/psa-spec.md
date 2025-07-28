@@ -2,20 +2,20 @@
 
 ## 1. Overview
 
-Platform Solutions Automation (PSA) is a lightweight orchestration system designed to standardize and automate infrastructure provisioning requests across multiple platform teams. The system achieves coordination through a shared Git repository containing JSON-based service offering definitions, eliminating the need for organizational restructuring while enabling progressive automation.
+Platform Solutions Automation (PSA) is a lightweight orchestration system designed to standardize and automate infrastructure provisioning requests across multiple platform teams. The system achieves coordination through a shared Git repository containing the Platform Solutions Catalog—a collection of JSON-based platform solution definitions that eliminate the need for organizational restructuring while enabling progressive automation.
 
 ### 1.1 Core Components
 
 PSA consists of two primary components:
 
-1. **Service Offering Definitions**: JSON documents that describe available platform services, their required inputs, validation rules, and fulfillment mechanisms
-2. **Orchestration API**: A RESTful interface that processes requests based on the service definitions and routes them to appropriate fulfillment channels
+1. **Platform Solutions Catalog**: A collection of platform solution definitions (JSON documents) that describe available platform solutions, their required inputs, validation rules, and fulfillment mechanisms
+2. **Orchestration API**: A RESTful interface that processes requests based on the platform solution definitions and routes them to appropriate fulfillment channels
 
 ### 1.2 Design Principles
 
-- **Decentralized Ownership**: Platform teams maintain full control over their service offerings
+- **Decentralized Ownership**: Platform teams maintain full control over their platform solutions
 - **Progressive Enhancement**: Supports manual fulfillment initially, with optional automation
-- **Backwards Compatibility**: All offerings must support JIRA ticketing as a fallback
+- **Backwards Compatibility**: All platform solutions must support JIRA ticketing as a fallback
 - **Schema-Driven**: All interactions validated against formal JSON schemas
 - **Audit Trail**: Git provides complete versioning and compliance history
 
@@ -24,12 +24,12 @@ PSA consists of two primary components:
 ### 2.1 Repository Structure
 
 ```
-psa-definitions/
+platform-solutions-catalog/
 ├── schemas/
-│   ├── offering-schema.json       # Master schema for service offerings
+│   ├── solution-schema.json       # Master schema for platform solution definitions
 │   ├── field-types.json          # Reusable field type definitions
 │   └── disposition-types.json    # Fulfillment mechanism schemas
-├── offerings/
+├── solutions/
 │   ├── compute/
 │   │   ├── ec2-instance.json
 │   │   ├── eks-cluster.json
@@ -41,13 +41,13 @@ psa-definitions/
 │       ├── vpc.json
 │       └── load-balancer.json
 ├── templates/
-│   └── example-offering.json
+│   └── example-solution.json
 └── README.md
 ```
 
-### 2.2 Service Offering Schema
+### 2.2 Platform Solution Definition Schema
 
-Each service offering is defined by a JSON document with three required sections:
+Each platform solution in the catalog is defined by a JSON document with three required sections:
 
 ```json
 {
@@ -180,7 +180,7 @@ The `dispositions` array defines how requests are fulfilled. At least one JIRA d
 
 ### 4.2 JIRA Disposition (Required)
 
-Every offering must include a JIRA disposition for fallback processing:
+Every platform solution must include a JIRA disposition for fallback processing:
 
 ```json
 {
@@ -245,7 +245,7 @@ For triggering automated workflows:
     "repository": "org/platform-automation",
     "workflow": "provision-infrastructure.yml",
     "inputs": {
-      "request_type": "{{_offering.id}}",
+      "request_type": "{{_solution.id}}",
       "request_id": "{{_request.id}}",
       "parameters": "{{_json_encode(_request.fields)}}"
     }
@@ -310,7 +310,7 @@ The `presentation` section defines how fields are rendered in user interfaces:
 
 ### 5.2 YAML Input Support
 
-Offerings can optionally support YAML-based bulk input:
+Platform solutions can optionally support YAML-based bulk input:
 
 ```json
 "presentation": {
@@ -328,7 +328,7 @@ Offerings can optionally support YAML-based bulk input:
 
 ### 6.1 Request Validation Flow
 
-1. **Schema Validation**: Verify request conforms to offering schema
+1. **Schema Validation**: Verify request conforms to platform solution schema
 2. **Field Validation**: Apply field-specific validation rules
 3. **Business Rules**: Execute any custom validation logic
 4. **Cost Estimation**: Calculate and display estimated costs
@@ -362,8 +362,8 @@ Workflow     Ticket
 ### 7.1 Endpoints
 
 ```
-GET    /api/v1/offerings              # List all offerings
-GET    /api/v1/offerings/{id}         # Get specific offering
+GET    /api/v1/catalog                # List all platform solutions
+GET    /api/v1/catalog/{id}           # Get specific platform solution
 POST   /api/v1/requests               # Submit new request
 GET    /api/v1/requests/{id}          # Get request status
 GET    /api/v1/requests/{id}/cost     # Get cost estimate
@@ -375,7 +375,7 @@ POST   /api/v1/validate               # Validate request without submitting
 ```json
 POST /api/v1/requests
 {
-  "offering_id": "compute/ec2-instance",
+  "solution_id": "compute/ec2-instance",
   "fields": {
     "applicationName": "my-app",
     "environment": "production",
@@ -404,7 +404,7 @@ Authorization is required for all operations.
 
 ### 8.3 Audit Trail
 
-- All changes to definitions tracked in Git
+- All changes to platform solution definitions tracked in Git
 - Request history maintained indefinitely
 - Cost tracking integrated with FinOps systems
 
@@ -412,15 +412,15 @@ Authorization is required for all operations.
 
 ### 9.1 Platform Team Responsibilities
 
-1. Define service offerings in JSON format
-2. Validate offerings against master schema
+1. Define platform solutions in JSON format
+2. Validate solution definitions against master schema
 3. Implement fulfillment mechanisms (start with JIRA)
 4. Provide cost models for estimation
 5. Support progressive automation
 
 ### 9.2 Central Team Responsibilities
 
-1. Maintain offering schemas and validation
+1. Maintain solution schemas and validation
 2. Operate orchestration API
 3. Integrate with developer portal (Stratus)
 4. Provide libraries and tooling
@@ -428,12 +428,12 @@ Authorization is required for all operations.
 
 ### 9.3 Migration Strategy
 
-1. **Phase 1**: Define offerings, manual JIRA fulfillment
+1. **Phase 1**: Define platform solutions, manual JIRA fulfillment
 2. **Phase 2**: Add cost estimation and validation
 3. **Phase 3**: Implement automated fulfillment
 4. **Phase 4**: Advanced features (recommendations, optimization)
 
-## 10. Example: Complete EC2 Offering
+## 10. Example: Complete EC2 Platform Solution Definition
 
 ```json
 {

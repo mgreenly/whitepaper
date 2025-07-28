@@ -36,9 +36,13 @@ Hannah and I would like to propose a much more progressive approach that stays f
 
 The core idea of our orchestration solution is that we use a centralized Github repo to coordinate the offerings of all the platforms teams.  Each team would define it's offering in a Json document.  This document would both indicate what questions have to be answered by the customer to request it and how that request gets forwarded to the specific platform team offering it.  The orchestration solution provides a uniform interface to the developer portal to present the catalog of offerings to customers.  The same JSON document provides the necessary information for the orchestration software to dispatch the request to the correct platform team.
 
-The final document will be a word document that ideally should be 8 pages or less.
+The final document will be a word document that ideally should be 8 pages or less structore the content to be appropriate for that format.
 
 Do not incldue execssive technical detail in the final white paper.  The docs/psa-spec.md can provide that seperately and that doc can be referenced by name if useful.
+
+Never reference competitors, instead focus on lost opportunity.
+
+Do not read 
 
 Constraints
 ===========
@@ -53,8 +57,8 @@ Constraints
 Actions
 =======
   * increment the numeric value in the ./.count file by +1
-  * read the current version of ./whitepaper.md and ./hints.md
+  * read the current version of ./whitepaper.md
   * Analyze all the provided context and synthesize it into a a new professionally structure whitepaper.
   * write that paper to ./whitepaper.md
   * proceed to the end of the task without asking for permission to read, write or delete files in the project directory. 
-
+  * create a commit with all changed files.  The comment should reference the value in .count  Then push it.
