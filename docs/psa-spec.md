@@ -27,6 +27,7 @@ PSA consists of two primary components:
 platform-solutions-catalog/
 ├── schemas/
 │   ├── solution-schema.json       # Master schema for platform solution definitions
+│   ├── bundle-schema.json         # Schema for solution bundles
 │   ├── field-types.json          # Reusable field type definitions
 │   └── disposition-types.json    # Fulfillment mechanism schemas
 ├── solutions/
@@ -40,8 +41,13 @@ platform-solutions-catalog/
 │   └── networking/
 │       ├── vpc.json
 │       └── load-balancer.json
+├── bundles/
+│   ├── microservice-standard.json
+│   ├── web-application.json
+│   └── data-pipeline.json
 ├── templates/
-│   └── example-solution.json
+│   ├── example-solution.json
+│   └── example-bundle.json
 └── README.md
 ```
 
@@ -65,6 +71,43 @@ Each platform solution in the catalog is defined by a JSON document with three r
   ],
   "presentation": {
     // UI rendering instructions
+  }
+}
+```
+
+### 2.3 Bundle Definition Schema
+
+Bundles group multiple platform solutions into a single requestable package:
+
+```json
+{
+  "metadata": {
+    "id": "string",
+    "version": "string",
+    "name": "string",
+    "description": "string",
+    "category": "string"
+  },
+  "solutions": [
+    {
+      "solution_id": "compute/ec2-instance",
+      "required": true,
+      "defaults": {
+        // Override default field values
+      }
+    },
+    {
+      "solution_id": "storage/rds-postgres",
+      "required": true,
+      "defaults": {
+        "size": "medium"
+      }
+    }
+  ],
+  "presentation": {
+    "title": "Microservice Standard Bundle",
+    "description": "Complete infrastructure for a standard microservice",
+    "estimatedCost": "$850/month"
   }
 }
 ```
@@ -364,24 +407,90 @@ Workflow     Ticket
 ```
 GET    /api/v1/catalog                # List all platform solutions
 GET    /api/v1/catalog/{id}           # Get specific platform solution
-POST   /api/v1/requests               # Submit new request
+GET    /api/v1/bundles                # List all bundles
+GET    /api/v1/bundles/{id}           # Get specific bundle with expanded solutions
+POST   /api/v1/requests               # Submit new request (supports multiple solutions/bundles)
 GET    /api/v1/requests/{id}          # Get request status
-GET    /api/v1/requests/{id}/cost     # Get cost estimate
+GET    /api/v1/requests/{id}/cost     # Get cost estimate for entire request
 POST   /api/v1/validate               # Validate request without submitting
+POST   /api/v1/estimate               # Get cost estimate for solutions/bundles
 ```
 
 ### 7.2 Request Format
 
+#### 7.2.1 Single Solution Request
+
 ```json
 POST /api/v1/requests
 {
-  "solution_id": "compute/ec2-instance",
-  "fields": {
-    "applicationName": "my-app",
-    "environment": "production",
-    "instanceType": "t3.medium",
-    "instanceCount": 2
-  },
+  "solutions": [
+    {
+      "solution_id": "compute/ec2-instance",
+      "fields": {
+        "applicationName": "my-app",
+        "environment": "production",
+        "instanceType": "t3.medium",
+        "instanceCount": 2
+      }
+    }
+  ],
+  "metadata": {
+    "requestor": "user@company.com",
+    "team": "mobile-team",
+    "ticket": "PROJ-1234"
+  }
+}
+```
+
+#### 7.2.2 Bundle Request
+
+```json
+POST /api/v1/requests
+{
+  "bundles": [
+    {
+      "bundle_id": "microservice-standard",
+      "overrides": {
+        "compute/ec2-instance": {
+          "instanceType": "t3.large"
+        }
+      }
+    }
+  ],
+  "metadata": {
+    "requestor": "user@company.com",
+    "team": "mobile-team",
+    "ticket": "PROJ-1234"
+  }
+}
+```
+
+#### 7.2.3 Mixed Request (Bundle + Individual Solutions)
+
+```json
+POST /api/v1/requests
+{
+  "bundles": [
+    {
+      "bundle_id": "microservice-standard"
+    }
+  ],
+  "solutions": [
+    {
+      "solution_id": "monitoring/datadog-integration",
+      "fields": {
+        "serviceName": "my-app",
+        "alertingEnabled": true
+      }
+    },
+    {
+      "solution_id": "storage/s3-bucket",
+      "fields": {
+        "bucketName": "my-app-assets",
+        "versioning": true
+      }
+    }
+  ],
   "metadata": {
     "requestor": "user@company.com",
     "team": "mobile-team",
@@ -433,7 +542,9 @@ Authorization is required for all operations.
 3. **Phase 3**: Implement automated fulfillment
 4. **Phase 4**: Advanced features (recommendations, optimization)
 
-## 10. Example: Complete EC2 Platform Solution Definition
+## 10. Examples
+
+### 10.1 Complete EC2 Platform Solution Definition
 
 ```json
 {
@@ -568,6 +679,144 @@ Authorization is required for all operations.
     "costEstimate": {
       "enabled": true,
       "formula": "instanceCount * instanceTypeHourlyRate * 730 + (storage - 20) * 0.10"
+    }
+  }
+}
+```
+
+### 10.2 Microservice Standard Bundle Definition
+
+```json
+{
+  "metadata": {
+    "id": "bundles/microservice-standard",
+    "version": "1.0.0",
+    "name": "Microservice Standard Bundle",
+    "description": "Complete infrastructure setup for a standard microservice including compute, database, and networking",
+    "category": "bundles"
+  },
+  "solutions": [
+    {
+      "solution_id": "compute/eks-container",
+      "required": true,
+      "defaults": {
+        "cpu": "2",
+        "memory": "4Gi",
+        "replicas": "2"
+      }
+    },
+    {
+      "solution_id": "storage/rds-postgres",
+      "required": true,
+      "defaults": {
+        "instanceClass": "db.t3.medium",
+        "storage": "100",
+        "multiAZ": true
+      }
+    },
+    {
+      "solution_id": "networking/load-balancer",
+      "required": true,
+      "defaults": {
+        "type": "application",
+        "scheme": "internal"
+      }
+    },
+    {
+      "solution_id": "monitoring/basic-observability",
+      "required": false,
+      "defaults": {
+        "logRetention": "30",
+        "metricsEnabled": true
+      }
+    }
+  ],
+  "presentation": {
+    "title": "Microservice Standard Bundle",
+    "description": "Everything you need to deploy a production-ready microservice",
+    "icon": "microservice",
+    "estimatedCost": {
+      "monthly": "$850",
+      "breakdown": {
+        "compute": "$250",
+        "database": "$400",
+        "networking": "$150",
+        "monitoring": "$50"
+      }
+    },
+    "tags": ["recommended", "production-ready", "best-practice"]
+  }
+}
+```
+
+### 10.3 Web Application Bundle with Nested Bundles
+
+```json
+{
+  "metadata": {
+    "id": "bundles/web-application-complete",
+    "version": "2.0.0",
+    "name": "Complete Web Application Stack",
+    "description": "Full-stack web application with frontend, backend, and data layer",
+    "category": "bundles"
+  },
+  "bundles": [
+    {
+      "bundle_id": "bundles/microservice-standard",
+      "required": true,
+      "label": "Backend Services"
+    }
+  ],
+  "solutions": [
+    {
+      "solution_id": "compute/cloudfront-distribution",
+      "required": true,
+      "label": "Frontend CDN",
+      "defaults": {
+        "priceClass": "PriceClass_100"
+      }
+    },
+    {
+      "solution_id": "storage/s3-static-website",
+      "required": true,
+      "label": "Frontend Assets",
+      "defaults": {
+        "versioning": true,
+        "lifecycle": "90days"
+      }
+    },
+    {
+      "solution_id": "security/waf-rules",
+      "required": false,
+      "label": "Web Application Firewall",
+      "defaults": {
+        "ruleSet": "standard"
+      }
+    }
+  ],
+  "presentation": {
+    "title": "Complete Web Application Stack",
+    "description": "Production-ready web application with CDN, backend services, and security",
+    "groups": [
+      {
+        "name": "frontend",
+        "label": "Frontend Infrastructure",
+        "solutions": ["compute/cloudfront-distribution", "storage/s3-static-website"]
+      },
+      {
+        "name": "backend",
+        "label": "Backend Infrastructure",
+        "bundles": ["bundles/microservice-standard"]
+      },
+      {
+        "name": "security",
+        "label": "Security & Compliance",
+        "solutions": ["security/waf-rules"]
+      }
+    ],
+    "estimatedCost": {
+      "monthly": "$1,200",
+      "note": "Includes all nested bundle costs"
     }
   }
 }

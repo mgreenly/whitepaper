@@ -100,8 +100,10 @@ Instead of making developers navigate multiple teams and systems, PSA introduces
 **Example: "Microservice with Database" Solution**
 - Includes: Container orchestration, database, load balancer, monitoring, logging
 - Default Configuration: Optimized for 80% of use cases
-- Cost Transparency: $420/month estimate shown upfront
+- Cost Transparency: $850/month estimate shown upfront
 - Provisioning Time: 45 minutes when automated (vs 3-5 weeks today)
+
+Platform Solutions can be requested individually or bundled together for common architectures. Teams can mix and match solutions to meet their specific needs while maintaining standardization benefits.
 
 Platform teams define their offerings through simple JSON specifications that describe:
 - What inputs are required

@@ -42,7 +42,7 @@ Do not incldue execssive technical detail in the final white paper.  The docs/ps
 
 Never reference competitors, instead focus on lost opportunity.
 
-Do not read 
+I like the title "Accelerating Innovation Through Platform Solutions Automation"
 
 Constraints
 ===========
