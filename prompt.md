@@ -53,12 +53,15 @@ Constraints
   * Do NOT use the term big-bang.
   * DO focus on the context that's changed since the last iteration.
   * DO include citations to the sources of data.
+  * DO NOT read any documents other than those you were directory asked to.
 
 Actions
 =======
   * increment the numeric value in the ./.count file by +1
-  * read the current version of ./whitepaper.md
+  * If you are Google Gemini read the current version of ./whitepaper-gemini.md
+  * If you are Claude Code read the current version of ./whitepaper-claude.md
   * Analyze all the provided context and synthesize it into a a new professionally structure whitepaper.
-  * write that paper to ./whitepaper.md
+  * If you are Google Gemini write that paper to ./whitepaper-gemini.md
+  * If you are Claude Code write that paper to ./whitepaper-claude.md
   * proceed to the end of the task without asking for permission to read, write or delete files in the project directory. 
   * create a commit with all changed files.  The comment should reference the value in .count  Then push it.
