@@ -2,19 +2,19 @@
 
 *By Hannah Stone and Michael Greenly*
 
-*Iteration 10*
+*Iteration 11*
 
 ## 1. Executive Summary
 
-Our organization's ability to innovate is directly tied to the effectiveness of our internal developer platform. Currently, our developer experience is fragmented, characterized by manual, ticket-driven workflows that span multiple platform teams. This approach introduces significant friction, with application provisioning times often stretching from three to seven weeks, delaying the delivery of value to our customers. The long lead times and high cognitive load on our development teams represent a significant opportunity cost, hindering our ability to respond to market changes with agility.
+Our organization's ability to innovate is directly tied to the effectiveness of our internal developer platform. Currently, our developer experience is fragmented, characterized by manual, ticket-driven workflows that span multiple platform teams. This approach introduces significant friction, with application provisioning times often stretching from three to seven weeks, delaying the delivery of value. The long lead times and high cognitive load on our development teams represent a significant opportunity cost, hindering our ability to respond to market changes with agility.
 
-This paper proposes a progressive, iterative strategy centered on **Platform Solutions Automation (PSA)**. PSA is a lightweight orchestration system that standardizes and automates infrastructure provisioning without requiring disruptive organizational changes. It leverages a centralized Git repository to manage a catalog of service offerings defined in simple JSON documents. This approach allows platform teams to maintain ownership of their services while contributing to a unified, automated, and transparent developer experience.
+This paper proposes a progressive, iterative strategy centered on **Platform Solutions Automation (PSA)**. As detailed in the *PSA Specification* document, this is a lightweight orchestration system that standardizes and automates infrastructure provisioning without requiring disruptive organizational changes. It leverages a centralized Git repository to manage a catalog of service offerings defined in simple YAML documents. This approach allows platform teams to maintain ownership of their services while contributing to a unified, automated, and transparent developer experience.
 
-Our recommendation is to adopt the PSA model to create a connected, self-service platform. This will empower our internal developer teams, reduce provisioning times, and enable a culture of continuous improvement and innovation. By focusing on the developer experience and providing clear, automated "golden paths," we can unlock significant productivity gains and accelerate our time-to-market.
+Our recommendation is to adopt the PSA model to create a connected, self-service platform. This will empower our internal "Dev Customers," reduce provisioning times, and enable a culture of continuous improvement and innovation. By focusing on the developer experience and providing clear, automated "golden paths," we can unlock significant productivity gains and accelerate our time-to-market.
 
 ## 2. The Challenge: A Fragmented Developer Experience
 
-Our current internal platform has grown organically, resulting in a collection of powerful but disconnected capabilities. For our "Dev Customers"—the internal development teams—navigating this landscape is a significant challenge. To provision a new application, a developer must interact with numerous platform teams through a series of JIRA tickets, a process that is both time-consuming and error-prone.
+Our current internal platform has grown organically, resulting in a collection of powerful but disconnected capabilities. For our Dev Customers, navigating this landscape is a significant challenge. To provision a new application, a developer must interact with numerous platform teams through a series of JIRA tickets, a process that is both time-consuming and error-prone.
 
 This fragmented approach leads to several critical issues:
 
@@ -29,12 +29,10 @@ Previous attempts to address these challenges have focused on large-scale initia
 
 We propose a more progressive and sustainable path forward: **Platform Solutions Automation (PSA)**. PSA is a lightweight, decentralized orchestration framework designed to create a unified and automated developer experience without requiring a disruptive overhaul of our existing teams or processes.
 
-The core of PSA is a **Platform Solutions Catalog**, a shared Git repository containing a collection of JSON documents. Each document defines a specific service offering from a platform team, such as provisioning a database or a compute environment. These definitions serve a dual purpose:
+The core of PSA is a **Platform Solutions Catalog**, a shared Git repository containing a collection of YAML documents. Each document defines a specific service offering from a platform team, such as provisioning a database or a compute environment. These definitions serve a dual purpose:
 
-1.  **For the Developer Portal:** They provide the necessary information to present a unified catalog of services to developers, complete with clear descriptions, required inputs, and cost estimates.
+1.  **For the Developer Portal:** They provide the necessary information to present a unified catalog of services to developers via our portal, "Stratus," complete with clear descriptions, required inputs, and cost estimates.
 2.  **For the Orchestration System:** They contain the logic required to automatically dispatch a developer's request to the correct platform team's fulfillment process, whether that is an existing automation script or a JIRA ticket.
-
-This model is detailed further in the *Platform Solutions Automation (PSA) Specification* document.
 
 ### Key Principles of the PSA Approach
 
@@ -59,7 +57,7 @@ We recommend a phased approach to implementing PSA, ensuring that we deliver val
 
 *   **Phase 1: Establish the Catalog and Manual Fulfillment:**
     *   Establish the central Git repository for the Platform Solutions Catalog.
-    *   Work with the core platform teams (Compute, Storage, Networking) to define their initial service offerings in the JSON format.
+    *   Work with the core platform teams (Compute, Storage, Networking) to define their initial service offerings in the YAML format, as specified in the PSA documentation.
     *   Integrate the catalog with the "Stratus" developer portal to provide a unified view of available services.
     *   All requests will initially be fulfilled via the existing JIRA ticket process, but initiated through the new, standardized interface.
 
