@@ -2,7 +2,7 @@
 
 *By Hannah Stone and Michael Greenly*
 
-*Iteration 11*
+*Iteration 12*
 
 ## 1. Executive Summary
 
@@ -14,12 +14,12 @@ Our recommendation is to adopt the PSA model to create a connected, self-service
 
 ## 2. The Challenge: A Fragmented Developer Experience
 
-Our current internal platform has grown organically, resulting in a collection of powerful but disconnected capabilities. For our Dev Customers, navigating this landscape is a significant challenge. To provision a new application, a developer must interact with numerous platform teams through a series of JIRA tickets, a process that is both time-consuming and error-prone.
+Our current internal platform has grown organically, resulting in a collection of powerful but disconnected capabilities. For our Dev Customers, navigating this landscape is a significant challenge. To provision a new application, a developer must interact with numerous platform teams—from compute and storage to networking and messaging—through a series of JIRA tickets. This process is both time-consuming and error-prone.
 
 This fragmented approach leads to several critical issues:
 
-*   **Long Provisioning Timelines:** The reliance on manual, ticket-based workflows across multiple teams results in an average provisioning time of **3-7 weeks**. This delay directly impacts our ability to deliver new features and services.
-*   **High Cognitive Load:** Developers are forced to become experts in the organizational structure and specific processes of each platform team, from compute and storage to networking and messaging. This distracts them from their primary focus: building value-adding applications.
+*   **Long Provisioning Timelines:** The reliance on manual, ticket-based workflows across at least seven different teams results in an average provisioning time of **3-7 weeks**. This delay directly impacts our ability to deliver new features and services.
+*   **High Cognitive Load:** Developers are forced to become experts in the organizational structure and specific processes of each platform team. This distracts them from their primary focus: building value-adding applications.
 *   **Inconsistent Standards:** Without a unified approach, the application of standards and best practices is inconsistent, leading to operational risks and duplicated effort.
 *   **Lost Opportunity:** Every week spent navigating internal processes is a week not spent on innovation. The current system creates a significant opportunity cost, limiting our capacity to experiment and respond to the needs of the business.
 
@@ -27,7 +27,7 @@ Previous attempts to address these challenges have focused on large-scale initia
 
 ## 3. The Solution: Platform Solutions Automation (PSA)
 
-We propose a more progressive and sustainable path forward: **Platform Solutions Automation (PSA)**. PSA is a lightweight, decentralized orchestration framework designed to create a unified and automated developer experience without requiring a disruptive overhaul of our existing teams or processes.
+We propose a more progressive and sustainable path forward: **Platform Solutions Automation (PSA)**. PSA is a lightweight, decentralized orchestration framework designed to create a unified and automated developer experience without requiring a disruptive overhaul of our existing teams or processes. The complete technical details are available in the *PSA Specification* document.
 
 The core of PSA is a **Platform Solutions Catalog**, a shared Git repository containing a collection of YAML documents. Each document defines a specific service offering from a platform team, such as provisioning a database or a compute environment. These definitions serve a dual purpose:
 
@@ -62,11 +62,11 @@ We recommend a phased approach to implementing PSA, ensuring that we deliver val
     *   All requests will initially be fulfilled via the existing JIRA ticket process, but initiated through the new, standardized interface.
 
 *   **Phase 2: Introduce Automation and Cost Visibility:**
-    *   Begin automating the fulfillment of the most frequently requested and easily automated services.
+    *   Begin automating the fulfillment of the most frequently requested and easily automated services using Terraform.
     *   Integrate cost estimation data into the service definitions to provide developers with upfront cost visibility.
     *   Measure the reduction in provisioning time for automated services.
 
-*   **Phase 3: Expand and Iterate:**
+*   **Phase 3: Expand and Iterate with Bundles:**
     *   Onboard additional platform teams to the PSA catalog.
     *   Introduce the concept of "bundles"—collections of services that represent a complete application stack (e.g., a standard microservice).
     *   Gather feedback from development teams to continuously improve the service offerings and the overall developer experience.
@@ -75,6 +75,6 @@ We recommend a phased approach to implementing PSA, ensuring that we deliver val
 
 The current friction in our developer experience is a significant impediment to our organization's agility and innovation. The path to improvement does not lie in another large, disruptive initiative, but in a pragmatic, iterative approach that empowers our teams and respects our operational realities.
 
-**Platform Solutions Automation (PSA)** offers such a path. By creating a unified, automated, and self-service platform, we can remove the bottlenecks that slow us down, reduce the cognitive load on our developers, and foster a culture of speed and innovation. This is not about buying a new tool; it is about connecting our existing capabilities into a cohesive and efficient system.
+**Platform Solutions Automation (PSA)** offers such a path. By creating a unified, automated, and self-service platform, we can remove the bottlenecks that slow us down, reduce the cognitive load on our developers, and foster a culture of speed and innovation. This is not about buying a new tool; it is about connecting our existing capabilities into a cohesive and efficient system. This is a call for more connection: between developers and the platform, between our platform teams, and between our strategy and execution.
 
 Adopting the PSA strategy is a direct investment in our development teams and, by extension, in our ability to deliver value to our customers. It is a crucial step toward building a truly modern and effective internal developer platform that will serve as a strategic enabler for the entire organization. We recommend moving forward with the phased implementation plan to begin realizing these benefits as quickly as possible.
