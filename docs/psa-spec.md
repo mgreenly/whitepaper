@@ -469,6 +469,34 @@ metadata:
   ticket: PROJ-1234
 ```
 
+### 7.2.4 Request Data Precedence and Merging
+
+When processing a request containing bundles, the final data for each solution is assembled using a clear order of precedence:
+
+1.  **Base Defaults**: The system first loads the default values for each field as defined in the individual `solution.yaml` files.
+2.  **Bundle Defaults**: It then applies the values from the `defaults` block within the `bundle.yaml` definition. These values override the base defaults from the individual solutions.
+3.  **Request Overrides**: Finally, it applies any values from the `overrides` block in the API request payload. These values override both the base defaults and the bundle defaults.
+
+The final, merged data is then validated to ensure all required fields have a value before the request is sent for fulfillment. This model allows bundle authors to create curated, best-practice configurations while giving consumers the flexibility to customize where necessary.
+
+#### Example: Bundle Request with Override
+
+Consider a bundle that includes a compute solution and a storage solution, each with its own defaults. The API request can override a specific field for just one of those solutions.
+
+```yaml
+bundles:
+  - bundle_id: microservice-standard
+    overrides:
+      # Override a field for ONLY the rds-postgres solution.
+      # The eks-container solution will use its defaults from the bundle.
+      storage/rds-postgres:
+        storage: 200 # Override default of 100GB from the bundle
+
+metadata:
+  requestor: user@company.com
+  team: mobile-team
+```
+
 ## 8. Security and Compliance
 
 ### 8.1 Authentication
@@ -487,9 +515,37 @@ Authorization is required for all operations.
 - Request history maintained indefinitely
 - Cost tracking integrated with FinOps systems
 
-## 9. Implementation Guidelines
+## 9. Governance
 
-### 9.1 Platform Team Responsibilities
+The Platform Solutions Catalog is a critical shared resource. A lightweight governance model is essential to ensure its stability, quality, and collaborative evolution. This model defines the "social contract" for how teams interact with the catalog.
+
+### 9.1 Roles and Responsibilities
+
+-   **Solution Owner**: A designated individual or group from a Platform Team responsible for the lifecycle of a specific platform solution definition. They create, maintain, and test their `solution.yaml` files.
+-   **Catalog Maintainer**: A role filled by the Central Team (see 10.2) responsible for the overall health of the catalog. They manage the core schemas, validate contributions, and facilitate the change management process.
+
+### 9.2 Change Management
+
+All changes to the catalog are managed through pull requests to the `platform-solutions-catalog` repository.
+
+-   **Review Process**: Pull requests must be reviewed and approved by at least one Catalog Maintainer and the designated Solution Owner(s) if the change affects an existing solution.
+-   **Service Level Agreement (SLA)**: The goal is to review and provide feedback on all pull requests within two business days.
+-   **Breaking Changes**: Any proposed change to the master schemas (`solution-schema.json`, etc.) requires a more rigorous review. This includes an announcement in the designated communication channel and a review period to allow all platform teams to assess the impact.
+
+### 9.3 Platform Council
+
+To facilitate collaboration and guide the evolution of the PSA system, a Platform Council will be established.
+
+-   **Membership**: The council will consist of representatives (e.g., Solution Owners) from each participating platform team and members of the Central Team.
+-   **Mandate**: The council will meet regularly (e.g., bi-weekly) to:
+    -   Review significant or contentious proposed changes.
+    -   Discuss new solution ideas and patterns.
+    -   Resolve conflicts and make decisions on the evolution of the core schemas.
+    -   Act as the primary forum for cross-team communication regarding the PSA ecosystem.
+
+## 10. Implementation Guidelines
+
+### 10.1 Platform Team Responsibilities
 
 1. Define platform solutions in YAML format
 2. Validate solution definitions against JSON Schema
@@ -498,7 +554,7 @@ Authorization is required for all operations.
 5. Support progressive automation
 6. Collaborate with application teams to create relevant app templates
 
-### 9.2 Central Team Responsibilities
+### 10.2 Central Team Responsibilities
 
 1. Maintain solution schemas and validation
 2. Operate orchestration API
@@ -507,7 +563,7 @@ Authorization is required for all operations.
 5. Monitor adoption and usage
 6. Coordinate app template contributions across teams
 
-### 9.3 Application Team Responsibilities
+### 10.3 Application Team Responsibilities
 
 1. Contribute app templates for common use cases
 2. Maintain templates with security updates and best practices
@@ -515,14 +571,21 @@ Authorization is required for all operations.
 4. Test templates with platform solutions
 5. Gather feedback from template users
 
-### 9.4 Migration Strategy
+### 10.4 Migration Strategy
 
 1. **Phase 1**: Define platform solutions in YAML, manual JIRA fulfillment
 2. **Phase 2**: Add cost estimation and JSON Schema validation, initial app templates
 3. **Phase 3**: Implement automated fulfillment, expand template library
 4. **Phase 4**: Advanced features (recommendations, optimization, template generation)
 
-## 10. Examples
+### 10.5 Communication Channels
+
+To ensure clear and transparent communication across all participating teams, the following channels will be established:
+
+-   **Primary Channel**: A dedicated public channel (e.g., `#platform-solutions` on Slack/Teams) will be the main hub for questions, announcements, and general discussion related to the PSA system.
+-   **Platform Office Hours**: The Central Team will hold regular, scheduled office hours. This provides a dedicated time for any team to get help, ask questions about creating solutions, or demo new templates.
+
+## 11. Examples
 
 ### 10.1 Complete EC2 Platform Solution Definition
 
