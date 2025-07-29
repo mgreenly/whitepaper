@@ -202,7 +202,7 @@ default: false
 
 ### 4.1 Fulfillment Array
 
-The `fulfillments` array defines how requests are fulfilled. At least one JIRA fulfillment is required:
+The `fulfillments` array defines how requests are fulfilled. At least one JIRA fulfillment is required. The list may also include fulfillment types that are not yet implemented but are being considered for future support, such as Crossplane.
 
 ```yaml
 fulfillments:
@@ -213,6 +213,10 @@ fulfillments:
   - type: terraform
     config:
       # Terraform generation configuration
+
+  - type: crossplane # Speculative
+    config:
+      # Crossplane composition configuration
 
   - type: workflow
     config:
@@ -272,7 +276,26 @@ config:
       key: "psa/{{requestId}}/terraform.tfstate"
 ```
 
-### 4.4 Workflow Fulfillment
+### 4.4 Crossplane Fulfillment (Speculative)
+
+While not currently in use, Crossplane represents a likely future addition for automated provisioning, especially for platform teams that adopt a control plane model. This fulfillment type allows PSA to integrate with Crossplane Compositions.
+
+```yaml
+type: crossplane
+config:
+  compositionName: "composite-ec2-instance"
+  compositionVersion: "v1.2.0"
+  templates:
+    parameters:
+      instanceSize: "{{instanceType}}"
+      nodeCount: {{instanceCount}}
+      networkId: "{{environment}}"
+    claim:
+      name: "{{applicationName}}-{{environment}}"
+      namespace: "psa-claims"
+```
+
+### 4.5 Workflow Fulfillment
 
 For triggering automated workflows:
 
@@ -384,8 +407,10 @@ Fulfillment Selection
 Automated    Manual
     ↓           ↓
 Terraform    JIRA
-Workflow     Ticket
+Crossplane*  Ticket
+Workflow
 ```
+*\*Crossplane is a speculative future option.*
 
 ## 7. API Specification
 

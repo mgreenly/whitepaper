@@ -32,4 +32,4 @@ Actions
 
   * Analyize all information currently in context.
   * Review all given constraints.
-  * Suggest what you consider is the next most important iterative change to @docs/psa-spec.md
+  * wait for user instructions.
