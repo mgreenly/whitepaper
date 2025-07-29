@@ -88,9 +88,10 @@ Each platform solution in the catalog is defined by a YAML document validated ag
 # Validated against schemas/solution-schema.json
 metadata:
   id: string
-  version: string
+  version: string # Must follow Semantic Versioning (see Governance)
   team: string
   category: string
+  fulfillmentStrategy: string # (Later Phase) See Fulfillment Section
 
 fields:
   # Field definitions
@@ -110,7 +111,7 @@ Bundles group multiple platform solutions into a single requestable package:
 # Validated against schemas/bundle-schema.json
 metadata:
   id: string
-  version: string
+  version: string # Must follow Semantic Versioning (see Governance)
   name: string
   description: string
   category: string
@@ -426,6 +427,9 @@ GET    /api/v1/requests/{id}          # Get request status
 GET    /api/v1/requests/{id}/cost     # Get cost estimate for entire request
 POST   /api/v1/validate               # Validate request without submitting
 POST   /api/v1/estimate               # Get cost estimate for solutions/bundles
+
+# Later Phase
+GET    /api/v1/catalog/{id}/versions  # List all available versions of a solution
 ```
 
 ### 7.2 Request Format
@@ -578,6 +582,16 @@ To facilitate collaboration and guide the evolution of the PSA system, a Platfor
     -   Discuss new solution ideas and patterns.
     -   Resolve conflicts and make decisions on the evolution of the core schemas.
     -   Act as the primary forum for cross-team communication regarding the PSA ecosystem.
+
+### 9.4 Versioning
+
+To ensure predictability and safe evolution of the catalog, all solutions and bundles MUST adhere to **Semantic Versioning 2.0.0 (SemVer)**.
+
+-   **`MAJOR` Version**: Incremented for incompatible API changes. A major version change (e.g., `1.x` to `2.0`) is effectively a new solution and may require a new `id` if the changes are significant enough to warrant parallel existence.
+-   **`MINOR` Version**: Incremented for adding functionality in a backward-compatible manner.
+-   **`PATCH` Version**: Incremented for backward-compatible bug fixes.
+
+The Platform Council is responsible for arbitrating what constitutes a breaking change.
 
 ## 10. Implementation Guidelines
 
@@ -882,3 +896,25 @@ presentation:
     monthly: $1,200
     note: Includes all nested bundle costs
 ```
+
+## 12. Future Considerations
+
+This specification describes the initial, core implementation of the PSA system. The following topics are explicitly designated as out-of-scope for the first phase but are recognized as critical areas for future development.
+
+### 12.1 Fulfillment Strategy
+
+The logic for selecting a fulfillment method from the `fulfillments` array will be enhanced. A `fulfillmentStrategy` field will be added to the solution metadata, allowing solution owners to define behaviors like `failover` (try each in order) or `manual` (proceed directly to JIRA). This will give teams more control over how their solutions are provisioned.
+
+### 12.2 User Feedback and Error Handling
+
+A comprehensive, user-centric feedback mechanism is a priority for a later phase. The current design ensures that a request is either accepted or rejected, but it does not yet provide detailed, asynchronous feedback if a downstream process (like a Terraform apply) fails. Future work will involve:
+-   A more granular request status model (`fulfillment_failed`, `pr_merged`, etc.).
+-   A notification system to proactively alert users to status changes.
+-   Surfacing detailed error messages from fulfillment engines back to the user.
+
+### 12.3 "Day 2" Operations
+
+The initial focus of this specification is "Day 1" provisioning. A complete lifecycle management strategy will be designed in a subsequent phase. This will address the critical questions of how users manage their resources after the initial request:
+-   **Update/Modify:** How does a user change the configuration of a previously provisioned resource (e.g., increase an instance size)? This will likely involve submitting a request with the same unique identifiers, which the system will interpret as a modification.
+-   **Decommission:** What is the process for safely destroying resources and removing their configuration from the environment? This will require a dedicated API endpoint and workflow.
+-   **State Discovery:** How can users easily see the current state and configuration of all the resources they own?
