@@ -8,6 +8,57 @@
 > **Last Updated**: In Progress
 > **Review State**: Not Approved
 
+## Table of Contents
+- [1. Overview](#1-overview)
+  - [1.1 Core Components](#11-core-components)
+  - [1.2 Design Principles](#12-design-principles)
+- [2. Architecture](#2-architecture)
+  - [2.1 Repository Structure](#21-repository-structure)
+  - [2.2 Platform Solution Definition Schema](#22-platform-solution-definition-schema)
+  - [2.3 Bundle Definition Schema](#23-bundle-definition-schema)
+- [3. Field Definitions](#3-field-definitions)
+  - [3.1 Field Structure](#31-field-structure)
+  - [3.2 Supported Field Types](#32-supported-field-types)
+- [4. Fulfillment Mechanisms](#4-fulfillment-mechanisms)
+  - [4.1 Fulfillment Array](#41-fulfillment-array)
+  - [4.2 JIRA Fulfillment (Required)](#42-jira-fulfillment-required)
+  - [4.3 Terraform Fulfillment](#43-terraform-fulfillment)
+  - [4.4 Crossplane Fulfillment (Speculative)](#44-crossplane-fulfillment-speculative)
+  - [4.5 Workflow Fulfillment](#45-workflow-fulfillment)
+- [5. Presentation Layer](#5-presentation-layer)
+  - [5.1 Presentation Structure](#51-presentation-structure)
+  - [5.2 YAML Input Support](#52-yaml-input-support)
+- [6. Validation and Processing](#6-validation-and-processing)
+  - [6.1 YAML Validation](#61-yaml-validation)
+  - [6.2 Request Validation Flow](#62-request-validation-flow)
+  - [6.3 Processing Pipeline](#63-processing-pipeline)
+- [7. API Specification](#7-api-specification)
+  - [7.1 Endpoints](#71-endpoints)
+  - [7.2 Request Format](#72-request-format)
+- [8. Security and Compliance](#8-security-and-compliance)
+  - [8.1 PSA API Security](#81-psa-api-security)
+  - [8.2 Authentication and Authorization](#82-authentication-and-authorization)
+  - [8.3 Fulfillment and GitOps Workflow](#83-fulfillment-and-gitops-workflow)
+- [9. Governance](#9-governance)
+  - [9.1 Roles and Responsibilities](#91-roles-and-responsibilities)
+  - [9.2 Change Management](#92-change-management)
+  - [9.3 Platform Council](#93-platform-council)
+  - [9.4 Versioning](#94-versioning)
+- [10. Implementation Guidelines](#10-implementation-guidelines)
+  - [10.1 Platform Team Responsibilities](#101-platform-team-responsibilities)
+  - [10.2 Central Team Responsibilities](#102-central-team-responsibilities)
+  - [10.3 Application Team Responsibilities](#103-application-team-responsibilities)
+  - [10.4 Migration Strategy](#104-migration-strategy)
+  - [10.5 Communication Channels](#105-communication-channels)
+- [11. Examples](#11-examples)
+  - [11.1 Complete EC2 Platform Solution Definition](#111-complete-ec2-platform-solution-definition)
+  - [11.2 Microservice Standard Bundle Definition](#112-microservice-standard-bundle-definition)
+  - [11.3 Web Application Bundle with Nested Bundles](#113-web-application-bundle-with-nested-bundles)
+- [12. Future Considerations](#12-future-considerations)
+  - [12.1 Fulfillment Strategy](#121-fulfillment-strategy)
+  - [12.2 User Feedback and Error Handling](#122-user-feedback-and-error-handling)
+  - [12.3 "Day 2" Operations](#123-day-2-operations)
+
 ## 1. Overview
 
 Platform Solutions Automation (PSA) is a lightweight orchestration system designed to standardize and automate infrastructure provisioning requests across multiple platform teams. The system achieves coordination through a shared Git repository containing the Platform Solutions Catalog—a collection of YAML-based platform solution definitions validated against JSON Schemas, eliminating the need for organizational restructuring while enabling progressive automation.
@@ -637,7 +688,7 @@ To ensure clear and transparent communication across all participating teams, th
 
 ## 11. Examples
 
-### 10.1 Complete EC2 Platform Solution Definition
+### 11.1 Complete EC2 Platform Solution Definition
 
 ```yaml
 # Validated against schemas/solution-schema.json
@@ -773,7 +824,7 @@ presentation:
     formula: instanceCount * instanceTypeHourlyRate * 730 + (storage - 20) * 0.10
 ```
 
-### 10.2 Microservice Standard Bundle Definition
+### 11.2 Microservice Standard Bundle Definition
 
 ```yaml
 # Validated against schemas/bundle-schema.json
@@ -836,7 +887,7 @@ appTemplate:
     - GitHub Actions deployment pipeline
 ```
 
-### 10.3 Web Application Bundle with Nested Bundles
+### 11.3 Web Application Bundle with Nested Bundles
 
 ```yaml
 # Validated against schemas/bundle-schema.json
