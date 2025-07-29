@@ -524,21 +524,32 @@ metadata:
 
 ## 8. Security and Compliance
 
-### 8.1 Authentication
+The security model for the Platform Solutions Automation (PSA) system is designed to be robust, auditable, and aligned with modern cloud-native and GitOps best practices.
 
-- All API requests must include valid authentication tokens
-- Service-to-service communication uses mTLS
-- Git repository access controlled via SSO
+### 8.1 PSA API Security
 
-### 8.2 Authorization
+The core PSA Orchestration API is the central component of the system and is secured as follows:
 
-Authorization is required for all operations.
+-   **Runtime Environment**: The API runs as a containerized application on the AWS Elastic Kubernetes Service (EKS).
+-   **AWS Permissions**: The API leverages **IAM Roles for Service Accounts (IRSA)**. This allows the Kubernetes service account to assume a fine-grained IAM role, granting the API pod temporary, least-privilege access to necessary AWS resources without the need for static credentials.
+-   **Secret Management**: All internal secrets required by the API (e.g., database connection strings, credentials for external services) are stored securely in **AWS Parameter Store**. The IRSA role provides the API with the necessary permissions to retrieve these secrets at runtime.
 
-### 8.3 Audit Trail
+### 8.2 Authentication and Authorization
 
-- All changes to platform solution definitions tracked in Git
-- Request history maintained indefinitely
-- Cost tracking integrated with FinOps systems
+-   **User Authentication**: All API requests from end-users must include a valid authentication token (e.g., OAuth 2.0 Bearer Token) issued by the organization's central identity provider. The specific authentication flow will be determined by the integrating client (e.g., the developer portal).
+-   **Authorization Model**: A role-based access control (RBAC) model will be implemented to govern access to solutions and actions. This model will define which users or groups can request specific platform solutions, particularly for sensitive environments like production. For example, a request to a `prod` environment may require the user to be part of a specific Active Directory group.
+
+### 8.3 Fulfillment and GitOps Workflow
+
+The PSA system follows a strict GitOps pattern, ensuring a complete and auditable trail for all infrastructure changes.
+
+-   **Separation of Duties**: The PSA API's responsibility ends with the creation of a Pull Request. It **does not** have the ability to directly modify infrastructure.
+-   **GitHub Authentication**: To interact with GitHub, the PSA API authenticates as a **GitHub App**. This is a highly secure method that provides granular permissions and avoids the use of user-based Personal Access Tokens (PATs). The app's credentials are a secret managed by the API and stored in AWS Parameter Store.
+-   **Governance**: The creation and permissions of the GitHub App are managed through an internal governance process that links its identity and access rights to the organization's Active Directory. This ensures that the service's ability to interact with code repositories is centrally managed and auditable.
+-   **Audit Trail**: The entire lifecycle of a request is tracked:
+    1.  The initial request is logged by the PSA API.
+    2.  The proposed infrastructure change is captured immutably in a Git commit and Pull Request.
+    3.  A separate, out-of-scope system is responsible for the approval and application of the PR, providing a final layer of human or automated review.
 
 ## 9. Governance
 
