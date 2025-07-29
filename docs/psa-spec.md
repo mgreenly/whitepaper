@@ -4,7 +4,7 @@
 >
 > This document represents a work-in-progress specification that is subject to significant changes. It should not be considered final or used for production implementations without further review and approval.
 >
-> **Status**: Draft v0.1
+> **Status**: Draft v0.2
 > **Last Updated**: In Progress
 > **Review State**: Not Approved
 
@@ -44,20 +44,20 @@
   - [9.2 Change Management](#92-change-management)
   - [9.3 Platform Council](#93-platform-council)
   - [9.4 Versioning](#94-versioning)
-- [10. Implementation Guidelines](#10-implementation-guidelines)
-  - [10.1 Platform Team Responsibilities](#101-platform-team-responsibilities)
-  - [10.2 Central Team Responsibilities](#102-central-team-responsibilities)
-  - [10.3 Application Team Responsibilities](#103-application-team-responsibilities)
-  - [10.4 Migration Strategy](#104-migration-strategy)
-  - [10.5 Communication Channels](#105-communication-channels)
-- [11. Examples](#11-examples)
-  - [11.1 Complete EC2 Platform Solution Definition](#111-complete-ec2-platform-solution-definition)
-  - [11.2 Microservice Standard Bundle Definition](#112-microservice-standard-bundle-definition)
-  - [11.3 Web Application Bundle with Nested Bundles](#113-web-application-bundle-with-nested-bundles)
-- [12. Future Considerations](#12-future-considerations)
-  - [12.1 Fulfillment Strategy](#121-fulfillment-strategy)
-  - [12.2 User Feedback and Error Handling](#122-user-feedback-and-error-handling)
-  - [12.3 "Day 2" Operations](#123-day-2-operations)
+- [10. Phased Implementation Plan](#10-phased-implementation-plan)
+- [11. Implementation Guidelines](#11-implementation-guidelines)
+  - [11.1 Platform Team Responsibilities](#111-platform-team-responsibilities)
+  - [11.2 Central Team Responsibilities](#112-central-team-responsibilities)
+  - [11.3 Application Team Responsibilities](#113-application-team-responsibilities)
+  - [11.4 Communication Channels](#114-communication-channels)
+- [12. Examples](#12-examples)
+  - [12.1 Complete EC2 Platform Solution Definition](#121-complete-ec2-platform-solution-definition)
+  - [12.2 Microservice Standard Bundle Definition](#122-microservice-standard-bundle-definition)
+  - [12.3 Web Application Bundle with Nested Bundles](#123-web-application-bundle-with-nested-bundles)
+- [13. Future Considerations](#13-future-considerations)
+  - [13.1 Fulfillment Strategy](#131-fulfillment-strategy)
+  - [13.2 User Feedback and Error Handling](#132-user-feedback-and-error-handling)
+  - [13.3 "Day 2" Operations](#133-day-2-operations)
 
 ## 1. Overview
 
@@ -644,9 +644,74 @@ To ensure predictability and safe evolution of the catalog, all solutions and bu
 
 The Platform Council is responsible for arbitrating what constitutes a breaking change.
 
-## 10. Implementation Guidelines
+## 10. Phased Implementation Plan
 
-### 10.1 Platform Team Responsibilities
+This plan breaks down the development of the PSA system into eight distinct quarterly phases, prioritizing an iterative rollout that delivers value quickly and builds momentum.
+
+-   **Phase 1 (Q1): Foundation and Manual MVP**
+    -   **Goal**: Establish the core infrastructure and prove the end-to-end manual workflow.
+    -   **Deliverables**:
+        -   Setup of the `platform-solutions-catalog` Git repository.
+        -   Finalize and publish v1.0 of core schemas (`solution-schema.json`, `field-types.json`).
+        -   Implement CI pipeline to validate all YAML files in the catalog against schemas.
+        -   Onboard 1-2 pilot platform teams to define their first solutions in YAML.
+        -   Deploy a basic PSA API capable of parsing a request and creating a JIRA ticket (JIRA fulfillment).
+        -   Establish the Platform Council and communication channels.
+
+-   **Phase 2 (Q2): Initial Automation with Terraform**
+    -   **Goal**: Introduce the first automated fulfillment method to demonstrate the power of the system.
+    -   **Deliverables**:
+        -   Implement the Terraform fulfillment provider in the PSA API.
+        -   The API can now generate a Pull Request containing `.tf` files against a target repository.
+        -   Implement the full GitOps security model (GitHub App, IRSA, Parameter Store).
+        -   Work with pilot teams to enable Terraform fulfillment for their existing solutions.
+
+-   **Phase 3 (Q3): Scaling with Bundles**
+    -   **Goal**: Increase developer productivity by allowing the request of common application stacks as a single unit.
+    -   **Deliverables**:
+        -   Finalize and publish v1.0 of the `bundle-schema.json`.
+        -   Implement the bundle processing and request merging logic in the API.
+        -   Enhance the `/api/v1/requests` endpoint to accept `bundles`.
+        -   Work with platform and application teams to create 2-3 high-value bundles (e.g., "Standard Microservice").
+
+-   **Phase 4 (Q4): Enhancing the Developer Experience**
+    -   **Goal**: Make the platform easier to adopt and use for both solution providers and consumers.
+    -   **Deliverables**:
+        -   Implement the `app-templates` component, allowing bundles to link to starter code.
+        -   Implement the `presentation` schema to allow for richer UI rendering in the developer portal.
+        -   Develop a `psa-cli` tool for validating solution definitions locally.
+        -   Focused effort to onboard 3-5 new platform teams.
+
+-   **Phase 5 (Q5): Advanced Workflows and Cost Management**
+    -   **Goal**: Expand automation capabilities and provide better financial visibility.
+    -   **Deliverables**:
+        -   Implement the `workflow` fulfillment provider for triggering arbitrary GitHub Actions.
+        -   Implement the `costEstimate` feature, allowing the API to provide estimated costs before submission.
+        -   Begin speculative research and prototyping for Crossplane fulfillment.
+
+-   **Phase 6 (Q6): API Maturity and Versioning**
+    -   **Goal**: Solidify the platform's API for long-term stability and management.
+    -   **Deliverables**:
+        -   Implement the `GET /api/v1/catalog/{id}/versions` endpoint.
+        -   The API is now fully version-aware when processing requests.
+        -   Formalize and document the process for deprecating and decommissioning old solution versions.
+
+-   **Phase 7 (Q7): "Day 2" Operations - Update and Discover**
+    -   **Goal**: Begin to address the post-provisioning lifecycle of a resource.
+    -   **Deliverables**:
+        -   Implement the logic to handle modification requests (submitting a request for an existing resource).
+        -   Implement discovery endpoints (e.g., `GET /api/v1/requests?requestor=me`) so users can find their provisioned resources.
+
+-   **Phase 8 (Q8): Closing the Loop - Deletion and Feedback**
+    -   **Goal**: Complete the resource lifecycle and provide better feedback mechanisms.
+    -   **Deliverables**:
+        -   Implement the "Day 2" decommission/delete workflow.
+        -   Implement the first version of the user feedback and notification system (as described in Future Considerations).
+        -   Implement the `fulfillmentStrategy` feature.
+
+## 11. Implementation Guidelines
+
+### 11.1 Platform Team Responsibilities
 
 1. Define platform solutions in YAML format
 2. Validate solution definitions against JSON Schema
@@ -655,7 +720,7 @@ The Platform Council is responsible for arbitrating what constitutes a breaking 
 5. Support progressive automation
 6. Collaborate with application teams to create relevant app templates
 
-### 10.2 Central Team Responsibilities
+### 11.2 Central Team Responsibilities
 
 1. Maintain solution schemas and validation
 2. Operate orchestration API
@@ -664,7 +729,7 @@ The Platform Council is responsible for arbitrating what constitutes a breaking 
 5. Monitor adoption and usage
 6. Coordinate app template contributions across teams
 
-### 10.3 Application Team Responsibilities
+### 11.3 Application Team Responsibilities
 
 1. Contribute app templates for common use cases
 2. Maintain templates with security updates and best practices
@@ -672,23 +737,16 @@ The Platform Council is responsible for arbitrating what constitutes a breaking 
 4. Test templates with platform solutions
 5. Gather feedback from template users
 
-### 10.4 Migration Strategy
-
-1. **Phase 1**: Define platform solutions in YAML, manual JIRA fulfillment
-2. **Phase 2**: Add cost estimation and JSON Schema validation, initial app templates
-3. **Phase 3**: Implement automated fulfillment, expand template library
-4. **Phase 4**: Advanced features (recommendations, optimization, template generation)
-
-### 10.5 Communication Channels
+### 11.4 Communication Channels
 
 To ensure clear and transparent communication across all participating teams, the following channels will be established:
 
 -   **Primary Channel**: A dedicated public channel (e.g., `#platform-solutions` on Slack/Teams) will be the main hub for questions, announcements, and general discussion related to the PSA system.
 -   **Platform Office Hours**: The Central Team will hold regular, scheduled office hours. This provides a dedicated time for any team to get help, ask questions about creating solutions, or demo new templates.
 
-## 11. Examples
+## 12. Examples
 
-### 11.1 Complete EC2 Platform Solution Definition
+### 12.1 Complete EC2 Platform Solution Definition
 
 ```yaml
 # Validated against schemas/solution-schema.json
@@ -824,7 +882,7 @@ presentation:
     formula: instanceCount * instanceTypeHourlyRate * 730 + (storage - 20) * 0.10
 ```
 
-### 11.2 Microservice Standard Bundle Definition
+### 12.2 Microservice Standard Bundle Definition
 
 ```yaml
 # Validated against schemas/bundle-schema.json
@@ -887,7 +945,7 @@ appTemplate:
     - GitHub Actions deployment pipeline
 ```
 
-### 11.3 Web Application Bundle with Nested Bundles
+### 12.3 Web Application Bundle with Nested Bundles
 
 ```yaml
 # Validated against schemas/bundle-schema.json
@@ -948,22 +1006,22 @@ presentation:
     note: Includes all nested bundle costs
 ```
 
-## 12. Future Considerations
+## 13. Future Considerations
 
 This specification describes the initial, core implementation of the PSA system. The following topics are explicitly designated as out-of-scope for the first phase but are recognized as critical areas for future development.
 
-### 12.1 Fulfillment Strategy
+### 13.1 Fulfillment Strategy
 
 The logic for selecting a fulfillment method from the `fulfillments` array will be enhanced. A `fulfillmentStrategy` field will be added to the solution metadata, allowing solution owners to define behaviors like `failover` (try each in order) or `manual` (proceed directly to JIRA). This will give teams more control over how their solutions are provisioned.
 
-### 12.2 User Feedback and Error Handling
+### 13.2 User Feedback and Error Handling
 
 A comprehensive, user-centric feedback mechanism is a priority for a later phase. The current design ensures that a request is either accepted or rejected, but it does not yet provide detailed, asynchronous feedback if a downstream process (like a Terraform apply) fails. Future work will involve:
 -   A more granular request status model (`fulfillment_failed`, `pr_merged`, etc.).
 -   A notification system to proactively alert users to status changes.
 -   Surfacing detailed error messages from fulfillment engines back to the user.
 
-### 12.3 "Day 2" Operations
+### 13.3 "Day 2" Operations
 
 The initial focus of this specification is "Day 1" provisioning. A complete lifecycle management strategy will be designed in a subsequent phase. This will address the critical questions of how users manage their resources after the initial request:
 -   **Update/Modify:** How does a user change the configuration of a previously provisioned resource (e.g., increase an instance size)? This will likely involve submitting a request with the same unique identifiers, which the system will interpret as a modification.
