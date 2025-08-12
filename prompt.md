@@ -97,10 +97,13 @@ And then you produced:
 
   - @whitepaper-05.md
 
+only modified what your asked to modify.
 
-In the executive summary lets not use "forcing teams to wait three to seven weeks" and instead use a more broad description just saying that teams are forced to wait.
+lets change this part of the executive summary
 
-In the executive summary lets add more detail in explaining PSA, we want to include something to the effect of "it abstracts away the the complexities of the underlying system"  We can remove the specific details of it living in a github repository.  We can instead just focus on the value vs the technical details.
+  > The PSA is a lightweight orchestration system, detailed in a separate specification document, that uses a shared Git repository to manage a catalog of platform services.
+
+lets not include any technical details, focus on the value.
 
 
 ## ACTION!
