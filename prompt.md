@@ -44,6 +44,30 @@ Never reference competitors, instead focus on lost opportunity.
 
 I like the title "Accelerating Innovation Through Platform Solutions Automation"
 
+ Key Editorial Changes:
+
+   1. Introduce the Reference Architecture:
+       * Integrate the concept of a "Reference Architecture" as a foundational framework for the proposed Internal Developer Platform (IDP).
+       * Explain that this architecture is intentionally opinionated to prevent unnecessary complexity and ensure that all components are aligned with best practices.
+       * Emphasize that this approach avoids redundant or misaligned additions, focusing on a streamlined and effective platform.
+
+   2. Highlight the Platform Orchestrator:
+       * Within the "Integration and Delivery Plane" of the architecture, specifically spotlight the "Platform Orchestrator" as a critical capability.
+       * Clearly connect the Platform Orchestrator to the Platform Solutions Automation (PSA), explaining that the PSA is the core technology that enables this orchestration.
+
+   3. Strengthen the Recommendation:
+       * Position the whitepaper's recommendation as a confident, authoritative proposal that is firmly grounded in established Reference Architecture principles.
+       * The tone should be decisive and clear, leaving no room for ambiguity.
+
+   4. Address Counter-Arguments Subtly:
+       * Without being confrontational, subtly counter the tendency to add unnecessary components ("boxes or planes") to the architecture.
+       * Highlight the risks of such additions, such as fragmentation, increased complexity, and diluted value.
+       * Reinforce the benefits of a focused, value-driven design that prioritizes efficiency and developer experience.
+
+   5. Execution:
+       * Maintain the existing flow and structure of the whitepaper.
+       * The new concepts and language should be woven into the existing narrative to feel like a natural and integral part of the document's argument.
+
 Constraints
 ===========
   * Do not use individual names in the end product.
@@ -63,5 +87,5 @@ Actions
   * Analyze all the provided context and synthesize it into a a new professionally structure whitepaper.
   * If you are Google Gemini write that paper to ./whitepaper-gemini.md
   * If you are Claude Code write that paper to ./whitepaper-claude.md
-  * proceed to the end of the task without asking for permission to read, write or delete files in the project directory. 
+  * proceed to the end of the task without asking for permission to read, write or delete files in the project directory.
   * create a commit with all changed files.  The comment should reference the value in .count  Then push it.
