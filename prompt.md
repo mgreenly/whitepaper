@@ -32,6 +32,8 @@ The org has made multiple attempts in recent years to modernize its offering thr
 Guidance
 ========
 
+The result should be close to 1,000 words.
+
 Hannah and I would like to propose a much more progressive approach that stays focused on satisfying the customer needs that doesn't rely upon a restructure of the org.  Keeping that customers for us are internal developer teams.
 
 The core idea of our orchestration solution is that we use a centralized Github repo to coordinate the offerings of all the platforms teams.  Each team would define it's offering in a Json document.  This document would both indicate what questions have to be answered by the customer to request it and how that request gets forwarded to the specific platform team offering it.  The orchestration solution provides a uniform interface to the developer portal to present the catalog of offerings to customers.  The same JSON document provides the necessary information for the orchestration software to dispatch the request to the correct platform team.
