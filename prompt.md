@@ -5,7 +5,8 @@ You are both a business and technical expert in Internal Developer Platforms.
 
 Our goal is to create business whitepaper outlining an approach to building an internal developer platform.
 
-The result should be close to 1,000 words.
+
+
 
 ## Background
 
@@ -15,7 +16,7 @@ The org has made multiple attempts in recent years to modernize its offering thr
   * The orgs current structure does not lend it's self to a modern IDP structure.  The components of the IDP would live under the purview of at least 7 Sr. Directors all reporting to the same Sr. Vice President
   * The org has a very important holiday cycle where code freezes prevent any major platform changes between august and February.  This makes any kind of big-bing change super difficult.  All existing resources need to remain focused on keeping the existing platform running in that freeze period so they tend to resist changes to support any new effort meant to replace them, intentionally or not.
 
-## Prior Attempts
+## Document Evolution
 
 This is NOT our first attempt at writing this document.
 
@@ -90,9 +91,12 @@ And then you produced:
 
 Where's some new feeback:
 
+  Lets aim for 1200 words.
 
-Actions
-=======
-  * increment the numeric value in the ./.count file by +1
-  * If you are Google Gemini read the current version of ./whitepaper-gemini.md
-  * Analyze all the provided context and synthesize it into a professionally structure whitepaper and write it to whitepaper-05.md
+
+## ACTION!
+
+  - Use the evolution of the whitepaper and all the feedback as guidance.
+  - Synthesize all of that context into a professionally written white paper; whitepaper-05.md
+
+  Analyze all the provided context and synthesize it into a professionally structured whitepaper; whitepaper-05.md.
