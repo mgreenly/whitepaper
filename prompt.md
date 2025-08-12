@@ -89,14 +89,23 @@ And then you produced:
 
   - @whitepaper-04.md
 
-Where's some new feeback:
+We provided the following feedback
 
-  Lets aim for 1200 words.
+  > Lets aim for 1200 words.
+
+And then you produced:
+
+  - @whitepaper-05.md
+
+
+In the executive summary lets not use "forcing teams to wait three to seven weeks" and instead use a more broad description just saying that teams are forced to wait.
+
+In the executive summary lets add more detail in explaining PSA, we want to include something to the effect of "it abstracts away the the complexities of the underlying system"  We can remove the specific details of it living in a github repository.  We can instead just focus on the value vs the technical details.
 
 
 ## ACTION!
 
   - Use the evolution of the whitepaper and all the feedback as guidance.
-  - Synthesize all of that context into a professionally written white paper; whitepaper-05.md
+  - Synthesize all of that context into a professionally written white paper; whitepaper-06.md
 
   Analyze all the provided context and synthesize it into a professionally structured whitepaper; whitepaper-05.md.
