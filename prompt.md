@@ -12,7 +12,7 @@ The result should be close to 1,000 words.
 The orgs currently has no real unified developer portal experience. Instead if facilities this work through JIRA where teams are required to submit many tickets to the many different platform teams; compute, storage, messaging, networking, etc... to create a new app.  This often takes 3-7 weeks to provision an application.
 
 The org has made multiple attempts in recent years to modernize its offering through large re-org big bang style initiatives that have failed. There are some Sr. Directors that have began to believe buying a solution from an external vendor is the correct path.  Hannah and I think that this is a failure path for a number of reasons, including;
-  * The orgs current structure does not lend it's self to a modern IDP structure.  The components of the IDP would live under the pervue of at least 7 Sr. Directors all reporting to the same Sr. Vice President
+  * The orgs current structure does not lend it's self to a modern IDP structure.  The components of the IDP would live under the purview of at least 7 Sr. Directors all reporting to the same Sr. Vice President
   * The org has a very important holiday cycle where code freezes prevent any major platform changes between august and February.  This makes any kind of big-bing change super difficult.  All existing resources need to remain focused on keeping the existing platform running in that freeze period so they tend to resist changes to support any new effort meant to replace them, intentionally or not.
 
 ## Prior Attempts
@@ -58,7 +58,7 @@ And then you produced:
 
   - @whitepaper-03.md
 
-Then we provided the followoing feedback:
+Then we provided the following feedback:
 
   >  I like the title "Accelerating Innovation Through Platform Solutions Automation"
   >
