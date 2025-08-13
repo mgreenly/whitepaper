@@ -105,10 +105,21 @@ lets change this part of the executive summary
 
 lets not include any technical details, focus on the value.
 
+And then you proposed:
+
+  - @whitepaper-06.md
+
+In section 3 lets not specifically identify "Stratus or Dev Portal"
+
+tone down the hints of world domination in section 4, specifically this sentence.
+
+  > Within the Integration and Delivery Plane of our Reference Architecture, the single most critical new capability is the Platform Orchestrator. This is the engine that drives the self-service experience, and it is powered by the Platform Solutions Automation (PSA) solution.
+
+
 
 ## ACTION!
 
   - Use the evolution of the whitepaper and all the feedback as guidance.
-  - Synthesize all of that context into a professionally written white paper; whitepaper-06.md
+  - Synthesize all of that context into a professionally written white paper; whitepaper-07.md
 
   Analyze all the provided context and synthesize it into a professionally structured whitepaper; whitepaper-05.md.
