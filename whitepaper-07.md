@@ -1,4 +1,4 @@
-# Accelerating Innovation Through Platform Solutions Automation
+# Accelerating Innovation Through Platform Automation Orchestrator
 
 **Authors:** Michael Greenly and Hannah Stone
 **Version:** 1.0
@@ -7,13 +7,13 @@
 
 Our organization's capacity for innovation is directly constrained by the speed at which our development teams can deliver new applications. Currently, a fragmented and manual provisioning process creates significant friction, forcing teams to wait three to seven weeks for essential resources. This delay translates to lost opportunity and a diminished competitive edge. The core of this problem is not a lack of capable tools or teams, but the absence of a cohesive system that connects them effectively.
 
-This paper presents a decisive path forward. We recommend the adoption of an opinionated **Reference Architecture** as the foundational framework for our Internal Developer Platform (IDP). This architecture will guide the implementation of a central **Platform Orchestrator**, a critical capability powered by **Platform Solutions Automation (PSA)**. The PSA is the core technology that enables this orchestration, streamlining service delivery by providing a unified and automated catalog of platform services.
+This paper presents a decisive path forward. We recommend the adoption of an opinionated **Reference Architecture** as the foundational framework for our Internal Developer Platform (IDP). This architecture will guide the implementation of a central **Platform Orchestrator**, a critical capability powered by **Platform Automation Orchestrator (PAQ)**. The PAQ is the core technology that enables this orchestration, streamlining service delivery by providing a unified and automated catalog of platform services.
 
 This approach will empower our developers with a modern, self-service portal, drastically reducing provisioning times and enabling rapid, iterative development. This is not a proposal for a disruptive organizational overhaul but a confident, value-driven strategy that works within our existing structure to unlock our engineering teams' full potential. By focusing on a streamlined, value-driven design, we can create a platform that is both powerful and efficient, directly contributing to our strategic business goals.
 
 ## 2. The Challenge: A Fragmented Developer Experience
 
-Our current developer experience is characterized by fragmentation and manual handoffs. To provision a new application, a development team must navigate a complex process of submitting multiple JIRA tickets to various platform teams, including compute, storage, messaging, and networking. This multi-team dependency chain is the primary contributor to the **3-7 week lead time** for new projects. This lengthy cycle creates a significant drag on innovation and places a high cognitive load on our engineers, forcing them to become experts in navigating internal bureaucracy rather than focusing on building software.
+Our current developer experience is characterized by fragmentation and manual handoffs. To provision a new application, a development team must navigate a complex process of submitting multiple JIRA tickets to various Platform Teams, including compute, storage, messaging, and networking. This multi-team dependency chain is the primary contributor to the **3-7 week lead time** for new projects. This lengthy cycle creates a significant drag on innovation and places a high cognitive load on our engineers, forcing them to become experts in navigating internal bureaucracy rather than focusing on building software.
 
 Furthermore, our organization's operational calendar, which includes a critical code freeze between August and February to protect holiday season stability, makes large-scale, disruptive technology initiatives impractical. Past attempts at sweeping modernization have struggled against these realities, as they often require resources from teams that are focused on maintaining the stability of our existing, revenue-generating systems. The path forward must respect these constraints, focusing on incremental value delivery that aligns with, rather than disrupts, our core business rhythms. The challenge is not just to be faster, but to be smarter about how we enable our teams within the operational realities of our business.
 
@@ -33,26 +33,27 @@ This deliberate, architecture-driven approach mitigates the risks of fragmentati
 
 ## 4. The Core Capability: The Platform Orchestrator
 
-A key capability within the **Integration and Delivery Plane** of our Reference Architecture is the **Platform Orchestrator**. This component is central to the self-service experience and is powered by the **Platform Solutions Automation (PSA)** solution.
+A key capability within the **Integration and Delivery Plane** of the Reference Architecture is the **Platform Orchestrator**. This component is central to the self-service experience and is powered by the **Platform Automation Orchestrator (PAQ)**.
 
-The PSA works by creating a centralized coordination point for all platform teams. The core of the solution is a shared Git repository where each team defines its offerings (e.g., a database, a message queue, a compute environment) in a simple, structured YAML document. This document serves two primary purposes:
 
-1.  It defines the questions that must be answered by a developer to request the service, which are then rendered in the developer portal.
-2.  It provides the technical instructions for how the request is automatically dispatched to the correct platform team's existing fulfillment systems, whether that is a Terraform module, a custom script, or a JIRA ticket for services that are not yet automated.
+PAQ's purpose is to provide a centralized coordination point through which all Platform Teams make thier offerings available. The core of the solution is a central document store that serves as a convergence point for collaboration, where each team defines its offerings (e.g., a database, a message queue, a compute environment) in a simple, structured document. This document serves two primary purposes:
 
-The Platform Orchestrator consumes these YAML documents to generate a unified catalog of services. When a developer makes a request, the orchestrator uses the same information to route it for automated fulfillment. This creates a seamless, self-service experience for developers while allowing platform teams to maintain full ownership and control over their services. This model allows for progressive enhancement; teams can onboard their services with manual JIRA fulfillment and evolve toward full automation at their own pace, without blocking the progress of others.
+1.  It defines the questions that must be answered by a dev-customer to request the service, which are then rendered in the developer portal.
+2.  It provides the technical definition indicating how the request is fulfilled, whether that is via a Terraform module, a Github workflow, or a JIRA ticket for services not yet automated.
 
-For a detailed technical overview of this component, please refer to the *Platform Solutions Automation (PSA) Specification* document.
+The Platform Orchestrator consumes these documents to generate a unified catalog of services. When a developer makes a request, the orchestrator uses the same information to route it for automated fulfillment. This creates a seamless, self-service experience for developers while **allowing Platform Teams to maintain full ownership and control over their services**. This model allows for progressive enhancement; teams can onboard their services with manual JIRA fulfillment and evolve toward full automation at their own pace, without blocking the progress of others.
+
+For a detailed technical overview of this component, please refer to the *Platform Automation Orchestrator (PAQ) Specification*.
 
 ## 5. Recommendation
 
-We confidently recommend the immediate adoption and implementation of the **Platform Solutions Automation (PSA)** solution, guided by the principles of our **Reference Architecture**.
+We confidently recommend the immediate adoption and implementation of the **Platform Automation Orchestrator (PAQ)** solution, guided by the principles of our **Reference Architecture**.
 
 This is the most effective and least disruptive path to modernizing our developer experience and accelerating innovation. By focusing on a lightweight orchestration layer that integrates with, rather than replaces, existing platform services, we can deliver significant value quickly. This approach empowers our developers, respects our organizational structure, and provides a scalable foundation for future platform enhancements. It is a decisive step, grounded in established architectural principles, toward building a high-performing engineering organization capable of meeting the future needs of the business.
 
 ## 6. Conclusion
 
-The friction in our current developer experience is a direct impediment to our strategic goals. By embracing a progressive approach centered on Platform Solutions Automation and guided by a clear Reference Architecture, we can remove this friction. This strategy avoids the pitfalls of adding unnecessary complexity and instead focuses on a streamlined, value-driven design that prioritizes an efficient and empowering developer experience.
+The friction in our current developer experience is a direct impediment to our strategic goals. By embracing a progressive approach centered on Platform Automation Orchestrator and guided by a clear Reference Architecture, we can remove this friction. This strategy avoids the pitfalls of adding unnecessary complexity and instead focuses on a streamlined, value-driven design that prioritizes an efficient and empowering developer experience.
 
 We have an opportunity to transform our internal platform from a source of delay into a strategic accelerator. By connecting our teams and technologies through a lightweight, automated framework, we can empower our developers, accelerate our delivery cycles, and create a culture of continuous innovation. This will be a key differentiator for our business for years to come.
 
