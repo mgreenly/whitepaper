@@ -35,6 +35,23 @@ Constraints
   * The PAO Repository stores documents in YAML format, but the PAO Service converts them to JSON for all API operations. REST API examples must always use JSON.
 
 
+User Story Guidelines
+====================
+When creating user stories, follow this process:
+  * Create stories in the user-stories/ folder with descriptive names
+  * Start with the user's goal and context (developer using the Developer Portal)
+  * For each user action:
+    - Describe the UI interaction (what fields/buttons they click)
+    - Show the API call to PAO Service (JSON request/response)
+    - Reference where the data originated in the YAML files
+    - Describe any database operations (SQL queries/updates)
+  * Include a complete walkthrough from start to finish
+  * End with a "Gaps" section identifying missing pieces in:
+    - sql-schema.md (database structure)
+    - pao-rest-spec.md (API specification)
+    - pao-yaml-spec.md (YAML document structure)
+  * Consider both happy path and error scenarios
+
 Actions
 =======
   * Analyize all information currently in context.
