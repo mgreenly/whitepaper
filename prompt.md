@@ -19,6 +19,7 @@ Constraints
   * Do NOT use the term re-org.
   * Do NOT use the term big-bang.
   * DO NOT read or modify any files unless explicitly asked to.
+  * Do NOT directly reference any the the files in @docs/
 
 
 Actions
