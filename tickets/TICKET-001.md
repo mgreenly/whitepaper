@@ -1,26 +1,26 @@
 # TICKET-001: Bootstrap Empty PAO Service
 
-**Reference**: user-stories/001-initial-catalog-sync.md
+**Reference**: user-stories/001-initial-catalog-setup-revised.md
 
 ## Goal
-Enable PAO service to start with empty database and sync catalog from Git repository.
+Enable PAO service to start with empty database and process catalog via webhooks.
 
 ## Steps
 1. Create database migration scripts for all tables
-2. Implement Git repository cloning on service startup
-3. Add YAML file discovery in catalog/ directory
-4. Implement YAML parser and validator
-5. Create catalog item insertion logic with conflict handling
-6. Add sync status tracking
-7. Implement health check endpoint
+2. Add last_processed_sha tracking column
+3. Implement webhook endpoint with signature validation
+4. Add logic to list all files when last_sha is NULL
+5. Implement diff logic for incremental updates
+6. Parse and validate YAML files
+7. Insert/update catalog items based on changes
 
 ## Acceptance Criteria
 - [ ] Service creates schema on first run
-- [ ] Clones and parses repository on startup
-- [ ] Validates YAML against schema
-- [ ] Stores valid items in database
-- [ ] Skips invalid items with error logging
-- [ ] Update sql-schema.md with migrations
-- [ ] Add startup sequence to README
-- [ ] Unit tests for YAML validation
-- [ ] Integration test for full sync
+- [ ] First webhook processes all catalog files
+- [ ] Subsequent webhooks process only changes
+- [ ] Tracks last processed SHA
+- [ ] Handles added/modified/removed files
+- [ ] Update sql-schema.md with SHA tracking
+- [ ] Document webhook-driven architecture
+- [ ] Unit tests for diff logic
+- [ ] Integration test for webhook processing

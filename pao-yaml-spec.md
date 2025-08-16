@@ -39,7 +39,7 @@ No organization-specific proprietary information was used in its creation. This 
    - [5.2 Document Structure](#52-document-structure)
    - [5.3 Operation Targets](#53-operation-targets)
    - [5.4 Upgrade Execution](#54-upgrade-execution)
-6. [UpdateOperation](#6-updateoperation)
+6. [UpdateItem](#6-updateitem)
    - [6.1 Sample Document](#61-sample-document)
    - [6.2 Document Structure](#62-document-structure)
    - [6.3 Update Execution](#63-update-execution)
@@ -596,9 +596,9 @@ targets:
 - Support both automated execution and manual fallback procedures
 - Track upgrade progress and provide detailed status reporting
 
-## 6. UpdateOperation
+## 6. UpdateItem
 
-The UpdateOperation document type defines minor modifications to existing services that can be performed without resource destruction or service recreation. Update operations handle configuration changes, scaling, and non-breaking modifications.
+The UpdateItem document type defines minor modifications to existing services that can be performed without resource destruction or service recreation. Update operations handle configuration changes, scaling, and non-breaking modifications.
 
 ### 6.1 Sample Document
 
@@ -699,7 +699,7 @@ fulfillment:
 
 ### 6.2 Document Structure
 
-An UpdateOperation consists of four mandatory top-level objects:
+An UpdateItem consists of four mandatory top-level objects:
 
 - **Header**: Contains metadata and operation-level properties  
 - **Targets**: Specifies which CatalogItems this operation can update

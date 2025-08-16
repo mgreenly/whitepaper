@@ -1,26 +1,25 @@
-# TICKET-002: Add GitHub Webhook Support
+# TICKET-002: Implement SHA-Based Incremental Sync
 
-**Reference**: user-stories/001-initial-catalog-sync.md
+**Reference**: user-stories/001-initial-catalog-setup-revised.md
 
 ## Goal
-Enable automatic catalog updates when changes are pushed to the Git repository.
+Track and process only changed files between git commits using SHA comparison.
 
 ## Steps
-1. Add `POST /api/v1/webhooks/github` endpoint
-2. Implement webhook signature validation
-3. Parse GitHub push event payload
-4. Detect changes in catalog/ directory
-5. Trigger incremental sync for changed files
-6. Add webhook event tracking table
-7. Implement retry logic for failed syncs
+1. Implement git diff between SHAs
+2. Parse webhook for before/after SHAs
+3. Handle NULL last_processed_sha (process all files)
+4. Process added files as new items
+5. Process modified files as updates
+6. Process removed files as soft deletes
+7. Update last_processed_sha after success
 
 ## Acceptance Criteria
-- [ ] Webhook validates GitHub signature
-- [ ] Only processes push events on configured branch
-- [ ] Detects added/modified/removed catalog files
-- [ ] Updates only changed items
-- [ ] Tracks webhook events in database
-- [ ] Update pao-rest-spec.md with webhook endpoint
-- [ ] Add webhook setup guide to documentation
-- [ ] Unit tests for signature validation
-- [ ] Integration test for webhook processing
+- [ ] Correctly identifies changed files between SHAs
+- [ ] Handles first sync (NULL SHA) properly
+- [ ] Processes all change types (add/modify/remove)
+- [ ] Atomic updates with SHA tracking
+- [ ] Handles force pushes gracefully
+- [ ] Document SHA tracking logic
+- [ ] Unit tests for diff logic
+- [ ] Integration test for various git scenarios
