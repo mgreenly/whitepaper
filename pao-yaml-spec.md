@@ -8,6 +8,36 @@
 
 ---
 
+## Table of Contents
+
+1. [Introduction](#1-introduction)
+2. [Overview](#2-overview)
+   - [2.1 Document Architecture](#21-document-architecture)
+   - [2.2 Repository Structure](#22-repository-structure)
+   - [2.3 Document Format Standards](#23-document-format-standards)
+3. [CatalogBundle](#3-catalogbundle)
+   - [3.1 Sample Document](#31-sample-document)
+   - [3.2 Document Structure](#32-document-structure)
+   - [3.3 Bundle Composition](#33-bundle-composition)
+4. [CatalogItem](#4-catalogitem)
+   - [4.1 Sample Document](#41-sample-document)
+   - [4.2 Document Structure](#42-document-structure)
+   - [4.3 Header Section](#43-header-section)
+   - [4.4 Presentation Section](#44-presentation-section)
+   - [4.5 Fulfillment Section](#45-fulfillment-section)
+5. [Presentation Field Types](#5-presentation-field-types)
+   - [5.1 Sample Field Definitions](#51-sample-field-definitions)
+   - [5.2 Field Type Specifications](#52-field-type-specifications)
+   - [5.3 Field Properties](#53-field-properties)
+6. [Processing Model](#6-processing-model)
+   - [6.1 Document Discovery](#61-document-discovery)
+   - [6.2 Catalog Generation](#62-catalog-generation)
+   - [6.3 Request Fulfillment](#63-request-fulfillment)
+7. [Extensibility](#7-extensibility)
+8. [Future Considerations](#8-future-considerations)
+
+---
+
 ## 1. Introduction
 
 This document specifies the structure and schema for the Platform Automation Orchestrator (PAO) catalog definition system. The PAO, as described in the Reference Architecture, serves as the central coordination point through which Platform Teams define and expose their service offerings to development teams. This specification defines the document formats, schemas, and structures that comprise the PAO catalog, enabling automated service provisioning and a unified self-service developer experience.
@@ -45,6 +75,7 @@ Each category folder contains one or more offering folders, grouping architectur
 - **Storage Format**: All documents in the PAO Repository are stored in YAML format to optimize human readability and ease of maintenance
 - **Runtime Format**: The PAO Service converts YAML to JSON upon reading, with all API communications utilizing JSON format
 - **Schema Validation**: All documents must conform to defined JSON Schema specifications for their respective document types
+- **Versioning**: All document versions use semantic versioning (semver) specification, supporting major.minor.patch with optional pre-release and metadata fields (e.g., "2.1.0-beta.1+build.20250816")
 
 ## 3. CatalogBundle
 
@@ -111,7 +142,7 @@ A CatalogBundle consists of three mandatory top-level objects:
 
 The CatalogItem represents the fundamental unit of a service offering in the PAO catalog. It encapsulates all information necessary to present, collect, and fulfill a service request.
 
-### 3.1 Sample Document
+### 4.1 Sample Document
 
 ```yaml
 # Header - Basic metadata
@@ -150,7 +181,7 @@ fulfillment:
           replica_count: "{{ replicas }}"
 ```
 
-### 3.2 Document Structure
+### 4.2 Document Structure
 
 A CatalogItem consists of three mandatory top-level objects:
 
@@ -158,30 +189,30 @@ A CatalogItem consists of three mandatory top-level objects:
 - **Presentation**: Defines the user interface elements and data collection requirements
 - **Fulfillment**: Specifies the automation templates and actions for service provisioning
 
-### 3.3 Header Section
+### 4.3 Header Section
 
 The Header section provides essential metadata about the catalog item, including:
 
 - **name**: The display name of the service offering
-- **version**: Semantic versioning information for the catalog item definition
+- **version**: Semantic versioning (semver) information for the catalog item definition, supporting full specification including pre-release and metadata fields (e.g., "1.2.0-alpha.1+build.123")
 - **description**: A brief description of the service
 - **owner**: The Platform Team responsible for this offering
 - **tags**: Searchable metadata tags for categorization
 - **dependencies**: References to other catalog items or prerequisites
 
-### 3.4 Presentation Section
+### 4.4 Presentation Section
 
 The Presentation section defines the form structure for collecting service request parameters and supports field groups, display ordering, validation rules, and help text for end users.
 
-### 3.5 Fulfillment Section
+### 4.5 Fulfillment Section
 
 The Fulfillment section contains templates and action definitions that execute upon service request submission. It supports multiple action types including JiraTicket, HttpPost/HttpPut, TerraformFile, and GitHubWorkflow. Each action type includes templating capabilities for value substitution using data collected through the Presentation layer.
 
-## 4. Presentation Field Types
+## 5. Presentation Field Types
 
 The Presentation layer supports comprehensive field types for collecting service request parameters:
 
-### 4.1 Sample Field Definitions
+### 5.1 Sample Field Definitions
 
 ```yaml
 # String fields - Text input with validation
@@ -221,7 +252,7 @@ The Presentation layer supports comprehensive field types for collecting service
   help_text: "Preferred maintenance window start time"
 ```
 
-### 4.2 Field Type Specifications
+### 5.2 Field Type Specifications
 
 - **String**: Text input with validation constraints (max_length, min_length, regexp)
 - **Int**: Integer values with range constraints (min_value, max_value)
@@ -230,24 +261,24 @@ The Presentation layer supports comprehensive field types for collecting service
 - **Boolean**: True/false selections
 - **Date**: Date/time inputs with format specifications
 
-### 4.3 Field Properties
+### 5.3 Field Properties
 
 - **required**: Boolean indicating if field must be completed
 - **default**: Default value when field is optional
 - **help_text**: Contextual assistance displayed to users
 - **validation**: Custom validation rules and error messages
 
-## 5. Processing Model
+## 6. Processing Model
 
-### 5.1 Document Discovery
+### 6.1 Document Discovery
 
 The PAO Service periodically scans the catalog directory structure to discover and validate CatalogItem documents.
 
-### 5.2 Catalog Generation
+### 6.2 Catalog Generation
 
 Valid CatalogItems are processed to generate a unified service catalog exposed through the Developer Control Plane.
 
-### 5.3 Request Fulfillment
+### 6.3 Request Fulfillment
 
 Upon service request submission:
 1. Collected values are validated against Presentation constraints
@@ -255,7 +286,7 @@ Upon service request submission:
 3. Specified actions are executed in defined order
 4. Status tracking and notifications are managed throughout the process
 
-## 6. Extensibility
+## 7. Extensibility
 
 The PAO specification is designed for progressive enhancement:
 
@@ -264,7 +295,7 @@ The PAO specification is designed for progressive enhancement:
 - Custom validation rules and business logic can be incorporated
 - Platform Teams can evolve from manual to automated fulfillment incrementally
 
-## 7. Future Considerations
+## 8. Future Considerations
 
 This draft specification provides the foundation for the PAO catalog system. Future revisions may include:
 
