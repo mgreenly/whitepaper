@@ -52,7 +52,46 @@ Each category folder contains one or more offering folders, grouping architectur
 
 The CatalogItem represents the fundamental unit of a service offering in the PAO catalog. It encapsulates all information necessary to present, collect, and fulfill a service request.
 
-#### 3.1.1 Document Structure
+#### 3.1.1 Sample Document
+
+```yaml
+# Header - Basic metadata
+name: "EKS Container Application"
+version: "1.2.0"
+description: "Managed Kubernetes application deployment"
+owner: "platform-compute-team"
+tags: ["containers", "kubernetes", "compute"]
+
+# Presentation - User interface definition
+presentation:
+  fields:
+    - name: "app_name"
+      type: "string"
+      required: true
+      max_length: 50
+    - name: "environment"
+      type: "selection"
+      oneof: ["dev", "staging", "prod"]
+      required: true
+    - name: "replicas"
+      type: "int"
+      min_value: 1
+      max_value: 10
+      default: 2
+
+# Fulfillment - Automation templates
+fulfillment:
+  actions:
+    - type: "TerraformFile"
+      template:
+        module_source: "./modules/eks-app"
+        variables:
+          app_name: "{{ app_name }}"
+          environment: "{{ environment }}"
+          replica_count: "{{ replicas }}"
+```
+
+#### 3.1.2 Document Structure
 
 A CatalogItem consists of three mandatory top-level objects:
 
