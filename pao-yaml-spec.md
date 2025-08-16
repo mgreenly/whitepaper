@@ -34,11 +34,11 @@ No organization-specific proprietary information was used in its creation. This 
      - [4.5.3 Automation Sequence](#453-automation-sequence)
      - [4.5.4 Automation Step Types](#454-automation-step-types)
      - [4.5.5 Step Execution Model](#455-step-execution-model)
-5. [UpdateItem](#5-updateitem)
+5. [UpgradeItem](#5-upgradeitem)
    - [5.1 Sample Document](#51-sample-document)
    - [5.2 Document Structure](#52-document-structure)
    - [5.3 Operation Targets](#53-operation-targets)
-   - [5.4 Update Execution](#54-update-execution)
+   - [5.4 Upgrade Execution](#54-upgrade-execution)
 6. [UpdateOperation](#6-updateoperation)
    - [6.1 Sample Document](#61-sample-document)
    - [6.2 Document Structure](#62-document-structure)
@@ -94,6 +94,7 @@ Each category folder contains one or more offering folders, grouping architectur
 - **Runtime Format**: The PAO Service converts YAML to JSON upon reading, with all API communications utilizing JSON format
 - **Schema Validation**: All documents must conform to defined JSON Schema specifications for their respective document types
 - **Versioning**: All document versions use semantic versioning (semver) specification, supporting major.minor.patch with optional pre-release and metadata fields (e.g., "2.1.0-beta.1+build.20250816")
+- **DateTime Format**: All datetime values use ISO 8601 format with timezone offset (e.g., "2025-08-16T10:30:00-05:00") to ensure explicit timezone context and human readability
 
 ## 3. CatalogBundle
 
@@ -429,9 +430,9 @@ automation:
 - Manual tickets reference specific step that failed and error details
 - Service teams can complete work manually and mark automation steps as resolved
 
-## 5. UpdateItem
+## 5. UpgradeItem
 
-The UpdateItem document type defines major lifecycle changes to existing services that may require resource recreation or breaking changes. UpdateItem operations are designed for scenarios like database version migrations, framework upgrades, or infrastructure platform transitions.
+The UpgradeItem document type defines major lifecycle changes to existing services that may require resource recreation or breaking changes. UpgradeItem operations are designed for scenarios like database version migrations, framework upgrades, or infrastructure platform transitions.
 
 ### 5.1 Sample Document
 
@@ -549,19 +550,19 @@ fulfillment:
 
 ### 5.2 Document Structure
 
-An UpdateItem consists of four mandatory top-level objects:
+An UpgradeItem consists of four mandatory top-level objects:
 
 - **Header**: Contains metadata and operation-level properties
-- **Targets**: Specifies which CatalogItems this operation can update
-- **Presentation**: Defines parameters needed for the update operation
-- **Fulfillment**: Contains manual and automated procedures for executing the update
+- **Targets**: Specifies which CatalogItems this operation can upgrade
+- **Presentation**: Defines parameters needed for the upgrade operation
+- **Fulfillment**: Contains manual and automated procedures for executing the upgrade
 
 ### 5.3 Operation Targets
 
-The Targets section clearly defines the scope and constraints of the update operation:
+The Targets section clearly defines the scope and constraints of the upgrade operation:
 
 **Target Properties:**
-- **catalog_items**: Array of CatalogItems this operation can update
+- **catalog_items**: Array of CatalogItems this operation can upgrade
 - **destructive**: Boolean indicating if operation may destroy/recreate resources
 - **downtime_required**: Boolean indicating if operation requires service downtime
 - **estimated_duration**: Expected time for operation completion
@@ -580,20 +581,20 @@ targets:
       required_parameters: ["database_name"]
 ```
 
-### 5.4 Update Execution
+### 5.4 Upgrade Execution
 
 **Pre-execution Validation:**
-- Verify target CatalogItem is compatible with update operation
+- Verify target CatalogItem is compatible with upgrade operation
 - Check that current service instance matches version requirements
 - Validate all required parameters are provided
 - Confirm maintenance window and downtime requirements
 
 **Execution Characteristics:**
-- UpdateItem operations are inherently more complex than initial provisioning
+- UpgradeItem operations are inherently more complex than initial provisioning
 - May require service downtime and resource recreation
 - Include comprehensive backup and rollback procedures
 - Support both automated execution and manual fallback procedures
-- Track update progress and provide detailed status reporting
+- Track upgrade progress and provide detailed status reporting
 
 ## 6. UpdateOperation
 
@@ -773,8 +774,8 @@ presentation:
     - name: "maintenance_window"
       type: "datetime"
       format: "iso8601"
-      timezone: "UTC"
-      help_text: "Maintenance window start time"
+      timezone: "system"
+      help_text: "Maintenance window start time (ISO 8601 with timezone offset)"
 
     # Time fields - Time-only input
     - name: "backup_time"
@@ -863,10 +864,11 @@ presentation:
 **DateTime**
 - **Purpose**: Date and time selection with timezone support
 - **Validation Options**:
-  - `format`: DateTime format specification
-  - `timezone`: Timezone handling (UTC, local, specific)
+  - `format`: DateTime format specification (must be ISO 8601 with timezone offset)
+  - `timezone`: Timezone handling (system timezone with offset, specific timezone)
   - `min_datetime`: Earliest allowed datetime
   - `max_datetime`: Latest allowed datetime
+- **Format**: ISO 8601 with timezone offset (e.g., "2025-08-16T10:30:00-05:00")
 - **Example**: Maintenance windows, scheduled events
 
 **Time**

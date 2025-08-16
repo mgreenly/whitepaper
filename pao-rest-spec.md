@@ -70,6 +70,11 @@ The API uses AWS IAM authentication with AWS Signature Version 4 signing process
 
 - **Base URL**: `/api/v1`
 - **Content Type**: `application/json`
+- **Date/Time Format**: 
+  - All datetime values use ISO 8601 format with timezone offset
+  - Example: `"2025-08-16T10:30:00-05:00"` (CST) or `"2025-08-16T10:30:00-06:00"` (CDT)
+  - Timezone offset reflects the running system's local timezone (CST/CDT)
+  - Timestamps should be avoided in favor of datetime strings
 - **Versioning**: 
   - API versioning in URL path (`/api/v1`, `/api/v2`)
   - Resource versioning using semantic versioning (major.minor.patch)
@@ -541,7 +546,7 @@ POST /api/v1/requests
   "request_id": "req-abc123def456",
   "status": "submitted",
   "catalog_item": "eks-container-app",
-  "created_at": "2025-08-16T10:30:00Z",
+  "created_at": "2025-08-16T10:30:00-05:00",
   "href": "/api/v1/requests/req-abc123def456"
 }
 ```
@@ -564,8 +569,8 @@ GET /api/v1/requests/{request_id}
     "environment": "staging",
     "replicas": 3
   },
-  "created_at": "2025-08-16T10:30:00Z",
-  "updated_at": "2025-08-16T10:35:00Z",
+  "created_at": "2025-08-16T10:30:00-05:00",
+  "updated_at": "2025-08-16T10:35:00-05:00",
   "requester": {
     "user_id": "dev-user-123",
     "team": "product-team"
@@ -583,8 +588,8 @@ GET /api/v1/requests/{request_id}
         "name": "validate_prerequisites",
         "type": "HttpPost",
         "status": "completed",
-        "started_at": "2025-08-16T10:30:30Z",
-        "completed_at": "2025-08-16T10:31:00Z",
+        "started_at": "2025-08-16T10:30:30-05:00",
+        "completed_at": "2025-08-16T10:31:00-05:00",
         "verification": {
           "type": "http_status",
           "expected": "200",
@@ -600,7 +605,7 @@ GET /api/v1/requests/{request_id}
         "name": "provision_infrastructure",
         "type": "TerraformFile",
         "status": "running",
-        "started_at": "2025-08-16T10:31:00Z",
+        "started_at": "2025-08-16T10:31:00-05:00",
         "attempts": 1,
         "job_tracking": {
           "external_id": "tf-run-456",
@@ -644,7 +649,7 @@ GET /api/v1/requests
       "request_id": "req-abc123def456",
       "status": "completed",
       "catalog_item": "eks-container-app",
-      "created_at": "2025-08-16T10:30:00Z"
+      "created_at": "2025-08-16T10:30:00-05:00"
     }
   ]
 }
@@ -674,7 +679,7 @@ Resumes a failed or paused request from the last failed step.
 {
   "request_id": "req-abc123def456",
   "status": "resuming",
-  "resumed_at": "2025-08-16T11:00:00Z",
+  "resumed_at": "2025-08-16T11:00:00-05:00",
   "resuming_from_step": "step-002",
   "message": "Request resumed from step 'provision_infrastructure'"
 }
@@ -703,7 +708,7 @@ Aborts an in-progress or failed request.
 {
   "request_id": "req-abc123def456",
   "status": "aborted",
-  "aborted_at": "2025-08-16T11:00:00Z",
+  "aborted_at": "2025-08-16T11:00:00-05:00",
   "cleanup_ticket": {
     "system": "jira",
     "ticket_id": "PLATFORM-1234",
@@ -737,8 +742,8 @@ Get detailed execution information for a specific step.
   "attempts": [
     {
       "attempt_number": 1,
-      "started_at": "2025-08-16T10:31:00Z",
-      "completed_at": "2025-08-16T10:35:00Z",
+      "started_at": "2025-08-16T10:31:00-05:00",
+      "completed_at": "2025-08-16T10:35:00-05:00",
       "status": "failed",
       "error": {
         "type": "terraform_error",
@@ -752,8 +757,8 @@ Get detailed execution information for a specific step.
     },
     {
       "attempt_number": 2,
-      "started_at": "2025-08-16T10:36:00Z",
-      "completed_at": "2025-08-16T10:40:00Z",
+      "started_at": "2025-08-16T10:36:00-05:00",
+      "completed_at": "2025-08-16T10:40:00-05:00",
       "status": "failed",
       "error": {
         "type": "timeout",
@@ -828,11 +833,11 @@ GET /api/v1/health
 {
   "status": "healthy",
   "version": "1.0.0",
-  "catalog_last_updated": "2025-08-16T09:00:00Z",
+  "catalog_last_updated": "2025-08-16T09:00:00-05:00",
   "repository": {
     "url": "https://github.com/org/pao-repository",
     "branch": "main",
-    "last_sync": "2025-08-16T09:00:00Z"
+    "last_sync": "2025-08-16T09:00:00-05:00"
   }
 }
 ```
@@ -896,7 +901,7 @@ GET /api/v1/admin/catalog/stats
     "networking": 7,
     "storage": 4
   },
-  "last_updated": "2025-08-16T09:00:00Z"
+  "last_updated": "2025-08-16T09:00:00-05:00"
 }
 ```
 
@@ -905,6 +910,15 @@ GET /api/v1/admin/catalog/stats
 ### 6.1 Catalog Models
 
 All catalog models follow the structure defined in the PAO YAML specification, converted to JSON format for API responses.
+
+#### DateTime Format Convention
+
+All datetime values in API responses use ISO 8601 format with timezone offset:
+- **Format**: `YYYY-MM-DDTHH:mm:ss±HH:mm`
+- **Example CST**: `"2025-08-16T10:30:00-06:00"` (Central Standard Time)
+- **Example CDT**: `"2025-08-16T10:30:00-05:00"` (Central Daylight Time)
+- **Note**: The timezone offset reflects the PAO Service's system timezone (CST/CDT)
+- **Rationale**: Using datetime strings instead of Unix timestamps provides better human readability and explicit timezone context
 
 #### Field Type Definitions
 
