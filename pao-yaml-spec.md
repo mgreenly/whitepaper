@@ -30,16 +30,25 @@
      - [4.5.3 Automation Sequence](#453-automation-sequence)
      - [4.5.4 Automation Step Types](#454-automation-step-types)
      - [4.5.5 Step Execution Model](#455-step-execution-model)
-5. [Presentation Field Types](#5-presentation-field-types)
-   - [5.1 Sample Field Definitions](#51-sample-field-definitions)
-   - [5.2 Field Type Specifications](#52-field-type-specifications)
-   - [5.3 Field Properties](#53-field-properties)
-6. [Processing Model](#6-processing-model)
-   - [6.1 Document Discovery](#61-document-discovery)
-   - [6.2 Catalog Generation](#62-catalog-generation)
-   - [6.3 Request Fulfillment](#63-request-fulfillment)
-7. [Extensibility](#7-extensibility)
-8. [Future Considerations](#8-future-considerations)
+5. [UpgradeOperation](#5-upgradeoperation)
+   - [5.1 Sample Document](#51-sample-document)
+   - [5.2 Document Structure](#52-document-structure)
+   - [5.3 Operation Targets](#53-operation-targets)
+   - [5.4 Upgrade Execution](#54-upgrade-execution)
+6. [UpdateOperation](#6-updateoperation)
+   - [6.1 Sample Document](#61-sample-document)
+   - [6.2 Document Structure](#62-document-structure)
+   - [6.3 Update Execution](#63-update-execution)
+7. [Presentation Field Types](#7-presentation-field-types)
+   - [7.1 Sample Field Definitions](#71-sample-field-definitions)
+   - [7.2 Field Type Specifications](#72-field-type-specifications)
+   - [7.3 Field Properties](#73-field-properties)
+8. [Processing Model](#8-processing-model)
+   - [8.1 Document Discovery](#81-document-discovery)
+   - [8.2 Catalog Generation](#82-catalog-generation)
+   - [8.3 Request Fulfillment](#83-request-fulfillment)
+9. [Extensibility](#9-extensibility)
+10. [Future Considerations](#10-future-considerations)
 
 ---
 
@@ -416,11 +425,302 @@ automation:
 - Manual tickets reference specific step that failed and error details
 - Service teams can complete work manually and mark automation steps as resolved
 
-## 5. Presentation Field Types
+## 5. UpgradeOperation
+
+The UpgradeOperation document type defines major lifecycle changes to existing services that may require resource recreation or breaking changes. Upgrade operations are designed for scenarios like database version migrations, framework upgrades, or infrastructure platform transitions.
+
+### 5.1 Sample Document
+
+```yaml
+# Header - Operation metadata
+name: "postgres-major-upgrade"
+version: "1.0.0"
+description: "Upgrade PostgreSQL from version 14 to version 15"
+owner: "platform-data-team"
+tags: ["database", "postgres", "upgrade", "major-version"]
+
+# Target specification - What this operation can upgrade
+targets:
+  catalog_items:
+    - name: "postgres-database"
+      version_range: ">=2.0.0, <3.0.0"
+      required_parameters: ["database_name", "current_version"]
+  destructive: true
+  downtime_required: true
+  estimated_duration: "45m"
+
+# Presentation - Parameters for upgrade operation
+presentation:
+  fields:
+    - name: "target_version"
+      type: "selection"
+      oneof: ["15.1", "15.2", "15.3"]
+      required: true
+      help_text: "Target PostgreSQL version"
+    
+    - name: "backup_retention"
+      type: "integer"
+      min_value: 7
+      max_value: 90
+      default: 30
+      help_text: "Days to retain pre-upgrade backup"
+    
+    - name: "maintenance_window"
+      type: "datetime"
+      required: true
+      help_text: "Scheduled maintenance window for upgrade"
+    
+    - name: "rollback_plan"
+      type: "boolean"
+      default: true
+      help_text: "Create rollback plan before upgrade"
+
+# Fulfillment - Manual and automation for upgrade
+fulfillment:
+  manual:
+    system: "jira"
+    template:
+      project: "PLATFORM"
+      issue_type: "Major Upgrade"
+      summary: "PostgreSQL Major Upgrade: {{ database_name }} to v{{ target_version }}"
+      description: |
+        PostgreSQL Major Version Upgrade
+        
+        Database: {{ database_name }}
+        Current Version: {{ current_version }}
+        Target Version: {{ target_version }}
+        Maintenance Window: {{ maintenance_window }}
+        
+        CRITICAL: This is a destructive operation requiring downtime.
+        
+        Pre-upgrade checklist:
+        - [ ] Verify backup completion
+        - [ ] Confirm maintenance window
+        - [ ] Review rollback procedure
+      priority: "High"
+      
+  automation:
+    pre_execution_checks:
+      - verify_target_compatibility
+      - check_backup_status
+      - validate_maintenance_window
+    
+    steps:
+      - name: "create_backup"
+        type: "TerraformFile"
+        template:
+          module_source: "./modules/postgres-backup"
+          variables:
+            database_name: "{{ database_name }}"
+            backup_retention: "{{ backup_retention }}"
+        verification:
+          type: "backup_completion"
+          timeout: "20m"
+          
+      - name: "upgrade_database"
+        type: "TerraformFile"
+        depends_on: ["create_backup"]
+        template:
+          module_source: "./modules/postgres-upgrade"
+          variables:
+            database_name: "{{ database_name }}"
+            target_version: "{{ target_version }}"
+            maintenance_window: "{{ maintenance_window }}"
+        verification:
+          type: "version_check"
+          expected_version: "{{ target_version }}"
+          
+      - name: "validate_upgrade"
+        type: "HttpPost"
+        depends_on: ["upgrade_database"]
+        template:
+          url: "https://db-validation.example.com/validate"
+          body:
+            database: "{{ database_name }}"
+            expected_version: "{{ target_version }}"
+        verification:
+          type: "http_status"
+          expected_status: 200
+```
+
+### 5.2 Document Structure
+
+An UpgradeOperation consists of four mandatory top-level objects:
+
+- **Header**: Contains metadata and operation-level properties
+- **Targets**: Specifies which CatalogItems this operation can upgrade
+- **Presentation**: Defines parameters needed for the upgrade operation
+- **Fulfillment**: Contains manual and automated procedures for executing the upgrade
+
+### 5.3 Operation Targets
+
+The Targets section clearly defines the scope and constraints of the upgrade operation:
+
+**Target Properties:**
+- **catalog_items**: Array of CatalogItems this operation can upgrade
+- **destructive**: Boolean indicating if operation may destroy/recreate resources
+- **downtime_required**: Boolean indicating if operation requires service downtime
+- **estimated_duration**: Expected time for operation completion
+- **prerequisites**: Required conditions before operation can execute
+
+**CatalogItem Target Specification:**
+```yaml
+targets:
+  catalog_items:
+    - name: "postgres-database"
+      version_range: ">=2.0.0, <3.0.0"  # Semver range specification
+      required_parameters: ["database_name", "current_version"]
+      optional_parameters: ["backup_strategy"]
+    - name: "mysql-database"
+      version_range: ">=1.5.0"
+      required_parameters: ["database_name"]
+```
+
+### 5.4 Upgrade Execution
+
+**Pre-execution Validation:**
+- Verify target CatalogItem is compatible with upgrade operation
+- Check that current service instance matches version requirements
+- Validate all required parameters are provided
+- Confirm maintenance window and downtime requirements
+
+**Execution Characteristics:**
+- Upgrade operations are inherently more complex than initial provisioning
+- May require service downtime and resource recreation
+- Include comprehensive backup and rollback procedures
+- Support both automated execution and manual fallback procedures
+- Track upgrade progress and provide detailed status reporting
+
+## 6. UpdateOperation
+
+The UpdateOperation document type defines minor modifications to existing services that can be performed without resource destruction or service recreation. Update operations handle configuration changes, scaling, and non-breaking modifications.
+
+### 6.1 Sample Document
+
+```yaml
+# Header - Operation metadata
+name: "postgres-scale-update"
+version: "1.1.0"
+description: "Update PostgreSQL instance size and storage"
+owner: "platform-data-team"
+tags: ["database", "postgres", "scaling", "update"]
+
+# Target specification - What this operation can update
+targets:
+  catalog_items:
+    - name: "postgres-database"
+      version_range: ">=2.0.0"
+      required_parameters: ["database_name"]
+  destructive: false
+  downtime_required: false
+  estimated_duration: "15m"
+
+# Presentation - Parameters for update operation  
+presentation:
+  fields:
+    - name: "instance_class"
+      type: "selection"
+      oneof: ["db.t3.micro", "db.t3.small", "db.t3.medium", "db.t3.large"]
+      help_text: "Database instance class"
+    
+    - name: "allocated_storage"
+      type: "integer"
+      min_value: 20
+      max_value: 1000
+      help_text: "Storage size in GB"
+    
+    - name: "backup_retention"
+      type: "integer"
+      min_value: 1
+      max_value: 35
+      help_text: "Backup retention period in days"
+    
+    - name: "description"
+      type: "textarea"
+      max_length: 500
+      help_text: "Updated service description"
+
+# Fulfillment - Manual and automation for updates
+fulfillment:
+  manual:
+    system: "jira"
+    template:
+      project: "PLATFORM"
+      issue_type: "Service Update"
+      summary: "Update {{ database_name }} configuration"
+      description: |
+        PostgreSQL Configuration Update
+        
+        Database: {{ database_name }}
+        
+        Requested Changes:
+        {% if instance_class %}
+        - Instance Class: {{ instance_class }}
+        {% endif %}
+        {% if allocated_storage %}
+        - Storage: {{ allocated_storage }}GB
+        {% endif %}
+        {% if backup_retention %}
+        - Backup Retention: {{ backup_retention }} days
+        {% endif %}
+      
+  automation:
+    steps:
+      - name: "update_configuration"
+        type: "TerraformFile"
+        template:
+          module_source: "./modules/postgres-update"
+          variables:
+            database_name: "{{ database_name }}"
+            instance_class: "{{ instance_class }}"
+            allocated_storage: "{{ allocated_storage }}"
+            backup_retention: "{{ backup_retention }}"
+        verification:
+          type: "configuration_check"
+          expected_changes: ["instance_class", "allocated_storage"]
+          
+      - name: "update_metadata"
+        type: "HttpPut"
+        depends_on: ["update_configuration"]
+        template:
+          url: "https://catalog-api.example.com/services/{{ database_name }}"
+          body:
+            description: "{{ description }}"
+            last_updated: "{{ current_timestamp }}"
+        verification:
+          type: "http_status"
+          expected_status: 200
+```
+
+### 6.2 Document Structure
+
+An UpdateOperation consists of four mandatory top-level objects:
+
+- **Header**: Contains metadata and operation-level properties  
+- **Targets**: Specifies which CatalogItems this operation can update
+- **Presentation**: Defines parameters for the update operation
+- **Fulfillment**: Contains manual and automated procedures for executing updates
+
+### 6.3 Update Execution
+
+**Non-destructive Operations:**
+- Update operations must not destroy or recreate existing resources
+- Changes should be applied in-place without service interruption
+- Support for configuration drift detection and correction
+- Rollback capabilities for failed updates
+
+**Supported Update Types:**
+- **Scaling**: Instance size, storage capacity, replica count
+- **Configuration**: Settings, parameters, feature flags  
+- **Metadata**: Descriptions, tags, ownership information
+- **Security**: Access policies, network rules, encryption settings
+- **Monitoring**: Alerting thresholds, logging configuration
+
+## 7. Presentation Field Types
 
 The Presentation layer supports comprehensive field types for collecting service request parameters. The basic field types provide complete coverage for most use cases, with extensibility for specialized domain-specific types when needed.
 
-### 5.1 Sample Field Definitions
+### 7.1 Sample Field Definitions
 
 ```yaml
 # Basic data types - Core field types
@@ -510,9 +810,9 @@ presentation:
       help_text: "Detailed service description"
 ```
 
-### 5.2 Basic Field Type Specifications
+### 7.2 Basic Field Type Specifications
 
-#### 5.2.1 Basic Data Types
+#### 7.2.1 Basic Data Types
 
 **String**
 - **Purpose**: Single-line text input with validation
@@ -546,7 +846,7 @@ presentation:
   - `default`: Default true/false value
 - **Example**: Feature toggles, enable/disable options
 
-#### 5.2.2 Temporal Types
+#### 7.2.2 Temporal Types
 
 **Date**
 - **Purpose**: Date selection without time component
@@ -573,7 +873,7 @@ presentation:
   - `max_time`: Latest allowed time
 - **Example**: Daily backup times, recurring schedules
 
-#### 5.2.3 Selection Types
+#### 7.2.3 Selection Types
 
 **Selection**
 - **Purpose**: Single choice from predefined options
@@ -590,7 +890,7 @@ presentation:
   - `max_selections`: Maximum allowed selections
 - **Example**: Feature flags, service dependencies
 
-#### 5.2.4 Specialized Basic Types
+#### 7.2.4 Specialized Basic Types
 
 **Percentage**
 - **Purpose**: Percentage values with automatic validation
@@ -609,7 +909,7 @@ presentation:
   - `cols`: Display width in columns
 - **Example**: Descriptions, configuration snippets, notes
 
-### 5.3 Universal Field Properties
+### 7.3 Universal Field Properties
 
 All field types support these common properties:
 
@@ -620,7 +920,7 @@ All field types support these common properties:
 - **hidden**: Field is not visible but can have default values
 - **conditional**: Field visibility based on other field values
 
-### 5.4 Extensibility for Specialized Types
+### 7.4 Extensibility for Specialized Types
 
 The PAO specification supports extensibility for domain-specific field types beyond the basic set. Organizations can define specialized types such as:
 
@@ -631,17 +931,17 @@ The PAO specification supports extensibility for domain-specific field types bey
 
 These specialized types follow the same validation and property patterns as basic types, ensuring consistency across the catalog system while enabling domain-specific functionality.
 
-## 6. Processing Model
+## 8. Processing Model
 
-### 6.1 Document Discovery
+### 8.1 Document Discovery
 
 The PAO Service periodically scans the catalog directory structure to discover and validate CatalogItem documents.
 
-### 6.2 Catalog Generation
+### 8.2 Catalog Generation
 
 Valid CatalogItems are processed to generate a unified service catalog exposed through the Developer Control Plane.
 
-### 6.3 Request Fulfillment
+### 8.3 Request Fulfillment
 
 Upon service request submission:
 1. Collected values are validated against Presentation constraints
@@ -649,7 +949,7 @@ Upon service request submission:
 3. Specified actions are executed in defined order
 4. Status tracking and notifications are managed throughout the process
 
-## 7. Extensibility
+## 9. Extensibility
 
 The PAO specification is designed for progressive enhancement:
 
@@ -658,7 +958,7 @@ The PAO specification is designed for progressive enhancement:
 - Custom validation rules and business logic can be incorporated
 - Platform Teams can evolve from manual to automated fulfillment incrementally
 
-## 8. Future Considerations
+## 10. Future Considerations
 
 This draft specification provides the foundation for the PAO catalog system. Future revisions may include:
 
