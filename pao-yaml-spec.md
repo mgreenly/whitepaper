@@ -210,63 +210,218 @@ The Fulfillment section contains templates and action definitions that execute u
 
 ## 5. Presentation Field Types
 
-The Presentation layer supports comprehensive field types for collecting service request parameters:
+The Presentation layer supports comprehensive field types for collecting service request parameters. The basic field types provide complete coverage for most use cases, with extensibility for specialized domain-specific types when needed.
 
 ### 5.1 Sample Field Definitions
 
 ```yaml
-# String fields - Text input with validation
-- name: "application_name"
-  type: "string"
-  required: true
-  max_length: 50
-  min_length: 3
-  regexp: "^[a-z][a-z0-9-]*$"
-  help_text: "Lowercase alphanumeric with hyphens"
+# Basic data types - Core field types
+presentation:
+  fields:
+    # String fields - Text input with validation
+    - name: "application_name"
+      type: "string"
+      required: true
+      max_length: 50
+      min_length: 3
+      regexp: "^[a-z][a-z0-9-]*$"
+      help_text: "Lowercase alphanumeric with hyphens"
 
-# Integer fields - Numeric input with constraints  
-- name: "instance_count"
-  type: "int"
-  min_value: 1
-  max_value: 100
-  default: 3
-  help_text: "Number of instances to deploy"
+    # Integer fields - Whole number input
+    - name: "instance_count"
+      type: "integer"
+      min_value: 1
+      max_value: 100
+      default: 3
+      help_text: "Number of instances to deploy"
 
-# Selection fields - Predefined choices
-- name: "environment"
-  type: "selection"
-  oneof: ["development", "staging", "production"]
-  required: true
-  help_text: "Target deployment environment"
+    # Number fields - Decimal values
+    - name: "cpu_allocation"
+      type: "number"
+      min_value: 0.5
+      max_value: 16.0
+      step: 0.5
+      default: 2.0
+      help_text: "CPU cores (supports half-core increments)"
 
-# Boolean fields - True/false selections
-- name: "enable_monitoring"
-  type: "boolean"
-  default: true
-  help_text: "Enable application monitoring"
+    # Boolean fields - True/false selections
+    - name: "enable_monitoring"
+      type: "boolean"
+      default: true
+      help_text: "Enable application monitoring"
 
-# Date fields - Date/time inputs
-- name: "maintenance_window"
-  type: "date"
-  format: "iso8601"
-  help_text: "Preferred maintenance window start time"
+    # Date fields - Date selection
+    - name: "deployment_date"
+      type: "date"
+      format: "iso8601"
+      min_date: "2025-01-01"
+      help_text: "Target deployment date"
+
+    # DateTime fields - Date and time selection
+    - name: "maintenance_window"
+      type: "datetime"
+      format: "iso8601"
+      timezone: "UTC"
+      help_text: "Maintenance window start time"
+
+    # Time fields - Time-only input
+    - name: "backup_time"
+      type: "time"
+      format: "HH:MM"
+      default: "02:00"
+      help_text: "Daily backup time"
+
+    # Selection fields - Single choice from options
+    - name: "environment"
+      type: "selection"
+      oneof: ["development", "staging", "production"]
+      required: true
+      help_text: "Target deployment environment"
+
+    # Multiselect fields - Multiple choices
+    - name: "features"
+      type: "multiselect"
+      options: ["logging", "metrics", "tracing", "alerting"]
+      min_selections: 1
+      max_selections: 3
+      help_text: "Select observability features"
+
+    # Percentage fields - Percentage values
+    - name: "cpu_threshold"
+      type: "percentage"
+      min_value: 0
+      max_value: 100
+      default: 80
+      help_text: "CPU utilization alert threshold"
+
+    # Textarea fields - Multi-line text
+    - name: "description"
+      type: "textarea"
+      max_length: 500
+      rows: 4
+      help_text: "Detailed service description"
 ```
 
-### 5.2 Field Type Specifications
+### 5.2 Basic Field Type Specifications
 
-- **String**: Text input with validation constraints (max_length, min_length, regexp)
-- **Int**: Integer values with range constraints (min_value, max_value)
-- **Float**: Decimal values with precision and range constraints
-- **Selection**: Enumerated choices from predefined options (oneof: [option1, option2, ...])
-- **Boolean**: True/false selections
-- **Date**: Date/time inputs with format specifications
+#### 5.2.1 Basic Data Types
 
-### 5.3 Field Properties
+**String**
+- **Purpose**: Single-line text input with validation
+- **Validation Options**:
+  - `max_length`: Maximum character count
+  - `min_length`: Minimum character count  
+  - `regexp`: Regular expression pattern
+  - `format`: Predefined format (email, url, hostname)
+- **Example**: Application names, identifiers, descriptions
+
+**Integer**
+- **Purpose**: Whole number input with range constraints
+- **Validation Options**:
+  - `min_value`: Minimum allowed value
+  - `max_value`: Maximum allowed value
+  - `step`: Increment step size
+- **Example**: Instance counts, port numbers, replica counts
+
+**Number**
+- **Purpose**: Decimal number input with precision control
+- **Validation Options**:
+  - `min_value`: Minimum allowed value
+  - `max_value`: Maximum allowed value
+  - `step`: Increment step size
+  - `precision`: Decimal places
+- **Example**: CPU allocation, memory ratios, scaling factors
+
+**Boolean**
+- **Purpose**: True/false selection
+- **Validation Options**:
+  - `default`: Default true/false value
+- **Example**: Feature toggles, enable/disable options
+
+#### 5.2.2 Temporal Types
+
+**Date**
+- **Purpose**: Date selection without time component
+- **Validation Options**:
+  - `format`: Date format specification (iso8601, yyyy-mm-dd)
+  - `min_date`: Earliest allowed date
+  - `max_date`: Latest allowed date
+- **Example**: Deployment dates, expiration dates
+
+**DateTime**
+- **Purpose**: Date and time selection with timezone support
+- **Validation Options**:
+  - `format`: DateTime format specification
+  - `timezone`: Timezone handling (UTC, local, specific)
+  - `min_datetime`: Earliest allowed datetime
+  - `max_datetime`: Latest allowed datetime
+- **Example**: Maintenance windows, scheduled events
+
+**Time**
+- **Purpose**: Time-only input without date component
+- **Validation Options**:
+  - `format`: Time format (HH:MM, HH:MM:SS)
+  - `min_time`: Earliest allowed time
+  - `max_time`: Latest allowed time
+- **Example**: Daily backup times, recurring schedules
+
+#### 5.2.3 Selection Types
+
+**Selection**
+- **Purpose**: Single choice from predefined options
+- **Validation Options**:
+  - `oneof`: Array of valid options
+  - `allow_custom`: Allow user-entered values
+- **Example**: Environment selection, instance types
+
+**Multiselect**
+- **Purpose**: Multiple choices from predefined options
+- **Validation Options**:
+  - `options`: Array of available choices
+  - `min_selections`: Minimum required selections
+  - `max_selections`: Maximum allowed selections
+- **Example**: Feature flags, service dependencies
+
+#### 5.2.4 Specialized Basic Types
+
+**Percentage**
+- **Purpose**: Percentage values with automatic validation
+- **Validation Options**:
+  - `min_value`: Minimum percentage (0-100)
+  - `max_value`: Maximum percentage (0-100)
+  - `step`: Increment step size
+- **Example**: Resource thresholds, scaling percentages
+
+**Textarea**
+- **Purpose**: Multi-line text input for longer content
+- **Validation Options**:
+  - `max_length`: Maximum character count
+  - `min_length`: Minimum character count
+  - `rows`: Display height in rows
+  - `cols`: Display width in columns
+- **Example**: Descriptions, configuration snippets, notes
+
+### 5.3 Universal Field Properties
+
+All field types support these common properties:
 
 - **required**: Boolean indicating if field must be completed
 - **default**: Default value when field is optional
 - **help_text**: Contextual assistance displayed to users
-- **validation**: Custom validation rules and error messages
+- **readonly**: Field is display-only and cannot be modified
+- **hidden**: Field is not visible but can have default values
+- **conditional**: Field visibility based on other field values
+
+### 5.4 Extensibility for Specialized Types
+
+The PAO specification supports extensibility for domain-specific field types beyond the basic set. Organizations can define specialized types such as:
+
+- Network-specific types (CIDR blocks, IP addresses)
+- Cloud provider-specific types (regions, instance types, resource names)
+- Security-specific types (certificates, secrets, access keys)
+- Business-specific types (cost centers, approval workflows)
+
+These specialized types follow the same validation and property patterns as basic types, ensuring consistency across the catalog system while enabling domain-specific functionality.
 
 ## 6. Processing Model
 

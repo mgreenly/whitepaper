@@ -53,13 +53,7 @@ The PAO REST API follows REST principles with:
 
 ### 2.2 Authentication & Authorization
 
-```yaml
-# Sample authentication header
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-
-# Sample API key authentication  
-X-API-Key: pao-api-key-123456789
-```
+The API uses AWS IAM authentication with AWS Signature Version 4 signing process. All requests must be properly signed using AWS credentials.
 
 ### 2.3 API Standards
 
