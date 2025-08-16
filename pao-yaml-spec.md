@@ -25,6 +25,11 @@
    - [4.3 Header Section](#43-header-section)
    - [4.4 Presentation Section](#44-presentation-section)
    - [4.5 Fulfillment Section](#45-fulfillment-section)
+     - [4.5.1 Fulfillment Structure](#451-fulfillment-structure)
+     - [4.5.2 Manual Fulfillment](#452-manual-fulfillment)
+     - [4.5.3 Automation Sequence](#453-automation-sequence)
+     - [4.5.4 Automation Step Types](#454-automation-step-types)
+     - [4.5.5 Step Execution Model](#455-step-execution-model)
 5. [Presentation Field Types](#5-presentation-field-types)
    - [5.1 Sample Field Definitions](#51-sample-field-definitions)
    - [5.2 Field Type Specifications](#52-field-type-specifications)
@@ -169,16 +174,35 @@ presentation:
       max_value: 10
       default: 2
 
-# Fulfillment - Automation templates
+# Fulfillment - Manual and automation definitions
 fulfillment:
-  actions:
-    - type: "TerraformFile"
-      template:
-        module_source: "./modules/eks-app"
-        variables:
-          app_name: "{{ app_name }}"
-          environment: "{{ environment }}"
-          replica_count: "{{ replicas }}"
+  manual:
+    system: "jira"
+    template:
+      project: "PLATFORM"
+      issue_type: "Service Request"
+      summary: "Deploy {{ app_name }} to {{ environment }}"
+      description: |
+        Service Request: EKS Container Application
+        Application: {{ app_name }}
+        Environment: {{ environment }}
+        Replicas: {{ replicas }}
+        
+        Please provision the requested Kubernetes application.
+      
+  automation:
+    steps:
+      - name: "provision_infrastructure"
+        type: "TerraformFile"
+        template:
+          module_source: "./modules/eks-app"
+          variables:
+            app_name: "{{ app_name }}"
+            environment: "{{ environment }}"
+            replica_count: "{{ replicas }}"
+        verification:
+          type: "terraform_state"
+          resource_count: 5
 ```
 
 ### 4.2 Document Structure
@@ -206,7 +230,191 @@ The Presentation section defines the form structure for collecting service reque
 
 ### 4.5 Fulfillment Section
 
-The Fulfillment section contains templates and action definitions that execute upon service request submission. It supports multiple action types including JiraTicket, HttpPost/HttpPut, TerraformFile, and GitHubWorkflow. Each action type includes templating capabilities for value substitution using data collected through the Presentation layer.
+The Fulfillment section defines how service requests are processed, containing both manual fallback procedures and automated execution sequences. All CatalogItems must provide manual fulfillment instructions as a safety net, with optional automation for improved efficiency and consistency.
+
+#### 4.5.1 Fulfillment Structure
+
+The Fulfillment section contains two mandatory top-level objects:
+
+- **Manual**: Fallback instructions for manual processing (required for all items)
+- **Automation**: Sequence of automated steps for service provisioning (optional)
+
+#### 4.5.2 Manual Fulfillment
+
+All catalog items must define manual fulfillment procedures to ensure service delivery continuity when automation fails or is unavailable.
+
+**Manual System Types:**
+- **jira**: Creates tickets in JIRA for manual processing
+- **servicenow**: Creates tickets in ServiceNow (future extension)
+- **email**: Sends structured email requests to service teams
+- **webhook**: Posts to custom ticketing systems
+
+**JIRA Manual Configuration:**
+```yaml
+manual:
+  system: "jira"
+  template:
+    project: "PLATFORM"
+    issue_type: "Service Request"
+    summary: "{{ service_name }} - {{ requester.user_id }}"
+    description: |
+      Service: {{ catalog_item.name }}
+      Version: {{ catalog_item.version }}
+      Requester: {{ requester.user_id }} ({{ requester.team }})
+      
+      Parameters:
+      {% for param in parameters %}
+      - {{ param.name }}: {{ param.value }}
+      {% endfor %}
+    priority: "Medium"
+    assignee: "{{ catalog_item.owner }}"
+    labels: ["pao-request", "{{ catalog_item.tags | join(',') }}"]
+```
+
+#### 4.5.3 Automation Sequence
+
+Automation defines a sequence of steps that execute in order, with built-in verification, retry logic, and fallback to manual processing.
+
+**Automation Properties:**
+- **steps**: Ordered sequence of automation actions
+- **retry_policy**: Global retry configuration for failed steps
+- **timeout**: Maximum execution time for the entire sequence
+- **fallback_on_failure**: Automatically create manual tickets for failed steps
+
+**Sample Automation Configuration:**
+```yaml
+automation:
+  retry_policy:
+    max_attempts: 3
+    backoff_strategy: "exponential"
+    initial_delay: "30s"
+    max_delay: "300s"
+  timeout: "30m"
+  fallback_on_failure: true
+  
+  steps:
+    - name: "validate_prerequisites"
+      type: "HttpPost"
+      template:
+        url: "https://validation-api.example.com/validate"
+        headers:
+          Authorization: "Bearer {{ secrets.api_token }}"
+        body:
+          service: "{{ app_name }}"
+          environment: "{{ environment }}"
+      verification:
+        type: "http_status"
+        expected_status: 200
+      retry_policy:
+        max_attempts: 2
+        
+    - name: "provision_infrastructure"
+      type: "TerraformFile"
+      depends_on: ["validate_prerequisites"]
+      template:
+        module_source: "./modules/eks-app"
+        variables:
+          app_name: "{{ app_name }}"
+          environment: "{{ environment }}"
+          replica_count: "{{ replicas }}"
+      verification:
+        type: "terraform_state"
+        resource_count: 5
+        required_outputs: ["cluster_endpoint", "service_url"]
+        
+    - name: "configure_monitoring"
+      type: "GitHubWorkflow"
+      depends_on: ["provision_infrastructure"]
+      template:
+        repository: "platform-team/monitoring-setup"
+        workflow_id: "setup-monitoring.yml"
+        inputs:
+          service_name: "{{ app_name }}"
+          environment: "{{ environment }}"
+          cluster_endpoint: "{{ steps.provision_infrastructure.outputs.cluster_endpoint }}"
+      verification:
+        type: "workflow_status"
+        expected_status: "success"
+```
+
+#### 4.5.4 Automation Step Types
+
+**TerraformFile**
+- **Purpose**: Generate and apply Terraform configurations
+- **Template Fields**:
+  - `module_source`: Path to Terraform module
+  - `variables`: Input variables for the module
+  - `backend_config`: Backend configuration overrides
+- **Verification Options**:
+  - `terraform_state`: Verify resource count and outputs
+  - `resource_health`: Check resource health status
+
+**GitHubWorkflow**
+- **Purpose**: Trigger GitHub Actions workflows
+- **Template Fields**:
+  - `repository`: Target repository (org/repo format)
+  - `workflow_id`: Workflow file name or ID
+  - `inputs`: Workflow input parameters
+  - `ref`: Branch or tag reference (default: main)
+- **Verification Options**:
+  - `workflow_status`: Check workflow completion status
+  - `artifact_exists`: Verify specific artifacts were created
+
+**HttpPost/HttpPut**
+- **Purpose**: Execute HTTP requests to external APIs
+- **Template Fields**:
+  - `url`: Target endpoint URL
+  - `headers`: HTTP headers
+  - `body`: Request payload
+  - `authentication`: Auth configuration
+- **Verification Options**:
+  - `http_status`: Expected HTTP status code
+  - `response_body`: JSON path validation of response
+  - `headers_present`: Required response headers
+
+**JiraTicket**
+- **Purpose**: Create JIRA tickets for semi-automated workflows
+- **Template Fields**:
+  - `project`: JIRA project key
+  - `issue_type`: Type of issue to create
+  - `summary`: Ticket summary
+  - `description`: Detailed description
+  - `assignee`: Ticket assignee
+- **Verification Options**:
+  - `ticket_status`: Monitor ticket status changes
+  - `resolution_time`: Maximum time for ticket resolution
+
+#### 4.5.5 Step Execution Model
+
+**Sequential Execution:**
+- Steps execute in defined order by default
+- Each step must complete successfully before the next begins
+- Failed steps halt execution unless retry policy permits continuation
+
+**Dependency Management:**
+- `depends_on`: Explicit step dependencies
+- Steps can reference outputs from previous steps using `{{ steps.step_name.outputs.key }}`
+- Circular dependencies are detected and rejected during validation
+
+**Verification and Retry Logic:**
+- Each step includes verification criteria to determine success/failure
+- Failed verification triggers retry according to step-specific or global retry policy
+- After max retry attempts, step is marked as failed
+- Failed steps can trigger automatic fallback to manual processing
+
+**Step Status Tracking:**
+- `pending`: Step queued for execution
+- `running`: Step currently executing
+- `verifying`: Step completed, verification in progress
+- `completed`: Step and verification successful
+- `failed`: Step failed after all retry attempts
+- `skipped`: Step skipped due to failed dependencies
+
+**Manual Fallback Integration:**
+- When `fallback_on_failure: true`, failed automation steps automatically generate manual tickets
+- Manual tickets include context from failed automation attempts
+- Manual tickets reference specific step that failed and error details
+- Service teams can complete work manually and mark automation steps as resolved
 
 ## 5. Presentation Field Types
 
