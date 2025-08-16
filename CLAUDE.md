@@ -52,6 +52,22 @@ When creating user stories, follow this process:
     - pao-yaml-spec.md (YAML document structure)
   * Consider both happy path and error scenarios
 
+Ticket Guidelines
+=================
+When creating tickets from user stories:
+  * Create tickets in the tickets/ folder named TICKET-XXX.md
+  * Keep descriptions concise - err on the side of too short
+  * Structure each ticket with:
+    - **Goal**: One sentence describing the outcome
+    - **Steps**: Numbered list of implementation tasks (5-10 items max)
+    - **Acceptance Criteria**: Bullet points of what must be true when done
+  * Acceptance criteria must include:
+    - Functional requirements (what works)
+    - Documentation updates required
+    - Tests to add/update
+  * Reference the user story that generated the ticket
+  * One user story = one ticket (don't split stories)
+
 Actions
 =======
   * Analyize all information currently in context.
