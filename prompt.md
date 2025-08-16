@@ -19,7 +19,8 @@ Constraints
   * Do NOT use the term re-org.
   * Do NOT use the term big-bang.
   * DO NOT read or modify any files unless explicitly asked to.
-  * Do NOT directly reference any the the files in @docs/
+  * Do NOT directly reference any of the files in @docs/
+  * Ensure that @pao-spec.md always remains a valid formatted markdown file.
 
 
 Actions
