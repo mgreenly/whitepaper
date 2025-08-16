@@ -46,13 +46,72 @@ Each category folder contains one or more offering folders, grouping architectur
 - **Runtime Format**: The PAO Service converts YAML to JSON upon reading, with all API communications utilizing JSON format
 - **Schema Validation**: All documents must conform to defined JSON Schema specifications for their respective document types
 
-## 3. Core Document Types
+## 3. CatalogBundle
 
-### 3.1 CatalogItem
+The CatalogBundle represents a collection of related CatalogItems that can be provisioned together as a cohesive solution. It defines dependencies between services and specifies which items are required versus optional components.
+
+### 3.1 Sample Document
+
+```yaml
+# Header - Bundle metadata
+name: "Full Stack Web Application"
+version: "2.1.0"
+description: "Complete web application stack with database and monitoring"
+owner: "platform-solutions-team"
+tags: ["web-app", "full-stack", "solution"]
+
+# Bundle composition - Required and optional items
+bundle:
+  required_items:
+    - catalog_item: "eks-container-app"
+      version: ">=1.2.0"
+      parameters:
+        app_type: "web-frontend"
+    - catalog_item: "postgres-database"
+      version: ">=2.0.0"
+      
+  optional_items:
+    - catalog_item: "redis-cache"
+      version: ">=1.1.0"
+      default_enabled: false
+    - catalog_item: "application-monitoring"
+      version: ">=1.0.0"
+      default_enabled: true
+
+# Presentation - Bundle-level configuration
+presentation:
+  bundle_fields:
+    - name: "solution_name"
+      type: "string"
+      required: true
+      help_text: "Name for this solution deployment"
+    - name: "enable_ha"
+      type: "boolean"
+      default: false
+      help_text: "Enable high availability mode"
+```
+
+### 3.2 Document Structure
+
+A CatalogBundle consists of three mandatory top-level objects:
+
+- **Header**: Contains metadata and bundle-level properties
+- **Bundle**: Defines required and optional CatalogItems with version constraints
+- **Presentation**: Collects bundle-level parameters that may affect multiple items
+
+### 3.3 Bundle Composition
+
+- **required_items**: CatalogItems that must be provisioned for the bundle
+- **optional_items**: CatalogItems that can be optionally included
+- **version**: Version constraints for each included CatalogItem
+- **parameters**: Default or fixed parameters passed to individual items
+- **default_enabled**: Whether optional items are enabled by default
+
+## 4. CatalogItem
 
 The CatalogItem represents the fundamental unit of a service offering in the PAO catalog. It encapsulates all information necessary to present, collect, and fulfill a service request.
 
-#### 3.1.1 Sample Document
+### 3.1 Sample Document
 
 ```yaml
 # Header - Basic metadata
@@ -91,7 +150,7 @@ fulfillment:
           replica_count: "{{ replicas }}"
 ```
 
-#### 3.1.2 Document Structure
+### 3.2 Document Structure
 
 A CatalogItem consists of three mandatory top-level objects:
 
@@ -99,9 +158,7 @@ A CatalogItem consists of three mandatory top-level objects:
 - **Presentation**: Defines the user interface elements and data collection requirements
 - **Fulfillment**: Specifies the automation templates and actions for service provisioning
 
-## 4. CatalogItem Components
-
-### 4.1 Header Section
+### 3.3 Header Section
 
 The Header section provides essential metadata about the catalog item, including:
 
@@ -112,11 +169,60 @@ The Header section provides essential metadata about the catalog item, including
 - **tags**: Searchable metadata tags for categorization
 - **dependencies**: References to other catalog items or prerequisites
 
-### 4.2 Presentation Section
+### 3.4 Presentation Section
 
-The Presentation section defines the form structure for collecting service request parameters. It supports:
+The Presentation section defines the form structure for collecting service request parameters and supports field groups, display ordering, validation rules, and help text for end users.
 
-#### 4.2.1 Field Types
+### 3.5 Fulfillment Section
+
+The Fulfillment section contains templates and action definitions that execute upon service request submission. It supports multiple action types including JiraTicket, HttpPost/HttpPut, TerraformFile, and GitHubWorkflow. Each action type includes templating capabilities for value substitution using data collected through the Presentation layer.
+
+## 4. Presentation Field Types
+
+The Presentation layer supports comprehensive field types for collecting service request parameters:
+
+### 4.1 Sample Field Definitions
+
+```yaml
+# String fields - Text input with validation
+- name: "application_name"
+  type: "string"
+  required: true
+  max_length: 50
+  min_length: 3
+  regexp: "^[a-z][a-z0-9-]*$"
+  help_text: "Lowercase alphanumeric with hyphens"
+
+# Integer fields - Numeric input with constraints  
+- name: "instance_count"
+  type: "int"
+  min_value: 1
+  max_value: 100
+  default: 3
+  help_text: "Number of instances to deploy"
+
+# Selection fields - Predefined choices
+- name: "environment"
+  type: "selection"
+  oneof: ["development", "staging", "production"]
+  required: true
+  help_text: "Target deployment environment"
+
+# Boolean fields - True/false selections
+- name: "enable_monitoring"
+  type: "boolean"
+  default: true
+  help_text: "Enable application monitoring"
+
+# Date fields - Date/time inputs
+- name: "maintenance_window"
+  type: "date"
+  format: "iso8601"
+  help_text: "Preferred maintenance window start time"
+```
+
+### 4.2 Field Type Specifications
+
 - **String**: Text input with validation constraints (max_length, min_length, regexp)
 - **Int**: Integer values with range constraints (min_value, max_value)
 - **Float**: Decimal values with precision and range constraints
@@ -124,31 +230,12 @@ The Presentation section defines the form structure for collecting service reque
 - **Boolean**: True/false selections
 - **Date**: Date/time inputs with format specifications
 
-#### 4.2.2 Form Organization
-- **Field Groups**: Logical groupings of related fields
-- **Display Order**: Explicit ordering of groups and fields within groups
-- **Validation Rules**: Cross-field dependencies and conditional requirements
-- **Help Text**: Contextual assistance for end users
+### 4.3 Field Properties
 
-### 4.3 Fulfillment Section
-
-The Fulfillment section contains templates and action definitions that execute upon service request submission. It supports multiple action types:
-
-#### 4.3.1 Action Types
-
-- **JiraTicket**: Creates tickets in JIRA for manual or semi-automated fulfillment
-  - Template fields: project, issue_type, summary, description, custom_fields
-  
-- **HttpPost/HttpPut**: Executes HTTP requests to external APIs or services
-  - Template fields: url, headers, body, authentication
-  
-- **TerraformFile**: Generates Terraform configurations for infrastructure provisioning
-  - Template fields: module_source, variables, backend_config
-  
-- **GitHubWorkflow**: Triggers GitHub Actions workflows
-  - Template fields: repository, workflow_id, inputs
-
-Each action type includes templating capabilities for value substitution using data collected through the Presentation layer.
+- **required**: Boolean indicating if field must be completed
+- **default**: Default value when field is optional
+- **help_text**: Contextual assistance displayed to users
+- **validation**: Custom validation rules and error messages
 
 ## 5. Processing Model
 

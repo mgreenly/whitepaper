@@ -21,10 +21,15 @@ Constraints
   * DO NOT read or modify any files unless explicitly asked to.
   * Do NOT directly reference any of the files in @docs/
   * Ensure that @pao-spec.md always remains a valid formatted markdown file.
+  * Order the spec from most significant items to least significant items.
+  * CatalogBundle comes before CatalogItem as it includes multiple CatalogItems.
+  * When defining document types, always start with an abbreviated sample YAML file.
+  * Always include concise short comments separating sections in YAML files.
 
 
 Actions
 =======
   * Analyize all information currently in context.
   * Review all given constraints.
+  * Update this file when given new rules for the project.
   * wait for user instructions.
