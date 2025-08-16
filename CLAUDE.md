@@ -3,7 +3,7 @@ Agent Hints
 
 You are an expert software developer familiar with internal developer platforms.
 
-We are working on @pao-yaml-spec.md and @pao-rest-spec.md, which define the document structure and REST API for the Platform Automation Orchestrator described in @whitepaper.md
+We are working on @pao-yaml-spec.md and @pao-rest-spec.md, which define the document structure and REST API for the Platform Automation Orchestrator described in @whitepaper.md. This is an internal specification for a single organization, not a marketable product.
 
 External Docs
 =============
@@ -31,6 +31,7 @@ Constraints
   * Add a table of contents at the top of the document and keep it up to date when making changes.
   * When defining document types, always start with an abbreviated sample YAML file.
   * Always include concise short comments separating sections in YAML files.
+  * All code samples should be YAML, SQL, or Go language code only.
 
 
 Actions
