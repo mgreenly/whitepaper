@@ -20,10 +20,18 @@
    - [3.2 Get Catalog Item](#32-get-catalog-item)
    - [3.3 List Catalog Bundles](#33-list-catalog-bundles)
    - [3.4 Get Catalog Bundle](#34-get-catalog-bundle)
+   - [3.5 List Update Items](#35-list-update-items)
+   - [3.6 Get Update Item](#36-get-update-item)
+   - [3.7 List Update Operations](#37-list-update-operations)
+   - [3.8 Get Update Operation](#38-get-update-operation)
 4. [Request Management](#4-request-management)
    - [4.1 Submit Service Request](#41-submit-service-request)
    - [4.2 Get Request Status](#42-get-request-status)
    - [4.3 List User Requests](#43-list-user-requests)
+   - [4.4 Resume Failed Request](#44-resume-failed-request)
+   - [4.5 Abort Request](#45-abort-request)
+   - [4.6 Get Step Execution Details](#46-get-step-execution-details)
+   - [4.7 Retry Failed Step](#47-retry-failed-step)
 5. [Administration](#5-administration)
    - [5.1 Refresh Catalog](#51-refresh-catalog)
    - [5.2 Health Check](#52-health-check)
@@ -252,6 +260,229 @@ GET /api/v1/catalog/bundles/{bundle_name}
 }
 ```
 
+### 3.5 List Update Items
+
+```http
+GET /api/v1/catalog/update-items
+```
+
+**Parameters:**
+- `target_item` (optional): Filter by target catalog item name
+- `tags` (optional): Filter by tags (comma-separated)
+- `limit` (optional): Number of items to return
+- `cursor` (optional): Pagination cursor
+
+**Response:**
+```json
+{
+  "update_items": [
+    {
+      "name": "postgres-major-upgrade",
+      "version": "1.0.0",
+      "description": "Upgrade PostgreSQL from version 14 to version 15",
+      "owner": "platform-data-team",
+      "tags": ["database", "postgres", "upgrade", "major-version"],
+      "targets": {
+        "catalog_items": [
+          {
+            "name": "postgres-database",
+            "version_range": ">=2.0.0, <3.0.0"
+          }
+        ],
+        "destructive": true,
+        "downtime_required": true,
+        "estimated_duration": "45m"
+      },
+      "href": "/api/v1/catalog/update-items/postgres-major-upgrade"
+    }
+  ],
+  "pagination": {
+    "next_cursor": "eyJuYW1lIjoicG9zdGdyZXMtbWFqb3ItdXBncmFkZSJ9",
+    "has_more": false
+  }
+}
+```
+
+### 3.6 Get Update Item
+
+```http
+GET /api/v1/catalog/update-items/{item_name}
+```
+
+**Response:**
+```json
+{
+  "name": "postgres-major-upgrade",
+  "version": "1.0.0",
+  "description": "Upgrade PostgreSQL from version 14 to version 15",
+  "owner": "platform-data-team",
+  "tags": ["database", "postgres", "upgrade", "major-version"],
+  "targets": {
+    "catalog_items": [
+      {
+        "name": "postgres-database",
+        "version_range": ">=2.0.0, <3.0.0",
+        "required_parameters": ["database_name", "current_version"]
+      }
+    ],
+    "destructive": true,
+    "downtime_required": true,
+    "estimated_duration": "45m"
+  },
+  "presentation": {
+    "fields": [
+      {
+        "name": "target_version",
+        "type": "selection",
+        "oneof": ["15.1", "15.2", "15.3"],
+        "required": true,
+        "help_text": "Target PostgreSQL version"
+      },
+      {
+        "name": "maintenance_window",
+        "type": "datetime",
+        "required": true,
+        "help_text": "Scheduled maintenance window for upgrade"
+      }
+    ]
+  },
+  "fulfillment": {
+    "manual": {
+      "system": "jira",
+      "template": {
+        "project": "PLATFORM",
+        "issue_type": "Major Upgrade",
+        "priority": "High"
+      }
+    },
+    "automation": {
+      "pre_execution_checks": [
+        "verify_target_compatibility",
+        "check_backup_status",
+        "validate_maintenance_window"
+      ],
+      "steps": [
+        {
+          "name": "create_backup",
+          "type": "TerraformFile"
+        },
+        {
+          "name": "upgrade_database",
+          "type": "TerraformFile",
+          "depends_on": ["create_backup"]
+        }
+      ]
+    }
+  }
+}
+```
+
+### 3.7 List Update Operations
+
+```http
+GET /api/v1/catalog/update-operations
+```
+
+**Parameters:**
+- `target_item` (optional): Filter by target catalog item name
+- `tags` (optional): Filter by tags (comma-separated)
+- `limit` (optional): Number of items to return
+- `cursor` (optional): Pagination cursor
+
+**Response:**
+```json
+{
+  "update_operations": [
+    {
+      "name": "postgres-scale-update",
+      "version": "1.1.0",
+      "description": "Update PostgreSQL instance size and storage",
+      "owner": "platform-data-team",
+      "tags": ["database", "postgres", "scaling", "update"],
+      "targets": {
+        "catalog_items": [
+          {
+            "name": "postgres-database",
+            "version_range": ">=2.0.0"
+          }
+        ],
+        "destructive": false,
+        "downtime_required": false,
+        "estimated_duration": "15m"
+      },
+      "href": "/api/v1/catalog/update-operations/postgres-scale-update"
+    }
+  ],
+  "pagination": {
+    "next_cursor": null,
+    "has_more": false
+  }
+}
+```
+
+### 3.8 Get Update Operation
+
+```http
+GET /api/v1/catalog/update-operations/{operation_name}
+```
+
+**Response:**
+```json
+{
+  "name": "postgres-scale-update",
+  "version": "1.1.0",
+  "description": "Update PostgreSQL instance size and storage",
+  "owner": "platform-data-team",
+  "tags": ["database", "postgres", "scaling", "update"],
+  "targets": {
+    "catalog_items": [
+      {
+        "name": "postgres-database",
+        "version_range": ">=2.0.0",
+        "required_parameters": ["database_name"]
+      }
+    ],
+    "destructive": false,
+    "downtime_required": false,
+    "estimated_duration": "15m"
+  },
+  "presentation": {
+    "fields": [
+      {
+        "name": "instance_class",
+        "type": "selection",
+        "oneof": ["db.t3.micro", "db.t3.small", "db.t3.medium", "db.t3.large"],
+        "help_text": "Database instance class"
+      },
+      {
+        "name": "allocated_storage",
+        "type": "integer",
+        "min_value": 20,
+        "max_value": 1000,
+        "help_text": "Storage size in GB"
+      }
+    ]
+  },
+  "fulfillment": {
+    "manual": {
+      "system": "jira",
+      "template": {
+        "project": "PLATFORM",
+        "issue_type": "Service Update"
+      }
+    },
+    "automation": {
+      "steps": [
+        {
+          "name": "update_configuration",
+          "type": "TerraformFile"
+        }
+      ]
+    }
+  }
+}
+```
+
 ## 4. Request Management
 
 ### 4.1 Submit Service Request
@@ -340,17 +571,56 @@ GET /api/v1/requests/{request_id}
     "team": "product-team"
   },
   "fulfillment": {
-    "actions": [
+    "execution_mode": "automation",
+    "retry_policy": {
+      "max_attempts": 3,
+      "backoff_strategy": "exponential",
+      "current_attempt": 1
+    },
+    "steps": [
       {
-        "type": "TerraformFile",
+        "step_id": "step-001",
+        "name": "validate_prerequisites",
+        "type": "HttpPost",
         "status": "completed",
-        "completed_at": "2025-08-16T10:33:00Z",
-        "output": {
-          "terraform_run_id": "run-xyz789",
-          "resources_created": 5
+        "started_at": "2025-08-16T10:30:30Z",
+        "completed_at": "2025-08-16T10:31:00Z",
+        "verification": {
+          "type": "http_status",
+          "expected": "200",
+          "actual": "200",
+          "verified": true
+        },
+        "outputs": {
+          "validation_token": "val-token-123"
         }
+      },
+      {
+        "step_id": "step-002",
+        "name": "provision_infrastructure",
+        "type": "TerraformFile",
+        "status": "running",
+        "started_at": "2025-08-16T10:31:00Z",
+        "attempts": 1,
+        "job_tracking": {
+          "external_id": "tf-run-456",
+          "tracking_url": "https://terraform.example.com/runs/tf-run-456"
+        }
+      },
+      {
+        "step_id": "step-003",
+        "name": "configure_monitoring",
+        "type": "GitHubWorkflow",
+        "status": "pending",
+        "depends_on": ["step-002"]
       }
-    ]
+    ],
+    "manual_fallback": {
+      "enabled": true,
+      "trigger_on_failure": true
+    },
+    "can_resume": false,
+    "can_abort": true
   }
 }
 ```
@@ -377,6 +647,163 @@ GET /api/v1/requests
       "created_at": "2025-08-16T10:30:00Z"
     }
   ]
+}
+```
+
+### 4.4 Resume Failed Request
+
+```http
+POST /api/v1/requests/{request_id}/resume
+```
+
+Resumes a failed or paused request from the last failed step.
+
+**Request Body (optional):**
+```json
+{
+  "step_id": "step-002",
+  "override_parameters": {
+    "retry_delay": "60s"
+  },
+  "skip_verification": false
+}
+```
+
+**Response:**
+```json
+{
+  "request_id": "req-abc123def456",
+  "status": "resuming",
+  "resumed_at": "2025-08-16T11:00:00Z",
+  "resuming_from_step": "step-002",
+  "message": "Request resumed from step 'provision_infrastructure'"
+}
+```
+
+### 4.5 Abort Request
+
+```http
+POST /api/v1/requests/{request_id}/abort
+```
+
+Aborts an in-progress or failed request.
+
+**Request Body:**
+```json
+{
+  "reason": "User requested cancellation",
+  "cleanup_strategy": "manual",
+  "create_cleanup_ticket": true,
+  "convert_remaining_to_manual": true
+}
+```
+
+**Response:**
+```json
+{
+  "request_id": "req-abc123def456",
+  "status": "aborted",
+  "aborted_at": "2025-08-16T11:00:00Z",
+  "cleanup_ticket": {
+    "system": "jira",
+    "ticket_id": "PLATFORM-1234",
+    "url": "https://jira.example.com/browse/PLATFORM-1234"
+  },
+  "manual_completion_ticket": {
+    "system": "jira",
+    "ticket_id": "PLATFORM-1235",
+    "url": "https://jira.example.com/browse/PLATFORM-1235",
+    "includes_steps": ["step-003"]
+  }
+}
+```
+
+### 4.6 Get Step Execution Details
+
+```http
+GET /api/v1/requests/{request_id}/steps/{step_id}
+```
+
+Get detailed execution information for a specific step.
+
+**Response:**
+```json
+{
+  "request_id": "req-abc123def456",
+  "step_id": "step-002",
+  "name": "provision_infrastructure",
+  "type": "TerraformFile",
+  "status": "failed",
+  "attempts": [
+    {
+      "attempt_number": 1,
+      "started_at": "2025-08-16T10:31:00Z",
+      "completed_at": "2025-08-16T10:35:00Z",
+      "status": "failed",
+      "error": {
+        "type": "terraform_error",
+        "message": "Resource creation failed: subnet already exists",
+        "details": {
+          "resource": "aws_subnet.main",
+          "error_code": "SubnetAlreadyExists"
+        }
+      },
+      "logs_url": "https://logs.example.com/req-abc123def456/step-002/attempt-1"
+    },
+    {
+      "attempt_number": 2,
+      "started_at": "2025-08-16T10:36:00Z",
+      "completed_at": "2025-08-16T10:40:00Z",
+      "status": "failed",
+      "error": {
+        "type": "timeout",
+        "message": "Step execution timed out after 300s"
+      }
+    }
+  ],
+  "verification": {
+    "type": "terraform_state",
+    "expected": {
+      "resource_count": 5,
+      "required_outputs": ["cluster_endpoint", "service_url"]
+    },
+    "actual": {
+      "resource_count": 3,
+      "outputs": []
+    },
+    "verified": false
+  },
+  "can_retry": true,
+  "can_skip": false,
+  "manual_fallback_available": true
+}
+```
+
+### 4.7 Retry Failed Step
+
+```http
+POST /api/v1/requests/{request_id}/steps/{step_id}/retry
+```
+
+Manually retry a specific failed step.
+
+**Request Body (optional):**
+```json
+{
+  "override_verification": false,
+  "max_attempts": 1,
+  "timeout": "600s"
+}
+```
+
+**Response:**
+```json
+{
+  "request_id": "req-abc123def456",
+  "step_id": "step-002",
+  "status": "retrying",
+  "attempt_number": 3,
+  "message": "Step retry initiated"
 }
 ```
 

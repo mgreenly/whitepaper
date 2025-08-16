@@ -23,10 +23,10 @@ Constraints
   * Ensure that @pao-yaml-spec.md and @pao-rest-spec.md always remain valid formatted markdown files.
   * Order the spec from most significant items to least significant items.
   * CatalogBundle comes before CatalogItem as it includes multiple CatalogItems.
-  * Day 2 operations are supported by separate UpgradeOperation and UpdateOperation document types.
+  * Day 2 operations are supported by separate UpdateItem and UpdateOperation document types.
   * Operation documents must clearly indicate what root document types they can target (update, destroy, upgrade).
-  * Upgrade operations are for major changes like database version migrations that may require resource recreation.
-  * Update operations are for minor changes like descriptions, sizes, or configurations that don't destroy the original resource.
+  * UpdateItem operations are for major changes like database version migrations that may require resource recreation.
+  * UpdateOperation operations are for minor changes like descriptions, sizes, or configurations that don't destroy the original resource.
   * Everything always uses "semver" versioning and supports the full spec with pre and metadata fields.
   * Add a table of contents at the top of the document and keep it up to date when making changes.
   * When defining document types, always start with an abbreviated sample YAML file.
