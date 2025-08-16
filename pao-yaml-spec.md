@@ -68,6 +68,8 @@ The PAO system uses a document-driven approach where each platform service offer
 
 The PAO catalog consists of multiple document types that can exist as standalone files or be embedded within other documents. All catalog documents are stored in the PAO Repository, a GitHub repository that serves as the single source of truth for platform service definitions.
 
+**Important Note**: The YAML documents in the repository define service *configuration* and *capabilities* (what can be deployed), while the runtime *state* of deployed services (what is actually deployed) is maintained in the PAO Service database. Service instances, execution status, outputs, and operational metadata are tracked in the database, not as YAML documents in the repository. This separation ensures clean separation of concerns between configuration management and runtime state tracking.
+
 ### 2.2 Repository Structure
 
 The PAO Repository follows a hierarchical structure designed to organize offerings by their architectural domains:
