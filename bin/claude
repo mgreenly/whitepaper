@@ -1,0 +1,74 @@
+#!/bin/bash
+set -euo pipefail
+
+# Constants
+readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+readonly PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+readonly CONTAINER_HOME="/home/user"
+readonly IMAGE_NAME="agent"
+
+# Model configuration (can be overridden by environment variable)
+readonly MODEL="${CLAUDE_MODEL:-sonnet}"
+
+# Check if Docker is available
+if ! command -v docker &> /dev/null; then
+    echo "Error: Docker is not installed or not in PATH" >&2
+    exit 1
+fi
+
+# Check if Docker daemon is running
+if ! docker info &> /dev/null; then
+    echo "Error: Docker daemon is not running" >&2
+    exit 1
+fi
+
+# Check if the agent image exists
+if ! docker image inspect "$IMAGE_NAME" &> /dev/null; then
+    echo "Error: Docker image '$IMAGE_NAME' not found" >&2
+    echo "Please run: $SCRIPT_DIR/build" >&2
+    exit 1
+fi
+
+# Get host user's UID and GID
+readonly HOST_UID=$(id -u)
+readonly HOST_GID=$(id -g)
+
+# Check Claude authentication
+if [ ! -d "$HOME/.claude" ]; then
+    echo "Error: $HOME/.claude directory not found" >&2
+    echo "Please run 'claude login' on your host system first" >&2
+    exit 1
+fi
+
+if [ ! -f "$HOME/.claude.json" ]; then
+    echo "Error: $HOME/.claude.json file not found" >&2
+    echo "Please run 'claude login' on your host system first" >&2
+    exit 1
+fi
+
+# Build docker run arguments
+docker_args=(
+    --rm
+    --interactive
+    --tty
+    --user "${HOST_UID}:${HOST_GID}"
+    --env "HOME=${CONTAINER_HOME}"
+    --env "MODEL=${MODEL}"
+    --volume "${PROJECT_DIR}:/workspace"
+    --volume "${HOME}/.claude:${CONTAINER_HOME}/.claude:rw"
+    --volume "${HOME}/.claude.json:${CONTAINER_HOME}/.claude.json:rw"
+)
+
+# Forward signals to the container
+# This trap ensures the container is killed if the user presses Ctrl+C or the script is terminated
+# The --rm flag will then clean up the stopped container automatically
+trap 'docker kill "claude-$$" 2>/dev/null || true' INT TERM
+
+# Run the container
+clear
+exec docker run \
+    --name "claude-$$" \
+    "${docker_args[@]}" \
+    "$IMAGE_NAME" \
+    --dangerously-skip-permissions \
+    "$@"

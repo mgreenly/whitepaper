@@ -1,0 +1,168 @@
+#!/usr/bin/env ruby
+# /update-session slash command for Claude Code
+# Bridges the command to Claude for processing session notes into fiction
+
+require 'pathname'
+require 'fileutils'
+require 'open3'
+
+def validate_date(date_str)
+  # Validate the date format is YYYYMMDD
+  return false unless date_str.match?(/^\d{8}$/)
+  true
+end
+
+def find_source_file(date_str)
+  # Find the source session file for the given date
+  sessions_src = Pathname.new("/workspace/sessions/src")
+
+  unless sessions_src.exist?
+    STDERR.puts "Error: Sessions source directory not found at #{sessions_src}"
+    return nil
+  end
+
+  pattern = "#{date_str}-*.md"
+  matches = Dir.glob(sessions_src.join(pattern))
+
+  if matches.empty?
+    STDERR.puts "Error: No source file found matching #{sessions_src}/#{pattern}"
+    return nil
+  end
+
+  if matches.length > 1
+    STDERR.puts "Error: Multiple files found matching #{pattern}:"
+    matches.each do |m|
+      STDERR.puts "  - #{File.basename(m)}"
+    end
+    return nil
+  end
+
+  Pathname.new(matches.first)
+end
+
+def get_current_adventure_context
+  # Get context from the current adventure via symlink
+  adventure_link = Pathname.new("/workspace/adventure")
+
+  context = []
+  if adventure_link.exist? && adventure_link.symlink?
+    adventure_dir = adventure_link.readlink
+    context << "Current adventure: #{adventure_dir.basename}"
+
+    # Read agent overview if it exists
+    agent_overview = adventure_link.join("agent-overview.md")
+    if agent_overview.exist?
+      context << "Adventure context available at: adventure/agent-overview.md"
+    end
+
+    # Check for referee overview
+    referee_overview = adventure_link.join("referee-overview.md")
+    if referee_overview.exist?
+      context << "Referee notes available at: adventure/referee-overview.md"
+    end
+  end
+
+  context.empty? ? nil : context.join("\n")
+end
+
+def create_claude_prompt(date_str, source_file)
+  # Get adventure context
+  adventure_context = get_current_adventure_context
+
+  # Create the prompt for Claude to process the session
+  prompt = <<~PROMPT
+    Please execute the /update-session command for date #{date_str}.
+
+    The source file is: #{source_file}
+
+  PROMPT
+
+  if adventure_context
+    prompt += <<~PROMPT
+    #{adventure_context}
+    Please incorporate relevant adventure context from the current adventure directory (accessible via the 'adventure' symlink).
+
+    PROMPT
+  end
+
+  prompt += <<~PROMPT
+    Follow the instructions in CLAUDE.md section 7 to:
+    1. Read the source file from sessions/src/#{source_file.basename}
+    2. Gather context from previous sessions (up to 10)
+    3. Read relevant lore, character, and system files
+    4. Read the current adventure context from adventure/agent-overview.md and adventure/referee-overview.md
+    5. Transform the session notes into a fictionalized narrative
+    6. Write the output to sessions/#{source_file.basename}
+
+    The narrative should be approximately 800-1000 words, told by an unreliable narrator 50 years in the future, reminiscing about the legendary Star Duster's crew before the Fifth Frontier War.
+
+    Transform the gameplay notes into dramatic narrative with embellished heroics, atmospheric details, and creative elaboration while maintaining story coherence.
+  PROMPT
+
+  prompt
+end
+
+def main
+  if ARGV.length != 1
+    STDERR.puts "Usage: /update-session <date>"
+    STDERR.puts "  Date format: YYYYMMDD (e.g., 20250810)"
+    exit 1
+  end
+
+  date_str = ARGV[0]
+
+  # Validate date format
+  unless validate_date(date_str)
+    STDERR.puts "Error: Invalid date format '#{date_str}'. Use YYYYMMDD format."
+    exit 1
+  end
+
+  # Find the source file
+  source_file = find_source_file(date_str)
+  exit 1 unless source_file
+
+  puts "Found source file: #{source_file.basename}"
+  puts "Processing session transformation for date #{date_str}..."
+  puts
+
+  # Create the prompt for Claude
+  prompt = create_claude_prompt(date_str, source_file)
+
+  # Use claude CLI to process the request
+  begin
+    # Check if we're in the Docker container or on host
+    claude_cmd = ["claude"]
+
+    # If we have a local claude binary, use it
+    local_claude = Pathname.new("/workspace/bin/claude")
+    if local_claude.exist? && local_claude.file?
+      # We're on the host, use the docker wrapper
+      claude_cmd = [local_claude.to_s]
+    end
+
+    # Execute claude with the prompt
+    stdout, stderr, status = Open3.capture3(
+      *claude_cmd, "--max-tokens", "4000",
+      stdin_data: prompt
+    )
+
+    unless status.success?
+      STDERR.puts "Error executing Claude: #{stderr}"
+      exit 1
+    end
+
+    # Output the result
+    puts stdout
+
+  rescue Errno::ENOENT
+    STDERR.puts "Error: Claude CLI not found. Please ensure Claude is properly installed."
+    STDERR.puts "This command must be run within a Claude Code session."
+    exit 1
+  rescue => e
+    STDERR.puts "Error executing command: #{e.message}"
+    exit 1
+  end
+end
+
+# Run the main function
+main if __FILE__ == $0
