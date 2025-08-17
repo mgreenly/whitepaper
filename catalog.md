@@ -14,6 +14,10 @@
 - [Templates and Variables](#templates-and-variables)
   - [Variable System](#variable-system)
   - [Functions](#functions)
+- [Validation and Testing](#validation-and-testing)
+  - [Validation System](#validation-system)
+  - [Testing Process](#testing-process)
+  - [CI/CD Integration](#cicd-integration)
 
 ## Repository Structure
 
@@ -22,10 +26,21 @@ orchestrator-catalog-repo/
 ├── catalog/                    # Service definitions by category
 │   ├── {category}/            # compute, databases, etc.
 │   │   └── {service}.yaml     # Your service definition
-├── schema/                     # Schema specifications
-├── templates/                  # Starter templates
-├── scripts/                    # Validation tools
+├── schema/                     # JSON Schema specifications
+│   ├── catalog-item-v2.json  # CatalogItem schema
+│   ├── catalog-bundle-v2.json # CatalogBundle schema
+│   └── common-types.json     # Shared type definitions
+├── templates/                  # Starter templates for new services
+├── scripts/                    # Validation and testing tools
+│   ├── validate-catalog.sh   # Main validation script
+│   ├── validate-all.sh       # Batch validation
+│   └── test-template.sh      # Template testing
+├── tests/                      # Test fixtures and examples
+│   ├── valid/                 # Valid examples
+│   └── invalid/               # Invalid examples with expected errors
 └── .github/
+    ├── workflows/             # CI/CD pipelines
+    │   └── validate-catalog.yml # PR validation workflow
     └── CODEOWNERS             # Team ownership mapping
 ```
 
@@ -601,3 +616,130 @@ Built-in functions for data transformation:
 - `{{replace(string, old, new)}}` - String replacement (useful for Terraform names)
 - `{{json(object)}}` - JSON encoding
 - `{{base64(string)}}` - Base64 encoding
+
+## Validation and Testing
+
+### Validation System
+
+The catalog repository includes a comprehensive validation system to ensure all service definitions conform to the schema specifications. This system operates at multiple levels to catch errors before they reach the orchestrator service.
+
+**Validation Components:**
+
+1. **JSON Schema Definitions** (`/schema/` directory)
+   - `catalog-item-v2.json` - Schema for individual service definitions
+   - `catalog-bundle-v2.json` - Schema for composite service bundles
+   - `common-types.json` - Shared type definitions and constraints
+
+2. **Validation Scripts** (`/scripts/` directory)
+   - `validate-catalog.sh` - Main validation script
+   - `validate-single.sh` - Validates individual YAML files
+   - `validate-all.sh` - Batch validation for entire directories
+
+3. **Test Fixtures** (`/tests/` directory)
+   - Valid examples that should pass validation
+   - Invalid examples with expected error messages
+   - Edge cases for comprehensive testing
+
+**What Gets Validated:**
+
+- **Structural Compliance**: YAML structure matches schema requirements
+- **Naming Conventions**: All identifiers follow specified patterns (camelCase, kebab-case, etc.)
+- **Required Fields**: All mandatory fields are present with valid values
+- **Type Constraints**: Field values match their declared types
+- **Template Syntax**: Variable references use correct scope and syntax
+- **Cross-References**: Bundle components reference existing CatalogItems
+- **Action Configurations**: Each action type has required parameters
+
+### Testing Process
+
+Platform teams follow a structured testing process before submitting catalog changes:
+
+**Local Validation Workflow:**
+
+```bash
+# 1. Validate a single service definition
+./scripts/validate-catalog.sh catalog/databases/postgresql-standard.yaml
+
+# 2. Validate all services in a category
+./scripts/validate-catalog.sh catalog/databases/
+
+# 3. Run comprehensive validation before commit
+./scripts/validate-all.sh
+
+# 4. Test with sample data (dry run)
+./scripts/test-template.sh catalog/databases/postgresql-standard.yaml sample-data.json
+```
+
+**Validation Output:**
+
+The validation scripts provide clear, actionable feedback:
+- **Success**: Green checkmark with "Valid" status
+- **Errors**: Red X with specific error location (file:line:column)
+- **Warnings**: Yellow warning for non-critical issues
+- **Suggestions**: Blue info markers for improvements
+
+Example error output:
+```
+✗ catalog/databases/postgresql-invalid.yaml
+  Line 15: Field 'instanceClass' should use camelCase (found: instance_class)
+  Line 22: Missing required field 'manual.actions'
+  Line 38: Invalid variable reference '{{field.name}}' (should be '{{fields.name}}')
+```
+
+### CI/CD Integration
+
+All catalog changes are automatically validated through GitHub Actions before merge.
+
+**Pull Request Validation** (`.github/workflows/validate-catalog.yml`):
+
+```yaml
+name: Validate Catalog
+on:
+  pull_request:
+    paths:
+      - 'catalog/**'
+      - 'schema/**'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup validation environment
+        run: |
+          npm install -g ajv-cli
+          pip install pyyaml jsonschema
+      
+      - name: Validate changed files
+        run: |
+          ./scripts/validate-changed.sh ${{ github.event.pull_request.base.sha }}
+      
+      - name: Run integration tests
+        run: |
+          ./scripts/integration-test.sh
+      
+      - name: Post validation results
+        if: always()
+        uses: actions/github-script@v6
+        with:
+          script: |
+            // Post validation results as PR comment
+```
+
+**Merge Protection:**
+
+- Pull requests cannot merge without passing validation
+- CODEOWNERS approval required for respective domain changes
+- Schema changes trigger additional architecture review
+- Breaking changes require major version bump
+
+**Continuous Validation:**
+
+A nightly job validates the entire catalog to catch any drift or corruption:
+```bash
+# Runs at 2 AM UTC daily
+0 2 * * * ./scripts/validate-all.sh --report-to-slack
+```
+
+This comprehensive validation system ensures catalog integrity while allowing teams to work independently within their domains.
