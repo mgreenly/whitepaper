@@ -35,9 +35,9 @@ orchestrator-catalog-repo/
 │   ├── {category}/            # compute, databases, etc.
 │   │   └── {service}.yaml     # Your service definition
 ├── schema/                     # JSON Schema specifications
-│   ├── catalog-item-v2.json  # CatalogItem schema
-│   ├── catalog-bundle-v2.json # CatalogBundle schema
-│   └── common-types.json     # Shared type definitions
+│   ├── catalog-item.json      # CatalogItem schema
+│   ├── catalog-bundle.json    # CatalogBundle schema
+│   └── common-types.json      # Shared type definitions
 ├── templates/                  # Starter templates for new services
 ├── scripts/                    # Validation and testing tools
 │   ├── validate-catalog.sh   # Main validation script
@@ -123,6 +123,8 @@ These conventions align with Go language standards and cloud-native tooling (Kub
 
 **Important Note on Error Handling**: The catalog documents do not specify error handling behavior. All error handling, retry logic, and recovery mechanisms are the responsibility of the orchestrator service. When any action fails during execution, the service stops and requires manual intervention. Future phases may introduce automated recovery, but this is not part of the catalog specification.
 
+**Q3 2025 Scope**: In Q3, all services use manual fulfillment via JIRA tickets. The `automatic` fulfillment sections shown in examples are for Q4 and beyond.
+
 ### CatalogBundle - Composite Service
 
 A CatalogBundle combines multiple CatalogItems into a single deployable solution. It orchestrates the provisioning of multiple services with proper dependency management and variable passing between components.
@@ -166,7 +168,7 @@ components:
   
   - id: application
     catalogItem: compute-eks-containerapp
-    dependsOn: [database, secrets]  # Explicit dependencies
+    dependsOn: [database, secrets]  # Creates JIRA blocking links
     config:
       appName: "{{fields.appName}}"
       containerImage: "{{fields.containerImage}}"
@@ -638,8 +640,8 @@ The catalog repository includes a comprehensive validation system to ensure all 
 **Validation Components:**
 
 1. **JSON Schema Definitions** (`/schema/` directory)
-   - `catalog-item-v2.json` - Schema for individual service definitions
-   - `catalog-bundle-v2.json` - Schema for composite service bundles
+   - `catalog-item.json` - Schema for individual service definitions
+   - `catalog-bundle.json` - Schema for composite service bundles
    - `common-types.json` - Shared type definitions and constraints
 
 2. **Validation Scripts** (`/scripts/` directory) - **All scripts written in Ruby**
@@ -759,8 +761,8 @@ This comprehensive validation system ensures catalog integrity while allowing te
 
 ### JSON Schema Files (`/schema/`)
 - Use JSON Schema Draft-07
-- `catalog-item-v2.json`: Require metadata (id, name, description, version, category, owner), presentation.form.groups, fulfillment.strategy.mode, fulfillment.manual.actions
-- `catalog-bundle-v2.json`: Require metadata, components array with catalogItem references, presentation, fulfillment.orchestration
+- `catalog-item.json`: Require metadata (id, name, description, version, category, owner), presentation.form.groups, fulfillment.strategy.mode, fulfillment.manual.actions
+- `catalog-bundle.json`: Require metadata, components array with catalogItem references, presentation, fulfillment.orchestration
 - `common-types.json`: Define enums for categories (compute, databases, security, etc.), field types (string, number, select, etc.), action types (jira-ticket, rest-api); patterns for IDs (kebab-case), variable syntax (`^\{\{[a-z]+\.[a-zA-Z]+\}\}$`)
 
 ### Ruby Validation Scripts (`/scripts/`)
