@@ -1,3 +1,7 @@
+# Table of Contents
+
+- [Guidance](#guidance)
+
 ## Guidance
 
   * Other agents are modifying files in this project.
