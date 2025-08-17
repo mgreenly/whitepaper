@@ -36,7 +36,7 @@
 **Key Deliverables**:
 - **Terraform Integration**: Terraform action type with repository mapping and infrastructure provisioning
 - **Advanced Variable System**: Complete templating engine supporting secrets and outputs scopes for complex workflows
-- **Binary Fulfillment Model**: Services operate in manual OR automated mode with seamless switching
+- **Fulfillment Mode Switching**: Services operate in manual OR automated mode with seamless switching
 - **Production Infrastructure**: AWS deployment with monitoring, alerting, caching, and high availability
 - **Single Service Automation**: End-to-end automated provisioning for 5+ individual services (compute, database, storage, networking, monitoring)
 - **Platform Team Onboarding**: Migration tools, training, and support for first production adopters
@@ -79,7 +79,7 @@
 - Circuit breaker architecture preventing external service failures
 
 **Q4 2025 Production Epic Success Metrics**:
-- Binary fulfillment model operational (manual ↔ automated switching)
+- Fulfillment mode switching operational (manual ↔ automated switching)
 - Production AWS deployment with monitoring, alerting, and high availability
 - 5+ single services automated with <1 hour provisioning time
 - 3+ platform teams onboarded with production catalog items
@@ -172,8 +172,8 @@
 - Service Team: Add secrets scope to variable system for sensitive data handling
 - Schema Team: Create Terraform-based catalog items for compute and storage services
 
-**Sprint 7 (Nov 9-22, 2025) - Binary Fulfillment & Production Infrastructure**
-- Service Team: Implement binary fulfillment model with seamless manual/automated switching
+**Sprint 7 (Nov 9-22, 2025) - Fulfillment Mode Switching & Production Infrastructure**
+- Service Team: Implement fulfillment mode switching with seamless manual/automated switching
 - Service Team: Deploy production AWS infrastructure with RDS, Redis, and monitoring
 - DX Team: Update developer portal to support automated action tracking and logs
 
@@ -246,8 +246,8 @@
 ### Schema-First Development
 Catalog schema design is the critical path - all service development depends on stable schema specification. Schema team leads with complete specification before service implementation begins.
 
-### Binary Fulfillment Model
-Services operate in either manual OR automated mode, never partial states. Platform teams can switch modes seamlessly based on automation maturity and operational requirements.
+### Fulfillment Mode Switching
+Services operate in either manual OR automated mode, never partial states. Platform teams can switch fulfillment modes seamlessly based on automation maturity and operational requirements.
 
 ### Progressive Value Delivery
 - **Q3 2025**: Manual fulfillment with automated JIRA tickets - immediate value for platform teams

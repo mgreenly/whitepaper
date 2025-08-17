@@ -44,10 +44,11 @@ orchestrator-catalog-repo/
 - **IDs and References**: Use **kebab-case**
   - Examples: `database-postgresql-standard`, `bundle-webapp-production`
 
-- **Terraform Resource/Module Names**: Use **snake_case** for HCL compatibility
-  - Transform field values when creating Terraform identifiers
-  - Example: `{{fields.appName}}` → `module "eks_app_{{replace(fields.appName, '-', '_')}}"`
-  - Built-in modules should use underscores: `./modules/eks_app` not `./modules/eks-app`
+- **Terraform Module Names**: Use **snake_case** for HCL compatibility
+  - Transform field values when creating Terraform module identifiers
+  - Example: `{{fields.appName}}` → `module "app_{{replace(fields.appName, '-', '_')}}"`
+  - Module paths follow organization standards: `../modules/category/module_name`
+  - Note: Templates primarily instantiate existing modules rather than defining resources
 
 These conventions align with Go language standards and cloud-native tooling (Kubernetes, Helm, etc.) for optimal compatibility. Terraform identifiers require special handling to ensure valid HCL syntax.
 
@@ -224,11 +225,16 @@ fulfillment:
       - type: terraform
         config:
           contentTemplate: |
-            module "eks_app_{{replace(fields.appName, '-', '_')}}" {
-              source = "./modules/eks_app"
-              name = "{{fields.appName}}"  # Keep original for display
-              image = "{{fields.containerImage}}"
-              replicas = {{fields.replicas}}
+            # Instantiate the centrally-managed EKS application module
+            module "app_{{replace(fields.appName, '-', '_')}}" {
+              source = "../modules/compute/eks_application"
+              
+              application_name = "{{fields.appName}}"
+              container_image  = "{{fields.containerImage}}"
+              replica_count    = {{fields.replicas}}
+              namespace        = "{{fields.namespace}}"
+              
+              # Module handles all the complex EKS configuration
             }
 ```
 
@@ -272,17 +278,30 @@ fulfillment:
       - type: terraform
         config:
           contentTemplate: |
-            module "rds_{{replace(fields.instanceName, '-', '_')}}" {
-              source = "terraform-aws-modules/rds/aws"
-              identifier = "{{fields.instanceName}}"  # AWS allows dashes
-              engine = "postgres"
-              instance_class = "{{fields.instanceClass}}"
+            # Use the organization's standard PostgreSQL RDS module
+            module "db_{{replace(fields.instanceName, '-', '_')}}" {
+              source = "../modules/data/postgresql_rds"
+              
+              instance_name     = "{{fields.instanceName}}"
+              instance_class    = "{{fields.instanceClass}}"
               allocated_storage = {{fields.storageSize}}
+              
+              # Additional standard configurations handled by the module
+              backup_retention_period = 7
+              multi_az               = true
+            }
+            
+            # Output values for use by other services
+            output "db_connection_string" {
+              value = module.db_{{replace(fields.instanceName, '-', '_')}}.connection_string
+            }
+            
+            output "db_endpoint" {
+              value = module.db_{{replace(fields.instanceName, '-', '_')}}.endpoint
             }
           outputs:
-            - connectionString: "module.rds_{{replace(fields.instanceName, '-', '_')}}.db_connection_string"
-            - host: "module.rds_{{replace(fields.instanceName, '-', '_')}}.db_endpoint"
-            - port: "module.rds_{{replace(fields.instanceName, '-', '_')}}.db_port"
+            - connectionString: "db_connection_string"
+            - endpoint: "db_endpoint"
 ```
 
 #### AWS Parameter Store
@@ -323,13 +342,21 @@ fulfillment:
       - type: terraform
         config:
           contentTemplate: |
-            resource "aws_ssm_parameter" "{{replace(fields.secretName, '/', '_')}}" {
-              name  = "/{{fields.secretName}}"  # Path format preserved
-              type  = "SecureString"
-              value = jsonencode({{json(fields.secrets)}})
+            # Use the organization's secrets management module
+            module "secrets_{{replace(fields.secretName, '/', '_')}}" {
+              source = "../modules/security/parameter_store"
+              
+              parameter_path = "/{{fields.secretName}}"
+              secrets        = {{json(fields.secrets)}}
+              
+              # Module handles encryption and access policies
+            }
+            
+            output "secret_arn" {
+              value = module.secrets_{{replace(fields.secretName, '/', '_')}}.parameter_arn
             }
           outputs:
-            - secretArn: "aws_ssm_parameter.{{replace(fields.secretName, '/', '_')}}.arn"
+            - secretArn: "secret_arn"
 ```
 
 ### Example Complete Bundle
@@ -438,6 +465,8 @@ fulfillment:
 
 ## Action Types
 
+**Note on Terraform Actions**: The Terraform action type generates small template files (`.tf`) that primarily instantiate pre-built, centrally-managed Terraform modules. These modules are maintained in separate infrastructure repositories and handle the complex implementation details. The catalog templates simply pass parameters to these modules, keeping the orchestrator focused on configuration rather than infrastructure implementation.
+
 ### 1. JIRA Ticket (Manual Fallback)
 ```yaml
 type: jira-ticket
@@ -463,9 +492,16 @@ config:
 ```yaml
 type: terraform
 config:
+  # Template generates a .tf file that instantiates pre-built modules
+  # Assumes external Terraform modules exist in the infrastructure repository
   contentTemplate: |
-    resource "aws_instance" "{{replace(fields.name, '-', '_')}}" {
+    module "instance_{{replace(fields.name, '-', '_')}}" {
+      source = "../modules/compute/ec2_instance"
+      
+      name          = "{{fields.name}}"
       instance_type = "{{fields.instanceType}}"
+      environment   = "{{fields.environment}}"
+      tags          = {{json(fields.tags)}}
     }
   filename: "{{replace(fields.name, '-', '_')}}.tf"
   repositoryMapping: "terraform_infrastructure"
