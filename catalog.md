@@ -7,7 +7,7 @@
   - [Binary Fulfillment Model](#binary-fulfillment-model)
   - [Sequential Execution](#sequential-execution)
 - [Repository Structure](#repository-structure)
-- [Schema v2.0 Reference](#schema-v20-reference)
+- [Schema Reference](#schema-reference)
   - [Minimal Service Definition](#minimal-service-definition)
   - [Field Types](#field-types)
   - [Action Types](#action-types)
@@ -39,7 +39,7 @@
 
 - [ ] Choose service category: `compute`, `databases`, `messaging`, `networking`, `storage`, `security`, `monitoring`
 - [ ] Copy template from `/templates/minimal-service.yaml`
-- [ ] Define service using Schema v2.0
+- [ ] Define service using the schema
 - [ ] Validate locally: `./scripts/validate-catalog.sh`
 - [ ] Submit PR with `service/{team}/{service}` branch naming
 - [ ] Get team approval via CODEOWNERS
@@ -70,19 +70,18 @@ orchestrator-catalog-repo/
 ├── catalog/                    # Service definitions by category
 │   ├── {category}/            # compute, databases, etc.
 │   │   └── {service}.yaml     # Your service definition
-├── schema/                     # Schema v2.0 specifications
+├── schema/                     # Schema specifications
 ├── templates/                  # Starter templates
 ├── scripts/                    # Validation tools
 └── .github/
     └── CODEOWNERS             # Team ownership mapping
 ```
 
-## Schema v2.0 Reference
+## Schema Reference
 
 ### Minimal Service Definition
 
 ```yaml
-version: "2.0"
 kind: CatalogItem
 
 metadata:
@@ -414,7 +413,6 @@ Semantic versioning: `MAJOR.MINOR.PATCH`
 ## Example: Complete PostgreSQL Service
 
 ```yaml
-version: "2.0"
 kind: CatalogItem
 
 metadata:
