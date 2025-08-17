@@ -11,7 +11,7 @@
 
 **Epic Goal**: Establish working foundation with manual JIRA fulfillment
 
-**Value Delivered**: Platform teams can define services in catalog and developers can request them via manual JIRA tickets
+**Value Delivered**: Platform teams can define services in catalog, users can request them, and they can be fulfilled with JIRA actions
 
 **Success Metrics**:
 - Schema specification complete with 100% validation coverage
@@ -20,7 +20,7 @@
 - Test catalog items working: EKS app, PostgreSQL database, parameter store (all JIRA fulfillment)
 - Developers can submit requests and receive JIRA tickets with proper variable substitution
 
-### Catalog Team Focus (2 people)
+### Catalog Team Focus
 - Complete CatalogItem schema specification with validation rules
 - GitHub repository with CI/CD, CODEOWNERS enforcement, automated validation
 - Test catalog items: EKS app, PostgreSQL database, parameter store (all JIRA fulfillment)
@@ -48,7 +48,7 @@
 - `README.md`
 - `.gitignore`
 
-### Service Team Focus (3-4 people)
+### Service Team Focus
 - Core REST API with catalog ingestion, request submission, status tracking
 - JIRA action execution framework with variable substitution
 - Variable substitution system supporting 6+ scopes (fields, metadata, request, system, environment, outputs)
@@ -122,7 +122,7 @@
    - Pagination support for list endpoints
    - Health checks and metrics export
 
-### DevCtl Team Focus (1-2 people)
+### DevCtl Team Focus
 - Developer portal with dynamic form generation from catalog schema
 - Request tracking and JIRA ticket status display
 - AWS IAM authentication integration
