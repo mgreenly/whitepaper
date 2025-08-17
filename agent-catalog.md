@@ -25,6 +25,13 @@ In short you own this catalog and everyone else just plays in it.
   * You have been permission to modify catalog.md
   * You have been permission to modify agent-catalog.md
 
+## Document Organization
+
+  * The catalog.md document is organized top-down: Bundles → Items → Fields → Actions
+  * CatalogBundle comes before CatalogItem (composite before individual)
+  * Examples are grouped together after the schema definitions
+  * This logical flow helps readers understand the hierarchy
+
 ## Actions
 
   * After reading this file wait for instructions.

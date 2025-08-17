@@ -6,13 +6,8 @@
   - [CODEOWNERS Configuration](#codeowners-configuration)
 - [Naming Conventions](#naming-conventions)
 - [Schema Reference](#schema-reference)
-  - [CatalogItem - Individual Service](#catalogitem---individual-service)
   - [CatalogBundle - Composite Service](#catalogbundle---composite-service)
-  - [Example CatalogItems for Bundle Components](#example-catalogitems-for-bundle-components)
-    - [EKS Container Application](#eks-container-application)
-    - [PostgreSQL Database](#postgresql-database)
-    - [AWS Parameter Store](#aws-parameter-store)
-  - [Example Complete Bundle](#example-complete-bundle)
+  - [CatalogItem - Individual Service](#catalogitem---individual-service)
 - [Field Types](#field-types)
 - [Action Types](#action-types)
   - [JIRA Ticket](#1-jira-ticket)
@@ -23,6 +18,11 @@
 - [Templates and Variables](#templates-and-variables)
   - [Variable System](#variable-system)
   - [Functions](#functions)
+- [Examples](#examples)
+  - [Complete Bundle Example](#complete-bundle-example)
+  - [EKS Container Application](#eks-container-application)
+  - [PostgreSQL Database](#postgresql-database)
+  - [AWS Parameter Store](#aws-parameter-store)
 - [Validation and Testing](#validation-and-testing)
   - [Validation System](#validation-system)
   - [Testing Process](#testing-process)
@@ -124,6 +124,82 @@ These conventions align with Go language standards and cloud-native tooling (Kub
 
 **Important Note on Error Handling**: The catalog documents do not specify error handling behavior. All error handling, retry logic, and recovery mechanisms are the responsibility of the orchestrator service. When any action fails during execution, the service stops and requires manual intervention. Future phases may introduce automated recovery, but this is not part of the catalog specification.
 
+### CatalogBundle - Composite Service
+
+A CatalogBundle combines multiple CatalogItems into a single deployable solution. It orchestrates the provisioning of multiple services with proper dependency management and variable passing between components.
+
+```yaml
+kind: CatalogBundle
+
+metadata:
+  id: bundle-{solution}-{variant}  # e.g., bundle-webapp-standard
+  name: Display Name
+  description: Complete solution description
+  version: 1.0.0
+  category: solutions
+  owner:
+    team: platform-architecture-team
+    contact: architecture@company.com
+
+components:
+  - id: database
+    catalogItem: database-postgresql-standard  # References existing CatalogItem
+    config:
+      # Override default field values from the referenced CatalogItem
+      instanceClass: "{{fields.dbSize}}"
+      storageSize: "{{fields.dbStorage}}"
+    outputs:
+      # Declare which outputs from this component are available
+      - connectionString
+      - host
+      - port
+  
+  - id: secrets
+    catalogItem: security-parameterstore-standard
+    config:
+      secretName: "{{fields.appName}}-secrets"
+      secrets:
+        # Reference outputs from previous components
+        - key: dbConnectionString
+          value: "{{components.database.outputs.connectionString}}"
+    outputs:
+      - secretArn
+  
+  - id: application
+    catalogItem: compute-eks-containerapp
+    dependsOn: [database, secrets]  # Explicit dependencies
+    config:
+      appName: "{{fields.appName}}"
+      containerImage: "{{fields.containerImage}}"
+      replicas: "{{fields.replicas}}"
+      environmentVariables:
+        - name: DB_CONNECTION_SECRET
+          value: "{{components.secrets.outputs.secretArn}}"
+
+presentation:
+  form:
+    groups:
+      - id: appConfig
+        name: Application Configuration
+        fields:
+          - id: appName
+            name: Application Name
+            type: string
+            required: true
+          - id: containerImage
+            name: Container Image
+            type: string
+            required: true
+          - id: replicas
+            name: Number of Replicas
+            type: number
+            default: 2
+
+fulfillment:
+  orchestration:
+    mode: sequential  # or parallel where dependencies allow
+```
+
 ### CatalogItem - Individual Service
 
 ```yaml
@@ -134,7 +210,7 @@ metadata:
   name: Display Name
   description: 50-500 character description
   version: 1.0.0
-  category: databases
+  category: databases  # Must match a repository folder
   owner:
     team: platform-{category}-team
     contact: team@company.com
@@ -164,271 +240,186 @@ fulfillment:
             project: PLATFORM
             issueType: Task
             summaryTemplate: "Provision {{fields.name}}"
+  
+  automatic:
+    actions:
+      - type: terraform
+        config:
+          contentTemplate: |
+            module "resource_{{replace(fields.name, '-', '_')}}" {
+              source = "../modules/category/resource_type"
+              name   = "{{fields.name}}"
+            }
 ```
 
-### CatalogBundle - Composite Service
+## Field Types
 
-A CatalogBundle combines multiple CatalogItems into a single deployable solution. It orchestrates the provisioning of multiple services with proper dependency management and variable passing between components.
+Fields define the user input interface. Each field type has specific validation and display characteristics:
 
+| Type | Use Case | Validation | UI Element |
+|------|----------|------------|------------|
+| `string` | Text input | pattern, min/max length | Text field |
+| `number` | Numeric values | min/max, step | Number input |
+| `boolean` | Yes/No choices | - | Checkbox |
+| `select` | Single choice | enum values | Dropdown |
+| `multiselect` | Multiple choices | enum values | Multi-select |
+| `date` | Date picker | min/max date | Date picker |
+| `file` | File upload | size, type | File upload |
+| `textarea` | Multi-line text | min/max length | Text area |
+| `password` | Sensitive data | pattern, strength | Password field |
+| `email` | Email addresses | format validation | Email input |
+
+**Field Definition Structure:**
 ```yaml
-kind: CatalogBundle
+fields:
+  - id: fieldName           # Unique identifier (camelCase)
+    name: Display Name      # User-friendly label
+    type: string           # Field type from table above
+    required: true         # Optional, default false
+    default: "value"       # Optional default value
+    description: "Help"    # Optional help text
+    validation:            # Optional validation rules
+      pattern: "^[a-z]+$"  # Regex for string types
+      min: 1               # Minimum for numbers
+      max: 100             # Maximum for numbers
+      enum: [a, b, c]      # Allowed values for select types
+```
 
-metadata:
-  id: bundle-{solution}-{variant}  # e.g., bundle-webapp-standard
-  name: Display Name
-  description: Complete solution description
-  version: 1.0.0
-  category: solutions
-  owner:
-    team: platform-architecture-team
-    contact: architecture@company.com
+## Action Types
 
-components:
-  - id: database
-    catalogItem: database-postgresql-standard
-    config:
-      instanceClass: "{{fields.dbSize}}"
-      storageSize: "{{fields.dbStorage}}"
-    outputs:
-      - connectionString
-      - host
-      - port
-  
-  - id: secrets
-    catalogItem: security-parameterstore-standard
-    config:
-      secretName: "{{fields.appName}}-secrets"
-      secrets:
-        - key: dbConnectionString
-          value: "{{components.database.outputs.connectionString}}"
-    outputs:
-      - secretArn
-  
-  - id: application
-    catalogItem: compute-eks-containerapp
-    dependsOn: [database, secrets]
-    config:
-      appName: "{{fields.appName}}"
-      containerImage: "{{fields.containerImage}}"
-      replicas: "{{fields.replicas}}"
-      environmentVariables:
-        - name: DB_CONNECTION_SECRET
-          value: "{{components.secrets.outputs.secretArn}}"
+**Note on Terraform Actions**: The Terraform action type generates small template files (`.tf`) that primarily instantiate pre-built, centrally-managed Terraform modules. These modules are maintained in separate infrastructure repositories and handle the complex implementation details. The catalog templates simply pass parameters to these modules, keeping the orchestrator focused on configuration rather than infrastructure implementation.
 
-presentation:
-  form:
-    groups:
-      - id: appConfig
-        name: Application Configuration
-        fields:
-          - id: appName
-            name: Application Name
-            type: string
-            required: true
-          - id: containerImage
-            name: Container Image
-            type: string
-            required: true
-          - id: replicas
-            name: Number of Replicas
-            type: number
-            default: 2
+### 1. JIRA Ticket
+```yaml
+type: jira-ticket
+config:
+  ticket:
+    project: PLATFORM
+    summaryTemplate: "{{fields.name}} request"
+    descriptionTemplate: |
+      Requesting: {{fields.name}}
+      Type: {{metadata.name}}
+      User: {{request.user.email}}
+    issueType: Task
+    priority: "{{fields.priority}}"
+    labels:
+      - platform-automation
+      - "{{metadata.category}}"
+```
+
+### 2. REST API
+```yaml
+type: rest-api
+config:
+  endpoint:
+    url: "https://api.internal.com/provision"
+    method: POST
+  headers:
+    Content-Type: application/json
+    X-API-Key: "{{env.API_KEY}}"
+  body:
+    type: json
+    contentTemplate: |
+      {
+        "name": "{{fields.name}}",
+        "type": "{{fields.instanceType}}",
+        "owner": "{{request.user.email}}"
+      }
+  retry:
+    attempts: 3
+    backoff: exponential
+```
+
+### 3. Terraform
+```yaml
+type: terraform
+config:
+  # Template generates a .tf file that instantiates pre-built modules
+  # Assumes external Terraform modules exist in the infrastructure repository
+  contentTemplate: |
+    module "instance_{{replace(fields.name, '-', '_')}}" {
+      source = "../modules/compute/ec2_instance"
       
-      - id: databaseConfig
-        name: Database Configuration
-        fields:
-          - id: dbSize
-            name: Database Size
-            type: select
-            enum: [db.t3.micro, db.t3.small, db.t3.medium]
-          - id: dbStorage
-            name: Storage (GB)
-            type: number
-            default: 100
-
-fulfillment:
-  orchestration:
-    mode: sequential  # or parallel where dependencies allow
+      name          = "{{fields.name}}"
+      instance_type = "{{fields.instanceType}}"
+      environment   = "{{fields.environment}}"
+      tags          = {{json(fields.tags)}}
+    }
+  filename: "{{replace(fields.name, '-', '_')}}.tf"
+  repositoryMapping: "terraform_infrastructure"
 ```
 
-### Example CatalogItems for Bundle Components
-
-#### EKS Container Application
+### 4. GitHub Workflow
 ```yaml
-kind: CatalogItem
-
-metadata:
-  id: compute-eks-containerapp
-  name: EKS Container Application
-  description: Deploy containerized application to EKS cluster
-  version: 1.0.0
-  category: compute
-
-presentation:
-  form:
-    groups:
-      - id: basic
-        fields:
-          - id: appName
-            type: string
-            required: true
-          - id: containerImage
-            type: string
-            required: true
-          - id: replicas
-            type: number
-            default: 2
-
-fulfillment:
-  strategy:
-    mode: automatic
-  manual:
-    actions:
-      - type: jira-ticket
-        config:
-          ticket:
-            project: COMPUTE
-            summaryTemplate: "Deploy {{fields.appName}} to EKS"
-  automatic:
-    actions:
-      - type: terraform
-        config:
-          contentTemplate: |
-            # Instantiate the centrally-managed EKS application module
-            module "app_{{replace(fields.appName, '-', '_')}}" {
-              source = "../modules/compute/eks_application"
-              
-              application_name = "{{fields.appName}}"
-              container_image  = "{{fields.containerImage}}"
-              replica_count    = {{fields.replicas}}
-              namespace        = "{{fields.namespace}}"
-              
-              # Module handles all the complex EKS configuration
-            }
+type: github-workflow
+config:
+  repository:
+    owner: platform-team
+    name: automation-workflows
+  workflow:
+    id: provision.yml
+  inputs:
+    resourceName: "{{fields.name}}"
+    resourceType: "{{metadata.id}}"
+    requestId: "{{request.id}}"
+  waitForCompletion: true
+  timeout: 3600
 ```
 
-#### PostgreSQL Database
+### 5. Webhook
 ```yaml
-kind: CatalogItem
-
-metadata:
-  id: database-postgresql-standard
-  name: PostgreSQL Database
-  description: Managed PostgreSQL instance with backups
-  version: 1.0.0
-  category: databases
-
-presentation:
-  form:
-    groups:
-      - id: config
-        fields:
-          - id: instanceName
-            type: string
-            required: true
-          - id: instanceClass
-            type: select
-            enum: [db.t3.micro, db.t3.small, db.t3.medium]
-          - id: storageSize
-            type: number
-
-fulfillment:
-  strategy:
-    mode: automatic
-  manual:
-    actions:
-      - type: jira-ticket
-        config:
-          ticket:
-            project: DBA
-            summaryTemplate: "PostgreSQL: {{fields.instanceName}}"
-  automatic:
-    actions:
-      - type: terraform
-        config:
-          contentTemplate: |
-            # Use the organization's standard PostgreSQL RDS module
-            module "db_{{replace(fields.instanceName, '-', '_')}}" {
-              source = "../modules/data/postgresql_rds"
-              
-              instance_name     = "{{fields.instanceName}}"
-              instance_class    = "{{fields.instanceClass}}"
-              allocated_storage = {{fields.storageSize}}
-              
-              # Additional standard configurations handled by the module
-              backup_retention_period = 7
-              multi_az               = true
-            }
-            
-            # Output values for use by other services
-            output "db_connection_string" {
-              value = module.db_{{replace(fields.instanceName, '-', '_')}}.connection_string
-            }
-            
-            output "db_endpoint" {
-              value = module.db_{{replace(fields.instanceName, '-', '_')}}.endpoint
-            }
-          outputs:
-            - connectionString: "db_connection_string"
-            - endpoint: "db_endpoint"
+type: webhook
+config:
+  endpoint:
+    url: "{{env.WEBHOOK_URL}}/provision"
+    method: POST
+  headers:
+    X-Webhook-Secret: "{{secrets.WEBHOOK_SECRET}}"
+  body:
+    template: |
+      {
+        "resource": "{{fields.name}}",
+        "action": "provision",
+        "timestamp": "{{timestamp()}}"
+      }
+  hmacValidation:
+    secret: "{{secrets.WEBHOOK_SECRET}}"
+    algorithm: sha256
 ```
 
-#### AWS Parameter Store
-```yaml
-kind: CatalogItem
+## Templates and Variables
 
-metadata:
-  id: security-parameterstore-standard
-  name: AWS Parameter Store Secrets
-  description: Secure secret storage in AWS Parameter Store
-  version: 1.0.0
-  category: security
+### Variable System
 
-presentation:
-  form:
-    groups:
-      - id: config
-        fields:
-          - id: secretName
-            type: string
-            required: true
-          - id: secrets
-            type: multiselect
-            description: Key-value pairs to store
+Variables allow dynamic content insertion throughout catalog definitions. Variables are replaced at runtime when requests are processed.
 
-fulfillment:
-  strategy:
-    mode: automatic
-  manual:
-    actions:
-      - type: jira-ticket
-        config:
-          ticket:
-            project: SECURITY
-            summaryTemplate: "Create secrets: {{fields.secretName}}"
-  automatic:
-    actions:
-      - type: terraform
-        config:
-          contentTemplate: |
-            # Use the organization's secrets management module
-            module "secrets_{{replace(fields.secretName, '/', '_')}}" {
-              source = "../modules/security/parameter_store"
-              
-              parameter_path = "/{{fields.secretName}}"
-              secrets        = {{json(fields.secrets)}}
-              
-              # Module handles encryption and access policies
-            }
-            
-            output "secret_arn" {
-              value = module.secrets_{{replace(fields.secretName, '/', '_')}}.parameter_arn
-            }
-          outputs:
-            - secretArn: "secret_arn"
-```
+| Scope | Example | Description |
+|-------|---------|-------------|
+| **User Input** | `{{fields.name}}` | Form field values submitted by users |
+| **Metadata** | `{{metadata.id}}` | Service metadata from catalog definition |
+| **Request** | `{{request.user.email}}` | Request context information |
+| **System** | `{{system.date}}` | System-generated variables |
+| **Environment** | `{{env.API_KEY}}` | Environment variables from orchestrator |
+| **Secrets** | `{{secrets.DB_PASSWORD}}` | Secret values from vault |
+| **Output** | `{{output.actionId.field}}` | Previous action outputs |
+| **Components** | `{{components.database.outputs.host}}` | Bundle component outputs |
 
-### Example Complete Bundle
+### Functions
+
+Built-in functions for data transformation:
+
+- `{{uuid()}}` - Generate UUID
+- `{{timestamp()}}` - Current timestamp
+- `{{upper(string)}}` - Uppercase conversion
+- `{{concat(str1, str2)}}` - String concatenation
+- `{{replace(string, old, new)}}` - String replacement (useful for Terraform names)
+- `{{json(object)}}` - JSON encoding
+- `{{base64(string)}}` - Base64 encoding
+
+## Examples
+
+### Complete Bundle Example
+
 ```yaml
 kind: CatalogBundle
 
@@ -515,116 +506,183 @@ fulfillment:
     mode: sequential
 ```
 
-## Field Types
+### EKS Container Application
 
-| Type | Use Case | Validation |
-|------|----------|------------|
-| `string` | Text input | pattern, min/max length |
-| `number` | Numeric values | min/max, step |
-| `boolean` | Yes/No choices | - |
-| `select` | Single choice | enum values |
-| `multiselect` | Multiple choices | enum values |
-| `date` | Date picker | min/max date |
-| `file` | File upload | size, type |
-| `textarea` | Multi-line text | min/max length |
-| `password` | Sensitive data | pattern, strength |
-| `email` | Email addresses | format validation |
-
-## Action Types
-
-**Note on Terraform Actions**: The Terraform action type generates small template files (`.tf`) that primarily instantiate pre-built, centrally-managed Terraform modules. These modules are maintained in separate infrastructure repositories and handle the complex implementation details. The catalog templates simply pass parameters to these modules, keeping the orchestrator focused on configuration rather than infrastructure implementation.
-
-### 1. JIRA Ticket
 ```yaml
-type: jira-ticket
-config:
-  ticket:
-    project: PLATFORM
-    summaryTemplate: "{{fields.name}} request"
+kind: CatalogItem
+
+metadata:
+  id: compute-eks-containerapp
+  name: EKS Container Application
+  description: Deploy containerized application to EKS cluster
+  version: 1.0.0
+  category: compute
+
+presentation:
+  form:
+    groups:
+      - id: basic
+        fields:
+          - id: appName
+            type: string
+            required: true
+          - id: containerImage
+            type: string
+            required: true
+          - id: replicas
+            type: number
+            default: 2
+
+fulfillment:
+  strategy:
+    mode: automatic
+  manual:
+    actions:
+      - type: jira-ticket
+        config:
+          ticket:
+            project: COMPUTE
+            summaryTemplate: "Deploy {{fields.appName}} to EKS"
+  automatic:
+    actions:
+      - type: terraform
+        config:
+          contentTemplate: |
+            # Instantiate the centrally-managed EKS application module
+            module "app_{{replace(fields.appName, '-', '_')}}" {
+              source = "../modules/compute/eks_application"
+              
+              application_name = "{{fields.appName}}"
+              container_image  = "{{fields.containerImage}}"
+              replica_count    = {{fields.replicas}}
+              namespace        = "{{fields.namespace}}"
+              
+              # Module handles all the complex EKS configuration
+            }
 ```
 
-### 2. REST API
+### PostgreSQL Database
+
 ```yaml
-type: rest-api
-config:
-  endpoint:
-    url: "https://api.internal.com/provision"
-    method: POST
-  body:
-    type: json
-    contentTemplate: '{"name": "{{fields.name}}"}'
+kind: CatalogItem
+
+metadata:
+  id: database-postgresql-standard
+  name: PostgreSQL Database
+  description: Managed PostgreSQL instance with backups
+  version: 1.0.0
+  category: databases
+
+presentation:
+  form:
+    groups:
+      - id: config
+        fields:
+          - id: instanceName
+            type: string
+            required: true
+          - id: instanceClass
+            type: select
+            enum: [db.t3.micro, db.t3.small, db.t3.medium]
+          - id: storageSize
+            type: number
+
+fulfillment:
+  strategy:
+    mode: automatic
+  manual:
+    actions:
+      - type: jira-ticket
+        config:
+          ticket:
+            project: DBA
+            summaryTemplate: "PostgreSQL: {{fields.instanceName}}"
+  automatic:
+    actions:
+      - type: terraform
+        config:
+          contentTemplate: |
+            # Use the organization's standard PostgreSQL RDS module
+            module "db_{{replace(fields.instanceName, '-', '_')}}" {
+              source = "../modules/data/postgresql_rds"
+              
+              instance_name     = "{{fields.instanceName}}"
+              instance_class    = "{{fields.instanceClass}}"
+              allocated_storage = {{fields.storageSize}}
+              
+              # Additional standard configurations handled by the module
+              backup_retention_period = 7
+              multi_az               = true
+            }
+            
+            # Output values for use by other services
+            output "db_connection_string" {
+              value = module.db_{{replace(fields.instanceName, '-', '_')}}.connection_string
+            }
+            
+            output "db_endpoint" {
+              value = module.db_{{replace(fields.instanceName, '-', '_')}}.endpoint
+            }
+          outputs:
+            - connectionString: "db_connection_string"
+            - endpoint: "db_endpoint"
 ```
 
-### 3. Terraform
+### AWS Parameter Store
+
 ```yaml
-type: terraform
-config:
-  # Template generates a .tf file that instantiates pre-built modules
-  # Assumes external Terraform modules exist in the infrastructure repository
-  contentTemplate: |
-    module "instance_{{replace(fields.name, '-', '_')}}" {
-      source = "../modules/compute/ec2_instance"
-      
-      name          = "{{fields.name}}"
-      instance_type = "{{fields.instanceType}}"
-      environment   = "{{fields.environment}}"
-      tags          = {{json(fields.tags)}}
-    }
-  filename: "{{replace(fields.name, '-', '_')}}.tf"
-  repositoryMapping: "terraform_infrastructure"
+kind: CatalogItem
+
+metadata:
+  id: security-parameterstore-standard
+  name: AWS Parameter Store Secrets
+  description: Secure secret storage in AWS Parameter Store
+  version: 1.0.0
+  category: security
+
+presentation:
+  form:
+    groups:
+      - id: config
+        fields:
+          - id: secretName
+            type: string
+            required: true
+          - id: secrets
+            type: multiselect
+            description: Key-value pairs to store
+
+fulfillment:
+  strategy:
+    mode: automatic
+  manual:
+    actions:
+      - type: jira-ticket
+        config:
+          ticket:
+            project: SECURITY
+            summaryTemplate: "Create secrets: {{fields.secretName}}"
+  automatic:
+    actions:
+      - type: terraform
+        config:
+          contentTemplate: |
+            # Use the organization's secrets management module
+            module "secrets_{{replace(fields.secretName, '/', '_')}}" {
+              source = "../modules/security/parameter_store"
+              
+              parameter_path = "/{{fields.secretName}}"
+              secrets        = {{json(fields.secrets)}}
+              
+              # Module handles encryption and access policies
+            }
+            
+            output "secret_arn" {
+              value = module.secrets_{{replace(fields.secretName, '/', '_')}}.parameter_arn
+            }
+          outputs:
+            - secretArn: "secret_arn"
 ```
-
-### 4. GitHub Workflow
-```yaml
-type: github-workflow
-config:
-  repository:
-    owner: platform-team
-    name: automation-workflows
-  workflow:
-    id: provision.yml
-  inputs:
-    resourceName: "{{fields.name}}"
-```
-
-### 5. Webhook
-```yaml
-type: webhook
-config:
-  endpoint:
-    url: "{{env.WEBHOOK_URL}}"
-    method: POST
-  body:
-    template: '{"resource": "{{fields.name}}"}'
-```
-
-## Templates and Variables
-
-### Variable System
-
-Variables allow dynamic content insertion throughout catalog definitions. Variables are replaced at runtime when requests are processed.
-
-| Scope | Example | Description |
-|-------|---------|-------------|
-| **User Input** | `{{fields.name}}` | Form field values submitted by users |
-| **Metadata** | `{{metadata.id}}` | Service metadata from catalog definition |
-| **Request** | `{{request.user.email}}` | Request context information |
-| **System** | `{{system.date}}` | System-generated variables |
-| **Environment** | `{{env.API_KEY}}` | Environment variables from orchestrator |
-| **Secrets** | `{{secrets.DB_PASSWORD}}` | Secret values from vault |
-| **Output** | `{{output.actionId.field}}` | Previous action outputs |
-
-### Functions
-
-Built-in functions for data transformation:
-
-- `{{uuid()}}` - Generate UUID
-- `{{timestamp()}}` - Current timestamp
-- `{{upper(string)}}` - Uppercase conversion
-- `{{concat(str1, str2)}}` - String concatenation
-- `{{replace(string, old, new)}}` - String replacement (useful for Terraform names)
-- `{{json(object)}}` - JSON encoding
-- `{{base64(string)}}` - Base64 encoding
 
 ## Validation and Testing
 
