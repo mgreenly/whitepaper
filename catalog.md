@@ -12,9 +12,7 @@
 - [Action Types](#action-types)
   - [JIRA Ticket](#1-jira-ticket)
   - [REST API](#2-rest-api)
-  - [Terraform](#3-terraform)
-  - [GitHub Workflow](#4-github-workflow)
-  - [Webhook](#5-webhook)
+  - [Future Action Types](#future-action-types)
 - [Templates and Variables](#templates-and-variables)
   - [Variable System](#variable-system)
   - [Functions](#functions)
@@ -244,13 +242,18 @@ fulfillment:
   
   automatic:
     actions:
-      - type: terraform
+      - type: rest-api
         config:
-          contentTemplate: |
-            module "resource_{{replace(fields.name, '-', '_')}}" {
-              source = "../modules/category/resource_type"
-              name   = "{{fields.name}}"
-            }
+          endpoint:
+            url: "https://api.platform.internal/provision"
+            method: POST
+          body:
+            type: json
+            contentTemplate: |
+              {
+                "service": "{{metadata.id}}",
+                "name": "{{fields.name}}"
+              }
 ```
 
 ## Field Types
@@ -288,7 +291,7 @@ fields:
 
 ## Action Types
 
-**Note on Terraform Actions**: The Terraform action type generates small template files (`.tf`) that primarily instantiate pre-built, centrally-managed Terraform modules. These modules are maintained in separate infrastructure repositories and handle the complex implementation details. The catalog templates simply pass parameters to these modules, keeping the orchestrator focused on configuration rather than infrastructure implementation.
+**Current Implementation**: The Q3 2025 Foundation Epic supports JIRA and REST API action types. Additional action types (Terraform, GitHub Workflows, Webhooks) are planned for future releases.
 
 ### 1. JIRA Ticket
 ```yaml
@@ -331,62 +334,14 @@ config:
     backoff: exponential
 ```
 
-### 3. Terraform
-```yaml
-type: terraform
-config:
-  # Template generates a .tf file that instantiates pre-built modules
-  # Assumes external Terraform modules exist in the infrastructure repository
-  contentTemplate: |
-    module "instance_{{replace(fields.name, '-', '_')}}" {
-      source = "../modules/compute/ec2_instance"
-      
-      name          = "{{fields.name}}"
-      instance_type = "{{fields.instanceType}}"
-      environment   = "{{fields.environment}}"
-      tags          = {{json(fields.tags)}}
-    }
-  filename: "{{replace(fields.name, '-', '_')}}.tf"
-  repositoryMapping: "terraform_infrastructure"
-```
+### Future Action Types
 
-### 4. GitHub Workflow
-```yaml
-type: github-workflow
-config:
-  repository:
-    owner: platform-team
-    name: automation-workflows
-  workflow:
-    id: provision.yml
-  inputs:
-    resourceName: "{{fields.name}}"
-    resourceType: "{{metadata.id}}"
-    requestId: "{{request.id}}"
-  waitForCompletion: true
-  timeout: 3600
-```
-
-### 5. Webhook
-```yaml
-type: webhook
-config:
-  endpoint:
-    url: "{{env.WEBHOOK_URL}}/provision"
-    method: POST
-  headers:
-    X-Webhook-Secret: "{{secrets.WEBHOOK_SECRET}}"
-  body:
-    template: |
-      {
-        "resource": "{{fields.name}}",
-        "action": "provision",
-        "timestamp": "{{timestamp()}}"
-      }
-  hmacValidation:
-    secret: "{{secrets.WEBHOOK_SECRET}}"
-    algorithm: sha256
-```
+The following action types are planned for Q4 2025 and beyond:
+- **Terraform**: Infrastructure provisioning via `.tf` template generation
+- **GitHub Workflow**: Trigger GitHub Actions for complex automation
+- **Webhook**: Generic webhook invocation for external system integration
+- **AWS Lambda**: Direct Lambda function invocation
+- **CloudFormation**: AWS stack provisioning
 
 ## Templates and Variables
 
@@ -546,20 +501,20 @@ fulfillment:
             summaryTemplate: "Deploy {{fields.appName}} to EKS"
   automatic:
     actions:
-      - type: terraform
+      - type: rest-api
         config:
-          contentTemplate: |
-            # Instantiate the centrally-managed EKS application module
-            module "app_{{replace(fields.appName, '-', '_')}}" {
-              source = "../modules/compute/eks_application"
-              
-              application_name = "{{fields.appName}}"
-              container_image  = "{{fields.containerImage}}"
-              replica_count    = {{fields.replicas}}
-              namespace        = "{{fields.namespace}}"
-              
-              # Module handles all the complex EKS configuration
-            }
+          endpoint:
+            url: "https://eks.platform.internal/api/deploy"
+            method: POST
+          body:
+            type: json
+            contentTemplate: |
+              {
+                "applicationName": "{{fields.appName}}",
+                "containerImage": "{{fields.containerImage}}",
+                "replicas": {{fields.replicas}},
+                "namespace": "{{fields.namespace}}"
+              }
 ```
 
 ### PostgreSQL Database
@@ -600,33 +555,25 @@ fulfillment:
             summaryTemplate: "PostgreSQL: {{fields.instanceName}}"
   automatic:
     actions:
-      - type: terraform
+      - type: rest-api
         config:
-          contentTemplate: |
-            # Use the organization's standard PostgreSQL RDS module
-            module "db_{{replace(fields.instanceName, '-', '_')}}" {
-              source = "../modules/data/postgresql_rds"
-              
-              instance_name     = "{{fields.instanceName}}"
-              instance_class    = "{{fields.instanceClass}}"
-              allocated_storage = {{fields.storageSize}}
-              
-              # Additional standard configurations handled by the module
-              backup_retention_period = 7
-              multi_az               = true
-            }
-            
-            # Output values for use by other services
-            output "db_connection_string" {
-              value = module.db_{{replace(fields.instanceName, '-', '_')}}.connection_string
-            }
-            
-            output "db_endpoint" {
-              value = module.db_{{replace(fields.instanceName, '-', '_')}}.endpoint
-            }
+          endpoint:
+            url: "https://database.platform.internal/api/provision"
+            method: POST
+          body:
+            type: json
+            contentTemplate: |
+              {
+                "instanceName": "{{fields.instanceName}}",
+                "instanceClass": "{{fields.instanceClass}}",
+                "allocatedStorage": {{fields.storageSize}},
+                "engine": "postgres",
+                "backupRetention": 7,
+                "multiAZ": true
+              }
           outputs:
-            - connectionString: "db_connection_string"
-            - endpoint: "db_endpoint"
+            - connectionString
+            - endpoint
 ```
 
 ### AWS Parameter Store
@@ -665,24 +612,21 @@ fulfillment:
             summaryTemplate: "Create secrets: {{fields.secretName}}"
   automatic:
     actions:
-      - type: terraform
+      - type: rest-api
         config:
-          contentTemplate: |
-            # Use the organization's secrets management module
-            module "secrets_{{replace(fields.secretName, '/', '_')}}" {
-              source = "../modules/security/parameter_store"
-              
-              parameter_path = "/{{fields.secretName}}"
-              secrets        = {{json(fields.secrets)}}
-              
-              # Module handles encryption and access policies
-            }
-            
-            output "secret_arn" {
-              value = module.secrets_{{replace(fields.secretName, '/', '_')}}.parameter_arn
-            }
+          endpoint:
+            url: "https://secrets.platform.internal/api/create"
+            method: POST
+          body:
+            type: json
+            contentTemplate: |
+              {
+                "parameterPath": "/{{fields.secretName}}",
+                "secrets": {{json(fields.secrets)}},
+                "type": "SecureString"
+              }
           outputs:
-            - secretArn: "secret_arn"
+            - secretArn
 ```
 
 ## Validation and Testing
@@ -817,7 +761,7 @@ This comprehensive validation system ensures catalog integrity while allowing te
 - Use JSON Schema Draft-07
 - `catalog-item-v2.json`: Require metadata (id, name, description, version, category, owner), presentation.form.groups, fulfillment.strategy.mode, fulfillment.manual.actions
 - `catalog-bundle-v2.json`: Require metadata, components array with catalogItem references, presentation, fulfillment.orchestration
-- `common-types.json`: Define enums for categories, field types, action types; patterns for IDs (kebab-case), variable syntax (`^\{\{[a-z]+\.[a-zA-Z]+\}\}$`)
+- `common-types.json`: Define enums for categories (compute, databases, security, etc.), field types (string, number, select, etc.), action types (jira-ticket, rest-api); patterns for IDs (kebab-case), variable syntax (`^\{\{[a-z]+\.[a-zA-Z]+\}\}$`)
 
 ### Ruby Validation Scripts (`/scripts/`)
 - Use `json_schemer` gem for JSON Schema validation
@@ -827,7 +771,7 @@ This comprehensive validation system ensures catalog integrity while allowing te
 - `validate-changed.sh`: Use `git diff --name-only BASE_SHA` to find changed files
 
 ### Test Files (`/tests/`)
-- `valid/`: Include examples with all field types, all action types, cross-component references
+- `valid/`: Include examples with all field types, both action types (jira-ticket, rest-api), cross-component references
 - `invalid/missing-required-fields.yaml`: Omit metadata.id, fulfillment.manual.actions
 - `invalid/invalid-naming-conventions.yaml`: Use snake_case for fields, PascalCase for IDs
 
