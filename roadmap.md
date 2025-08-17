@@ -168,6 +168,37 @@
 - Variable substitution system supporting 6+ scopes (fields, metadata, request, system, environment, outputs)
 - PostgreSQL database schema for requests and audit logging
 
+**Required API Endpoints (20 total)**:
+
+*Core User Journey (16 endpoints)*:
+- `/api/v1/catalog` - Browse available services
+- `/api/v1/catalog/items/{item_id}` - Service details
+- `/api/v1/catalog/items/{item_id}/schema` - Dynamic form schema
+- `/api/v1/validate/request` - Validate user input before submission
+- `/api/v1/requests` - Submit/list service requests
+- `/api/v1/requests/{request_id}` - Request details
+- `/api/v1/requests/{request_id}/status` - Current status
+- `/api/v1/requests/{request_id}/logs` - Execution logs
+- `/api/v1/requests/{request_id}/retry` - Retry failed action
+- `/api/v1/requests/{request_id}/abort` - Abort failed request
+- `/api/v1/requests/{request_id}/escalate` - Escalate to manual support
+- `/api/v1/requests/{request_id}/escalation` - Escalation details
+- `/api/v1/catalog/refresh` - Force catalog refresh
+- `/api/v1/health` - Service health status
+- `/api/v1/health/ready` - Readiness probe
+- `/api/v1/version` - Service version info
+
+*Platform Team Tools (3 endpoints)*:
+- `/api/v1/validate/catalog-item` - Validate service definition
+- `/api/v1/preview/form` - Preview form generation
+- `/api/v1/test/variables` - Test variable substitution
+
+*System Integration (4 endpoints)*:
+- `/api/v1/metrics` - Prometheus metrics
+- `/api/v1/webhooks/github` - GitHub events
+- `/api/v1/webhooks/jira` - JIRA status updates
+- `/api/v1/webhooks/terraform` - Terraform notifications
+
 **DevCtl Team Focus**:
 - Developer portal with dynamic form generation from catalog schema
 - Request tracking and JIRA ticket status display

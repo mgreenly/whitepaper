@@ -27,6 +27,7 @@
   - [Validation System](#validation-system)
   - [Testing Process](#testing-process)
   - [CI/CD Integration](#cicd-integration)
+- [Implementation Guidance](#implementation-guidance)
 
 ## Repository Structure
 
@@ -697,7 +698,7 @@ The catalog repository includes a comprehensive validation system to ensure all 
    - `catalog-bundle-v2.json` - Schema for composite service bundles
    - `common-types.json` - Shared type definitions and constraints
 
-2. **Validation Scripts** (`/scripts/` directory)
+2. **Validation Scripts** (`/scripts/` directory) - **All scripts written in Ruby**
    - `validate-catalog.sh` - Main validation script
    - `validate-single.sh` - Validates individual YAML files
    - `validate-all.sh` - Batch validation for entire directories
@@ -775,8 +776,7 @@ jobs:
       
       - name: Setup validation environment
         run: |
-          npm install -g ajv-cli
-          pip install pyyaml jsonschema
+          gem install json_schemer psych
       
       - name: Validate changed files
         run: |
@@ -810,3 +810,32 @@ A nightly job validates the entire catalog to catch any drift or corruption:
 ```
 
 This comprehensive validation system ensures catalog integrity while allowing teams to work independently within their domains.
+
+## Implementation Guidance
+
+### JSON Schema Files (`/schema/`)
+- Use JSON Schema Draft-07
+- `catalog-item-v2.json`: Require metadata (id, name, description, version, category, owner), presentation.form.groups, fulfillment.strategy.mode, fulfillment.manual.actions
+- `catalog-bundle-v2.json`: Require metadata, components array with catalogItem references, presentation, fulfillment.orchestration
+- `common-types.json`: Define enums for categories, field types, action types; patterns for IDs (kebab-case), variable syntax (`^\{\{[a-z]+\.[a-zA-Z]+\}\}$`)
+
+### Ruby Validation Scripts (`/scripts/`)
+- Use `json_schemer` gem for JSON Schema validation
+- Use `psych` for YAML parsing
+- Exit 0 on success, 1 on validation errors
+- Output format: `filename:line:column: error message`
+- `validate-changed.sh`: Use `git diff --name-only BASE_SHA` to find changed files
+
+### Test Files (`/tests/`)
+- `valid/`: Include examples with all field types, all action types, cross-component references
+- `invalid/missing-required-fields.yaml`: Omit metadata.id, fulfillment.manual.actions
+- `invalid/invalid-naming-conventions.yaml`: Use snake_case for fields, PascalCase for IDs
+
+### Templates (`/templates/`)
+- Include minimal valid structure with TODO comments
+- `catalog-item-template.yaml`: Basic metadata, one field, one JIRA action
+- `jira-action-template.yaml`: Project, issueType, summaryTemplate with variable examples
+
+### Other Files
+- `README.md`: Link to catalog.md, quick start commands, troubleshooting
+- `.gitignore`: `*.tmp`, `.DS_Store`, `node_modules/`, `vendor/`, test output files
