@@ -140,6 +140,28 @@
 - Test catalog items: EKS app, PostgreSQL database, parameter store (all JIRA fulfillment)
 - Governance model and platform team contribution workflows
 
+**Catalog Repository Files to Create**:
+- `.github/CODEOWNERS`
+- `.github/workflows/validate-catalog.yml`
+- `schema/catalog-item-v2.json`
+- `schema/catalog-bundle-v2.json`
+- `schema/common-types.json`
+- `scripts/validate-catalog.sh`
+- `scripts/validate-all.sh`
+- `scripts/test-template.sh`
+- `scripts/validate-changed.sh`
+- `scripts/integration-test.sh`
+- `tests/valid/example-catalog-item.yaml`
+- `tests/invalid/missing-required-fields.yaml`
+- `tests/invalid/invalid-naming-conventions.yaml`
+- `templates/catalog-item-template.yaml`
+- `templates/jira-action-template.yaml`
+- `catalog/compute/eks-containerapp.yaml`
+- `catalog/databases/postgresql-standard.yaml`
+- `catalog/security/parameterstore-standard.yaml`
+- `README.md`
+- `.gitignore`
+
 **Service Team Focus**:
 - Core REST API with catalog ingestion, request submission, status tracking
 - JIRA action execution framework with variable substitution
