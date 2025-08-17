@@ -104,7 +104,7 @@ All list endpoints that return multiple items use cursor-based pagination with t
 
 ### Core Design Principles
 1. **Schema-Driven**: All services defined via schema YAML documents
-2. **Smart Fulfillment**: Automated actions with manual fallback - uses automation when available, falls back to manual JIRA when needed or for error recovery
+2. **Smart Fulfillment**: Automated actions with manual fallback - uses automation when available, falls back to manual JIRA when needed. No automatic error recovery; failures require human intervention
 3. **Document-Driven Convergence**: Platform teams collaborate through central document store
 4. **Progressive Enhancement**: Teams evolve from manual to automated at their own pace
 5. **Serverless-First**: Likely AWS Lambda deployment with event-driven architecture
@@ -127,7 +127,7 @@ All list endpoints that return multiple items use cursor-based pagination with t
 - 5+ action types: JIRA, REST API, Terraform, GitHub workflows, webhooks
 - Sequential execution with dependency management
 - Retry logic with exponential backoff
-- Automated rollback capabilities
+- No automatic error recovery; failures stop execution and require manual intervention
 
 ### Technology Stack
 
@@ -172,6 +172,8 @@ PAO implements the schema specification from [catalog.md](catalog.md):
 4. **GitHub Workflow Dispatch**: GitHub Actions integration with status monitoring
 5. **Webhook Invocation**: HMAC-secured webhooks for system notifications
 
+**Error Handling**: All action types use limited retry logic. When any action fails after retries, execution stops and the request status is marked as failed, requiring manual review and intervention.
+
 ### Variable System
 
 Supports 8+ variable scopes:
@@ -208,9 +210,10 @@ Supports 8+ variable scopes:
 
 **Reliability & Performance**
 - Circuit breaker architecture for external calls
-- Comprehensive retry logic with exponential backoff
+- Comprehensive retry logic with exponential backoff (limited retries, no infinite loops)
 - RDS Proxy for PostgreSQL connections
 - ElastiCache Redis clustering
+- **Error Handling**: All failures require manual intervention; no automatic recovery mechanisms
 
 **Monitoring & Observability**
 - CloudWatch metrics and custom metrics

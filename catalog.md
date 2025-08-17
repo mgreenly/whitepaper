@@ -54,6 +54,8 @@ These conventions align with Go language standards and cloud-native tooling (Kub
 
 ## Schema Reference
 
+**Important Note on Error Handling**: The catalog documents do not specify error handling behavior. All error handling, retry logic, and recovery mechanisms are the responsibility of the orchestrator service. When any action fails during execution, the service stops and requires manual intervention. Future phases may introduce automated recovery, but this is not part of the catalog specification.
+
 ### CatalogItem - Individual Service
 
 ```yaml
@@ -179,7 +181,6 @@ presentation:
 fulfillment:
   orchestration:
     mode: sequential  # or parallel where dependencies allow
-    errorHandling: stop  # stop, rollback, or continue
 ```
 
 ### Example CatalogItems for Bundle Components
@@ -444,8 +445,6 @@ presentation:
 fulfillment:
   orchestration:
     mode: sequential
-    errorHandling: stop
-    rollbackOnFailure: true
 ```
 
 ## Field Types
@@ -467,7 +466,7 @@ fulfillment:
 
 **Note on Terraform Actions**: The Terraform action type generates small template files (`.tf`) that primarily instantiate pre-built, centrally-managed Terraform modules. These modules are maintained in separate infrastructure repositories and handle the complex implementation details. The catalog templates simply pass parameters to these modules, keeping the orchestrator focused on configuration rather than infrastructure implementation.
 
-### 1. JIRA Ticket (Manual Fallback)
+### 1. JIRA Ticket
 ```yaml
 type: jira-ticket
 config:
