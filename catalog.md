@@ -45,8 +45,9 @@ The catalog repository operates as the foundation for PAO within our five-plane 
 2. **Schema v2.0 Compliance**: Comprehensive 1700+ line specification with strict validation
 3. **Progressive Enhancement**: Teams evolve from manual to automated at their own pace
 4. **Binary Fulfillment Model**: Services operate in either manual OR fully automated mode (no partial automation)
-5. **Enterprise Governance**: Built-in support for compliance, security, and audit requirements
-6. **GitOps Workflow**: Version-controlled with CODEOWNERS enforcement and automated validation
+5. **Sequential Execution**: All actions execute in strict sequential order for predictability
+6. **Enterprise Governance**: Built-in support for compliance, security, and audit requirements
+7. **GitOps Workflow**: Version-controlled with CODEOWNERS enforcement and automated validation
 
 ### Directory Structure
 
@@ -73,8 +74,7 @@ orchestrator-catalog-repo/
 │   ├── networking/                    # Network services
 │   ├── storage/                       # Storage services
 │   ├── security/                      # Security services
-│   ├── monitoring/                    # Observability services
-│   └── platform-utilities/            # Platform utilities
+│   └── monitoring/                    # Observability services
 ├── templates/                          # Starter templates
 │   ├── minimal-service.yaml
 │   ├── full-featured-service.yaml
@@ -185,17 +185,15 @@ fulfillment:                          # Provisioning definition
         config: object
   
   automatic:                           # Automated fulfillment
-    parallel_execution: boolean        # Enable parallel groups
     state_management:
       enabled: boolean
       backend: string                  # dynamodb, postgresql
     
-    actions:                           # Automation actions
+    actions:                           # Automation actions (sequential execution)
       - id: string
         name: string
         type: string                   # 7+ action types
-        order: integer                 # Sequential execution
-        parallel_group: integer        # Parallel execution group
+        order: integer                 # Sequential execution order
         
         config: object                 # Type-specific configuration
         
@@ -298,7 +296,7 @@ type: rest-api
 config:
   endpoint:
     url: string                        # Supports variables
-    method: string
+    method: string                    # GET, POST, PUT, DELETE, PATCH
     timeout: integer
   authentication:
     type: string                       # none, basic, bearer, oauth2, api-key
@@ -318,31 +316,28 @@ config:
     failure_threshold: integer
 ```
 
-### 3. Terraform Orchestration
+### 3. Terraform Configuration
 ```yaml
 type: terraform
 config:
-  source:
-    type: string                       # git, registry, local
-    location: string
-    ref: string
+  repository:
+    url: string                        # Git repository URL
+    branch: string                     # Target branch for PR/commit
+    path: string                       # Path in repository for config
   module:
-    name: string
-    version: string
-    path: string
-  workspace:
-    name: string
-    create_if_not_exists: boolean
+    source: string                     # Module source (git, registry, local)
+    version: string                    # Module version
+    name: string                       # Module name
   variables: object                    # Module variables
+  workspace:
+    name: string                       # Terraform workspace name
   backend:
     type: string                       # s3, azurerm, gcs, remote
-    config: object
-  execution:
-    plan_only: boolean
-    auto_approve: boolean
-    parallelism: integer
-  outputs:
-    capture: boolean
+    config: object                     # Backend configuration
+  commit:
+    message: string                    # Commit message template
+    author: string                     # Author name
+    auto_merge: boolean                # Auto-merge PR if checks pass
 ```
 
 ### 4. GitHub Workflow Dispatch
@@ -533,40 +528,6 @@ config:
 - Audit logging configuration
 - RBAC for catalog modifications
 
-## Implementation Roadmap
-
-### Phase Alignment with PAO Development
-
-#### Phase 1-2: Foundation (Weeks 1-14)
-- Establish catalog repository with GitOps workflows
-- Define Schema v2.0 with comprehensive validation
-- Implement JSON schema validation pipeline
-- Deploy webhook/polling integration
-
-#### Phase 3-4: Enhanced Orchestration (Weeks 15-26)
-- Support 7+ action types with complex configurations
-- Dynamic form generation with conditional logic
-- WebSocket real-time updates
-- OIDC authentication and RBAC
-
-#### Phase 5: Platform Team Onboarding (Weeks 27-34)
-- Schema v2.0 templates for 8 platform domains
-- Migration tooling for existing processes
-- Sandbox environment for testing
-- Comprehensive training program
-
-#### Phase 6: Production Deployment (Weeks 35-40)
-- Kubernetes deployment with auto-scaling
-- Enterprise security implementation
-- Comprehensive monitoring stack
-- **Schedule outside Sept-Jan restricted period**
-
-#### Phase 7-8: Enterprise Features (Weeks 41-54)
-- Complex dependency management
-- Approval workflow engine
-- Cost tracking integration
-- Multi-tenant architecture
-
 ## Best Practices
 
 ### For Platform Teams
@@ -689,10 +650,19 @@ fulfillment:
       - id: provision-database
         type: terraform
         config:
+          repository:
+            url: "https://github.com/company/terraform-configs"
+            branch: "main"
+            path: "databases/{{fields.environment}}"
           module:
-            name: rds-postgresql
+            source: "terraform-aws-modules/rds/aws"
+            version: "5.0.0"
+            name: "rds-postgresql"
           variables:
             instance_identifier: "{{fields.instance_name}}"
+          commit:
+            message: "Provision PostgreSQL database {{fields.instance_name}}"
+            auto_merge: true
 ```
 
 ## Conclusion

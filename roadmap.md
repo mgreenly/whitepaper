@@ -7,7 +7,7 @@ This roadmap transforms our fragmented, multi-week provisioning process into a c
 ## Strategic Context & Technical Foundation
 
 **Current Challenge**: Multi-week provisioning delays caused by fragmented manual handoffs across platform teams requiring complex navigation of multiple JIRA workflows  
-**Solution**: Schema v2.0-driven convergence point where platform teams define services through comprehensive YAML documents enabling hybrid fulfillment model with sophisticated automation capabilities  
+**Solution**: Schema v2.0-driven convergence point where platform teams define services through comprehensive YAML documents enabling binary fulfillment model with sophisticated automation capabilities  
 **Business Value**: Reduce provisioning time from weeks to hours (90%+ improvement) while maintaining team autonomy and operational stability  
 **Constraints**: Sept-Jan restricted change periods, existing organizational structure, enterprise security and compliance requirements
 
@@ -21,6 +21,7 @@ This roadmap transforms our fragmented, multi-week provisioning process into a c
 - **Five-Plane Architecture Implementation**: Deploy complete Integration/Delivery plane positioning with explicit orchestration patterns across Developer Control, Security/Compliance, Monitoring/Logging, and Resource planes
 - **Schema v2.0 Specification**: Implement comprehensive 1700+ line schema with metadata, presentation, fulfillment, lifecycle, and monitoring sections supporting complex field dependencies and conditional logic
 - **Advanced Document Store Foundation**: Establish enterprise-grade catalog repository with GitOps workflows, CODEOWNERS enforcement, automated testing, and multi-environment synchronization
+- **Binary Contribution Workflow**: Implement unique contribution model where platform teams can add presentation definitions separately from fulfillment automation, enabling progressive enhancement from manual JIRA to complete automation while maintaining service availability
 - **Comprehensive Validation Pipeline**: Deploy sophisticated validation engine enforcing field types, cross-references, conditional logic, referential integrity, and detailed error reporting with remediation guidance
 - **Technology Stack Finalization**: Complete runtime selection (Go/Java), enterprise database architecture (PostgreSQL + Redis cluster), and Kubernetes deployment strategy
 
@@ -53,7 +54,7 @@ This roadmap transforms our fragmented, multi-week provisioning process into a c
 ### Phase 3: Multi-Action Fulfillment & Advanced Developer Portal (6-8 weeks)
 **Business Value**: Expand to comprehensive automation capabilities with sophisticated developer interfaces
 
-- **Enterprise Multi-Action Fulfillment Engine**: Implement 7+ action types (REST API, Terraform, GitHub workflows, webhooks, approval workflows, cost estimation, notifications) with parallel execution groups, state management, error handling, and comprehensive retry logic
+- **Enterprise Multi-Action Fulfillment Engine**: Implement 6+ action types (REST API, Terraform, GitHub workflows, webhooks, cost estimation, notifications) with parallel execution groups, state management, error handling, and comprehensive retry logic
 - **Sophisticated Form Generation**: Transform presentation definitions into dynamic UI with wizard/tabbed/single-page layouts supporting 10+ field types, conditional display logic, real-time validation, and dynamic data sources
 - **Comprehensive API Expansion**: Deploy 25+ endpoints including catalog operations, request management, validation/testing, administrative operations, platform team operations, and webhook integrations
 - **Enterprise Authentication & RBAC**: Implement comprehensive OIDC integration with existing identity providers, role-based access control for catalog items, API key management, and audit logging
@@ -62,7 +63,7 @@ This roadmap transforms our fragmented, multi-week provisioning process into a c
 **Success Metric**: 5+ platform services automated with average 2-hour fulfillment for complex requests, dynamic forms operational with conditional logic, real-time updates functional
 
 **Technical Deliverables**:
-- Multi-action execution framework with 7+ action types and parallel processing
+- Multi-action execution framework with 6+ action types and parallel processing
 - Advanced JSON schema form generation engine with conditional logic
 - Comprehensive OIDC integration and enterprise RBAC enforcement
 - WebSocket implementation for real-time updates across all operations
@@ -128,16 +129,16 @@ This roadmap transforms our fragmented, multi-week provisioning process into a c
 **Business Value**: Support complex enterprise workflows with sophisticated governance and compliance
 
 - **Complex Service Dependency Management**: Implement sophisticated ordered provisioning workflows with prerequisite validation, parallel execution groups, cross-service dependencies, automated dependency resolution, and complex workflow orchestration
-- **Advanced Approval Workflow Engine**: Deploy enterprise approval systems for sensitive resources with sophisticated role-based routing, escalation chains, SLA enforcement, automated notifications, and compliance tracking
+- **Enterprise Governance Framework**: Deploy sophisticated governance systems for sensitive resources with role-based routing, escalation chains, SLA enforcement, automated notifications, and compliance tracking
 - **Enterprise Resource Quota & Cost Management**: Implement comprehensive team and environment-based limits with real-time enforcement, automated budget alerts, cost estimation integration, resource optimization recommendations, and detailed cost reporting with chargebacks
 - **Multi-Environment Orchestration Platform**: Enable sophisticated environment-aware provisioning with automated promotion pipelines (dev→test→prod), environment-specific configurations, cross-environment dependency tracking, and configuration drift detection
 - **Advanced Cost Tracking & Optimization**: Deploy comprehensive cost estimation, real-time tracking, budget enforcement, resource optimization recommendations, automated right-sizing, and detailed cost reporting with business intelligence
 
-**Success Metric**: Support for enterprise-grade workflows with 95% approval workflow automation, comprehensive cost tracking with optimization, multi-environment orchestration operational with drift detection
+**Success Metric**: Support for enterprise-grade workflows with 95% governance automation, comprehensive cost tracking with optimization, multi-environment orchestration operational with drift detection
 
 **Technical Deliverables**:
 - Sophisticated dependency resolution engine with complex workflow support
-- Configurable approval workflow framework with enterprise compliance
+- Configurable governance framework with enterprise compliance
 - Advanced resource quota and cost management system with optimization
 - Multi-environment orchestration capabilities with automated promotion
 - Comprehensive cost tracking, optimization, and business intelligence tools
@@ -148,7 +149,7 @@ This roadmap transforms our fragmented, multi-week provisioning process into a c
 - **Advanced CMDB Integration & Asset Management**: Automated Configuration Management Database updates, comprehensive asset tracking, configuration drift detection, automated compliance reporting for SOC2, HIPAA, and regulatory requirements with real-time monitoring
 - **Comprehensive ITSM Tool Integration**: Seamless connection with ServiceNow, Remedy, Cherwell beyond JIRA including sophisticated incident response integration, change management workflows, automated service catalog synchronization, and compliance tracking
 - **Enterprise Compliance & Audit Framework**: Automated generation of detailed audit reports, access pattern analysis, data classification enforcement, regulatory compliance reporting, incident response integration, and comprehensive governance dashboards
-- **Multi-Tenant Enterprise Architecture**: Enable complete business unit isolation with separate catalogs, governance rules, custom approval workflows, independent authentication realms, isolated resource provisioning, and comprehensive tenant management
+- **Multi-Tenant Enterprise Architecture**: Enable complete business unit isolation with separate catalogs, governance rules, custom governance workflows, independent authentication realms, isolated resource provisioning, and comprehensive tenant management
 - **Advanced Security & Vulnerability Integration**: Comprehensive vulnerability scanning integration, security compliance validation, threat detection, security incident response automation, comprehensive security posture reporting, and automated remediation
 
 **Success Metric**: Full enterprise compliance with automated reporting, zero manual tracking overhead, multi-tenant isolation operational with complete governance, comprehensive security integration with automated response
@@ -165,7 +166,7 @@ This roadmap transforms our fragmented, multi-week provisioning process into a c
 - Marketplace model for third-party service provider integration
 - Advanced policy as code with automated enforcement and compliance
 - Self-healing capabilities with automated detection and resolution
-- Cloud-agnostic provisioning with multi-cloud orchestration
+- Advanced AWS resource provisioning and optimization
 
 ## Implementation Strategy
 
@@ -175,11 +176,36 @@ This roadmap transforms our fragmented, multi-week provisioning process into a c
 - **Phase 6 Production**: Deploy in February window following restricted period with enterprise change management
 - **Phase 7-8**: Execute during stable operational periods with sophisticated incremental rollout and monitoring
 
-### Progressive Enhancement Model
-- **Week 1-6**: Advanced manual JIRA fulfillment with comprehensive catalog structure and validation
-- **Week 7-14**: Sophisticated automated services with multi-action workflows proving enterprise value
-- **Week 15-22**: Multiple automation types with platform team choice supporting complex enterprise workflows
-- **Week 23-32**: Production-ready with comprehensive team onboarding supporting advanced fulfillment modes
+### Binary Contribution Workflow Strategy
+
+**Unique Presentation & Fulfillment Separation**
+PAO enables platform teams to contribute catalog items through a unique binary contribution model that separates presentation (user interface) from fulfillment (automation), allowing independent evolution:
+
+**Phase 1: Presentation-First Contribution**
+- Platform teams create catalog items with complete `metadata` and `presentation` sections
+- `fulfillment.manual` section defines JIRA ticket creation and manual processes
+- `fulfillment.automatic` section remains empty or undefined
+- Service immediately available in developer portal with manual fulfillment
+- Forms, validation, and user experience fully functional without automation
+
+**Phase 2: Independent Fulfillment Enhancement**
+- Teams later add `fulfillment.automatic` section with complete automation actions
+- Presentation layer remains unchanged, ensuring consistent developer experience
+- Binary switch: service operates EITHER in manual mode OR automatic mode
+- No partial automation states - clear operational boundaries maintained
+
+**Contribution Workflow Benefits**
+- **Immediate Value**: Services available to developers as soon as presentation is defined
+- **Progressive Enhancement**: Teams evolve automation at their own pace without blocking catalog availability
+- **Operational Clarity**: Clear separation between manual and automated fulfillment modes
+- **Risk Mitigation**: Manual fallback always available during automation development
+- **Team Autonomy**: Platform teams control timing of automation implementation
+
+### Binary Fulfillment Model Timeline
+- **Week 1-6**: Manual JIRA fulfillment with comprehensive catalog structure and validation
+- **Week 7-14**: Complete automated services with multi-action workflows proving enterprise value
+- **Week 15-22**: Binary fulfillment choice (manual OR complete automation) supporting complex enterprise workflows
+- **Week 23-32**: Production-ready with comprehensive team onboarding supporting binary fulfillment modes
 - **Week 33+**: Enterprise features with sophisticated governance, compliance, and multi-tenant capabilities
 
 ### Success Metrics & Business Value
@@ -211,10 +237,10 @@ This roadmap transforms our fragmented, multi-week provisioning process into a c
 - **Security Vulnerabilities**: Comprehensive SAST/DAST scanning, automated dependency vulnerability assessment, continuous security monitoring, and automated security updates
 
 **Operational Risks**
-- **Operational Calendar Alignment**: All major deployments outside Sept-Jan restricted periods with comprehensive change window compliance and enterprise approval workflows
+- **Operational Calendar Alignment**: All major deployments outside Sept-Jan restricted periods with comprehensive change window compliance and enterprise governance workflows
 - **Manual Fallback Preservation**: Maintain existing JIRA processes as sophisticated backup throughout rollout with parallel execution support and automated failover
 - **Platform Team Resistance**: Progressive onboarding with comprehensive training, advanced sandbox environments, team autonomy protection, and sophisticated support systems
-- **Change Management**: Alignment with organizational change windows, sophisticated approval workflows, comprehensive escalation procedures, and automated compliance tracking
+- **Change Management**: Alignment with organizational change windows, sophisticated governance workflows, comprehensive escalation procedures, and automated compliance tracking
 
 **Business Continuity**
 - **Incremental Value Delivery**: Prove concept value with sophisticated early wins before requesting broader organizational change with comprehensive metrics
@@ -226,4 +252,4 @@ This roadmap transforms our fragmented, multi-week provisioning process into a c
 - **Value-First Approach**: Demonstrate measurable time savings and efficiency improvements before requesting broader adoption with comprehensive analytics
 - **Respect for Constraints**: Work within existing operational rhythms while providing sophisticated enhancement capabilities
 - **Team Ownership Model**: Platform teams maintain full control over their services with advanced automation choices and sophisticated self-service capabilities
-- **Progressive Enhancement Strategy**: Support clear evolution from manual processes to sophisticated automation with comprehensive support and monitoring
+- **Binary Fulfillment Strategy**: Support clear choice between manual JIRA processes and complete automation with comprehensive support and monitoring
