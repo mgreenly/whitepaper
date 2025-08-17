@@ -5,10 +5,10 @@
 ## Table of Contents
 
 - [Development Epics](#development-epics)
-  - [Q3 2025: Foundation Epic](#q3-2025-foundation-epic)
-  - [Q4 2025: Production Epic](#q4-2025-production-epic)
-  - [Q1 2026: Orchestration Epic](#q1-2026-orchestration-epic)
-  - [Q2 2026: Enterprise Epic](#q2-2026-enterprise-epic)
+  - [Q3 2025: Foundation Epic](#q3-2025-foundation-epic--current-aug-oct)
+  - [Q4 2025: Production Epic](#q4-2025-production-epic--planned-nov-jan)
+  - [Q1 2026: Orchestration Epic](#q1-2026-orchestration-epic--planned-feb-apr)
+  - [Q2 2026: Enterprise Epic](#q2-2026-enterprise-epic--planned-may-jul)
 - [Quarterly Team Coordination](#quarterly-team-coordination)
 - [Team Coordination](#team-coordination)
 - [Success Metrics](#success-metrics)
