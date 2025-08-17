@@ -20,19 +20,19 @@
 *Single epic per quarter with unified team coordination toward one goal*
 
 ### Q3 2025: Foundation Epic 🚧 CURRENT (Aug-Oct)
-**Epic Goal**: Establish working foundation with manual and automated fulfillment
+**Epic Goal**: Establish working foundation with manual JIRA fulfillment
 
-**Value Delivered**: Platform teams can define services and receive automated provisioning through multiple action types
+**Value Delivered**: Platform teams can define services in catalog and developers can request them via manual JIRA tickets
 
 **Team Coordination**:
-- **Catalog Team (2 people)**: Schema design, repository setup, sample catalog items
-- **Service Team (3-4 people)**: REST API, action framework, variable system, database
+- **Catalog Team (2 people)**: Schema design, repository setup, test catalog items (EKS app, PostgreSQL, parameter store)
+- **Service Team (3-4 people)**: REST API, JIRA action framework, variable system, database
 - **DevCtl Team (1-2 people)**: Developer portal, CLI, authentication, documentation
 
 ### Q4 2025: Production Epic 📋 PLANNED (Nov-Jan)
-**Epic Goal**: Production deployment with single service automation
+**Epic Goal**: Add automated fulfillment to proven manual workflows
 
-**Value Delivered**: Production-ready platform reducing single service provisioning from weeks to hours
+**Value Delivered**: Developers can request services and receive automated provisioning (Terraform, REST API, webhooks) while platform teams maintain manual fallback
 
 **Team Coordination**:
 - **Catalog Team**: Terraform schema, production catalog items, platform team onboarding
@@ -63,17 +63,17 @@
 
 **Q3 2025 Foundation Epic Success Metrics**:
 - Schema specification complete with 100% validation coverage
-- Core REST API deployed with <200ms response times and 5+ action types
+- Core REST API deployed with <200ms response times and JIRA action type
 - Developer portal rendering dynamic forms with working request submission
-- 5+ sample catalog items demonstrating all action types
-- Platform teams can submit requests and receive automated fulfillment
+- Test catalog items working: EKS app, PostgreSQL database, parameter store (all JIRA fulfillment)
+- Developers can submit requests and receive JIRA tickets with proper variable substitution
 
 **Q4 2025 Production Epic Success Metrics**:
 - Production AWS deployment with monitoring, alerting, and high availability
-- 10+ production-ready catalog items with Terraform integration
+- Test catalog items enhanced with automated actions (Terraform, REST API, webhooks)
 - Fulfillment mode switching operational (manual ↔ automated)
-- <1 hour provisioning time for single services
-- 5+ platform teams onboarded and actively using the platform
+- <1 hour automated provisioning time for EKS app, PostgreSQL, parameter store
+- 5+ platform teams can define services with automated and manual fulfillment options
 
 **Q1 2026 Orchestration Epic Success Metrics**:
 - CatalogBundle schema operational with dependency management
@@ -137,22 +137,22 @@
 **Catalog Team Focus**:
 - Complete CatalogItem schema specification with validation rules
 - GitHub repository with CI/CD, CODEOWNERS enforcement, automated validation
-- 5+ sample catalog items demonstrating JIRA, REST API, webhook, GitHub workflow actions
+- Test catalog items: EKS app, PostgreSQL database, parameter store (all JIRA fulfillment)
 - Governance model and platform team contribution workflows
 
 **Service Team Focus**:
 - Core REST API with catalog ingestion, request submission, status tracking
-- Action execution framework: JIRA, REST API, webhook, GitHub workflow action types
+- JIRA action execution framework with variable substitution
 - Variable substitution system supporting 6+ scopes (fields, metadata, request, system, environment, outputs)
-- PostgreSQL database schema, circuit breakers, retry logic
+- PostgreSQL database schema for requests and audit logging
 
 **DevCtl Team Focus**:
 - Developer portal with dynamic form generation from catalog schema
-- Request tracking and action status display in real-time
+- Request tracking and JIRA ticket status display
 - AWS IAM authentication integration
 - Basic CLI for catalog browsing and request submission
 
-**Epic Success Criteria**: Platform teams can submit requests through portal/CLI and receive automated fulfillment via 5+ action types
+**Epic Success Criteria**: Developers can request EKS app + PostgreSQL + parameter store through portal/CLI and receive JIRA tickets with proper variable substitution
 
 ### Q4 2025: Production Epic (PLANNED)
 
