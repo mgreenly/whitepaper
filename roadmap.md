@@ -6,6 +6,9 @@
   - [Q3 2025: Foundation Setup](#q3-2025-foundation-setup--current-aug-oct)
   - [Q4 2025: Complete Stack Provisioning](#q4-2025-complete-stack-provisioning--planned-nov-jan)
   - [2026+: Enterprise Features](#2026-enterprise-features--future-work)
+- [Sprint Breakdown](#sprint-breakdown)
+  - [Q3 2025 Sprints](#q3-2025-sprints-current)
+  - [Q4 2025 Sprints](#q4-2025-sprints-planned)
 - [Success Metrics](#success-metrics)
 - [Implementation Strategy](#implementation-strategy)
   - [Binary Fulfillment Model](#binary-fulfillment-model)
@@ -18,7 +21,7 @@
 ### Q3 2025: Foundation Setup 🚧 CURRENT (Aug-Oct)
 - **Repository Setup**: Create GitHub repositories for catalog and service with CI/CD workflows and basic documentation
 - **Infrastructure**: Deploy basic Kubernetes infrastructure and empty REST service with health endpoints  
-- **Schema Design**: Define Schema v2.0 specification for catalog items with validation rules
+- **Schema Design**: Define schema specification for catalog items with validation rules
 - **Document Store**: Implement basic YAML catalog ingestion with file-based storage and validation
 - **JIRA Integration**: Create automated JIRA ticket creation with basic variable substitution for manual fulfillment
 
@@ -27,7 +30,7 @@
 1. Enable end-to-end provisioning of EKS container app with database and secrets management
 2. **Fully data-driven process**: Catalog defines capabilities, service API exposes them, developer portal consumes dynamically
 
-- **Data-Driven Architecture**: All UI forms, validation rules, and workflows generated dynamically from catalog Schema v2.0 definitions
+- **Data-Driven Architecture**: All UI forms, validation rules, and workflows generated dynamically from catalog schema definitions
 - **Dynamic Service Discovery**: Developer portal queries catalog API to render available services without hardcoded UI components
 - **Schema-Generated Forms**: Transform YAML presentation definitions into dynamic UI with conditional logic, validation, and real-time updates
 - **API-First Design**: Service exposes comprehensive REST API that catalog-driven portals consume for complete self-service experience
@@ -51,7 +54,7 @@
 **Q3 2025 Goals**:
 - GitHub repositories established with CI/CD workflows and basic documentation
 - Kubernetes infrastructure deployed with health endpoints operational
-- Schema v2.0 specification defined with basic validation rules
+- Schema specification defined with basic validation rules
 - First catalog item defined and validated successfully
 - Basic JIRA integration working for manual fulfillment
 
@@ -59,7 +62,7 @@
 - **Complete Stack Demo**: Successfully provision EKS app + PostgreSQL + secrets end-to-end in <4 hours
 - **Fully Data-Driven**: Zero hardcoded UI components - all forms, validation, and workflows generated from catalog YAML definitions
 - **Dynamic Portal Integration**: Developer portal consumes catalog API to render services dynamically without code changes
-- **Schema-to-UI Pipeline**: Transform Schema v2.0 presentation definitions into live UI with conditional logic and validation
+- **Schema-to-UI Pipeline**: Transform schema presentation definitions into live UI with conditional logic and validation
 - **Multi-Service Coordination**: Support 3+ services with cross-service variable passing (DB credentials → app config)
 - **Advanced Terraform Actions**: EKS cluster, RDS database, security groups, ingress, application deployment
 - **Secrets Integration**: AWS Secrets Manager integration with automatic injection into Kubernetes deployments
@@ -110,6 +113,67 @@ catalog/compute/eks-app.yaml
 4. Provision EKS cluster with worker nodes
 5. Deploy application with secrets injected as environment variables
 6. Configure ingress and monitoring
+
+## Sprint Breakdown
+
+### Q3 2025 Sprints (CURRENT)
+
+**Sprint 1 (Aug 17-30, 2025)**
+- Set up GitHub repositories for catalog and service components with CI/CD workflows
+- Initialize Kubernetes infrastructure with basic namespace and service account configurations
+- Create project documentation structure and team onboarding materials
+
+**Sprint 2 (Aug 31-Sep 13, 2025)**
+- Deploy empty REST service with health endpoints and basic logging
+- Define core schema specification for catalog items with validation rules
+- Implement basic configuration management and environment setup
+
+**Sprint 3 (Sep 14-27, 2025)**
+- Implement YAML catalog ingestion with file-based storage and validation engine
+- Create first basic catalog item definition for testing and validation
+- Build schema validation framework with error reporting
+
+**Sprint 4 (Sep 28-Oct 11, 2025)**
+- Build JIRA integration with automated ticket creation and basic variable substitution
+- Test end-to-end manual fulfillment workflow with sample service request
+- Implement request tracking and status management system
+
+**Sprint 5 (Oct 12-25, 2025)**
+- Finalize Q3 deliverables with comprehensive testing and documentation
+- Prepare production deployment pipeline and monitoring setup for Q4 development
+- Conduct sprint retrospective and Q4 planning session
+
+### Q4 2025 Sprints (PLANNED)
+
+**Sprint 1 (Oct 26-Nov 8, 2025)**
+- Build dynamic form generation from schema presentation definitions
+- Implement core REST API endpoints for catalog browsing and service discovery
+- Create request submission and validation system
+
+**Sprint 2 (Nov 9-22, 2025)**
+- Create variable substitution system with support for multiple scopes (fields, metadata, request, system)
+- Add REST API and webhook action types for automated fulfillment
+- Implement basic action execution framework
+
+**Sprint 3 (Nov 23-Dec 6, 2025)**
+- Implement Terraform action type with repository mapping and basic infrastructure provisioning
+- Build sequential action execution engine with error handling and fallback
+- Add GitHub workflow action type integration
+
+**Sprint 4 (Dec 7-20, 2025)**
+- Develop multi-service orchestration with cross-service variable passing
+- Add EKS cluster and RDS PostgreSQL provisioning capabilities with proper dependency management
+- Implement service dependency resolution and ordering
+
+**Sprint 5 (Dec 21-Jan 3, 2026)**
+- Integrate AWS Secrets Manager with automatic secret creation and injection
+- Complete end-to-end EKS application deployment with database and secrets integration
+- Build comprehensive configuration management for production workloads
+
+**Sprint 6 (Jan 4-17, 2026)**
+- Build comprehensive validation and testing framework for complex multi-service deployments
+- Implement monitoring and alerting for production readiness
+- Conduct end-to-end testing of complete stack provisioning workflow
 
 ## Implementation Strategy
 

@@ -14,9 +14,13 @@ We should plan around our quarterly schedule.
   * Q3 is August, Septmember, October
   * Q4 is November, December, January
 
+Assume we use 2 week sprints.
+
 The date today is August 17th, 2025
 
-The output should be a series of concise 1-2 sentence actions, broken down into phases, broken down into quarters.
+The output should be a series of concise 1-2 sentence actions, broken down into sprints, broken down into quarters.
+
+Assume the team is 6-8 people.
 
 ## Guidance
 
