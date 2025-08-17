@@ -31,17 +31,17 @@ orchestrator-catalog-repo/
 
 ### CODEOWNERS Configuration
 
-The repository uses GitHub's CODEOWNERS file to enforce team-based access control. This ensures platform teams can only modify their domain-specific services while the Developer Experience team maintains overall governance.
+The repository uses GitHub's CODEOWNERS file to enforce team-based access control. Platform teams own and maintain their domain-specific services, while the Developer Experience team requires access across all domains to assist with catalog integration and troubleshooting.
 
 **Access Control Strategy:**
-- **Developer Experience Team**: Global access to maintain standards and assist all teams
-- **Platform Teams**: Limited to their specific domain folders
-- **Architecture Team**: Access to schema and template definitions
+- **Platform Teams**: Own their specific domain folders and service definitions
+- **Developer Experience Team**: Requires access across all domains for catalog integration support
+- **Architecture Team**: Owns the schema specifications and overall catalog design
 
 Example `.github/CODEOWNERS` file:
 ```
 # Default owners for everything in the repo
-# Developer Experience team has global access for governance and assistance
+# Developer Experience team needs access to help all teams with catalog integration
 *                                   @company/devx-team
 
 # Schema and templates are owned by architecture team
