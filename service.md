@@ -71,9 +71,7 @@
 
 ## Executive Summary
 
-The Platform Automation Orchestrator (PAO) is the strategic convergence engine that transforms our organization's fragmented, multi-week provisioning process into a streamlined, self-service developer experience delivering 90%+ time reduction (weeks to hours). Operating as a cloud-native REST API within the Integration and Delivery Plane of our five-plane reference architecture, PAO consumes structured YAML catalog definitions following comprehensive Schema v2.0 specifications to generate sophisticated developer interfaces and orchestrate complex, multi-action fulfillment workflows across all platform domains.
-
-PAO implements a document-driven convergence model where platform teams collaborate through a unified catalog repository, enabling seamless self-service while preserving team autonomy. This hybrid fulfillment architecture supports binary fulfillment choices—either manual JIRA tickets OR complete end-to-end automation—with progressive enhancement capabilities and strict separation between fulfillment modes. The service directly addresses our core business challenge of developer velocity while maintaining operational stability and security required for enterprise environments.
+The Platform Automation Orchestrator (PAO) is a cloud-native REST service that transforms multi-week provisioning processes into automated self-service workflows. For complete strategic context, architecture rationale, and business imperative details, see the [whitepaper.md](whitepaper.md).
 
 ## API Overview
 
