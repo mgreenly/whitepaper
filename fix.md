@@ -1,103 +1,132 @@
-# Fix: Use static Terraform labels; pass dynamic values via attributes
+# Fix: Automatic JIRA Escalation for Bundle Orchestration Failures
 
-Problem
-- In catalog.md, several Terraform examples build resource/module labels from user input, e.g.:
-  - resource "aws_ssm_parameter" "{{fields.secretName}}" { ... }
-  - module "rds_{{fields.instanceName}}" { ... }
-  - module "eks_app_{{fields.appName}}" { ... }
-- Terraform labels (resource names and module names) must be static identifiers (letters, digits, underscores). Interpolations and characters like - or / are not allowed. Examples in catalog.md can generate invalid labels such as app-name/secrets, which will cause terraform plan/apply to fail.
+## Problem
+When CatalogBundle orchestration fails, the current documentation states that "failures require manual intervention" but provides no mechanism for operators to understand what partial state exists or what cleanup actions are needed.
 
-Goal
-- Make all Terraform labels static and valid, while keeping dynamic behavior through attribute values.
+## Solution
+Implement automatic JIRA ticket creation for failed bundle orchestration that provides structured failure context to the Orchestration team.
 
-General Rule
-- Do not template inside Terraform labels. Only template in attribute values.
-- Use short, static labels like secret, rds, eks_app, etc.
-- If outputs reference a label, update them to the new static label.
+## Implementation Instructions
 
-Concrete changes to catalog.md
+### 1. Update service.md
 
-1) AWS Parameter Store example
-Before
-```yaml
-resource "aws_ssm_parameter" "{{fields.secretName}}" {
-  name  = "/{{fields.secretName}}"
-  type  = "SecureString"
-  value = jsonencode({{json(fields.secrets)}})
-}
-...
-outputs:
-  - secretArn: "aws_ssm_parameter.{{fields.secretName}}.arn"
+**Location**: `/workspace/service.md` - "Multi-Action Fulfillment Engine" section (around line 130)
+
+**Change**: Replace the existing text:
 ```
-After
-```yaml
-resource "aws_ssm_parameter" "secret" {
-  name  = "/{{fields.secretName}}"
-  type  = "SecureString"
-  value = jsonencode({{json(fields.secrets)}})
-}
-...
-outputs:
-  - secretArn: "aws_ssm_parameter.secret.arn"
+- No automatic error recovery; failures stop execution and require manual intervention
 ```
 
-2) PostgreSQL (RDS) module example
-Before
-```yaml
-module "rds_{{fields.instanceName}}" {
-  source            = "terraform-aws-modules/rds/aws"
-  identifier        = "{{fields.instanceName}}"
-  engine            = "postgres"
-  instance_class    = "{{fields.instanceClass}}"
-  allocated_storage = {{fields.storageSize}}
-}
-...
-outputs:
-  - connectionString: "module.rds_{{fields.instanceName}}.connection_string"
-  - host: "module.rds_{{fields.instanceName}}.endpoint"
-  - port: "module.rds_{{fields.instanceName}}.port"
+**With**:
 ```
-After
-```yaml
-module "rds" {
-  source            = "terraform-aws-modules/rds/aws"
-  identifier        = "{{fields.instanceName}}"
-  engine            = "postgres"
-  instance_class    = "{{fields.instanceClass}}"
-  allocated_storage = {{fields.storageSize}}
-}
-...
-outputs:
-  - connectionString: "module.rds.connection_string"
-  - host: "module.rds.endpoint"
-  - port: "module.rds.port"
+- No automatic error recovery; failures stop execution and automatically escalate via JIRA
+- Bundle failures create structured JIRA tickets for Orchestration team with partial state inventory
+- Request status marked as "escalated" with JIRA ticket reference for tracking
 ```
 
-3) EKS container app module example
-Before
+### 2. Add Failure Escalation Section
+
+**Location**: `/workspace/service.md` - Add new section after "Variable System" (around line 185)
+
+**Add**:
+```markdown
+### Failure Escalation System
+
+**Bundle Orchestration Failures**:
+When CatalogBundle execution fails, the orchestrator automatically creates a JIRA ticket for the Orchestration team containing:
+
+- **Partial State Inventory**: Which components succeeded/failed and what resources were created
+- **Error Context**: Full error messages, logs, and failure timestamps  
+- **Cleanup Guidance**: Component-specific cleanup procedures based on action types
+- **Request Metadata**: Original request data and user context for troubleshooting
+
+**JIRA Ticket Configuration**:
 ```yaml
-module "eks_app_{{fields.appName}}" {
-  source   = "./modules/eks-app"
-  name     = "{{fields.appName}}"
-  image    = "{{fields.containerImage}}"
-  replicas = {{fields.replicas}}
-}
-```
-After
-```yaml
-module "eks_app" {
-  source   = "./modules/eks-app"
-  name     = "{{fields.appName}}"
-  image    = "{{fields.containerImage}}"
-  replicas = {{fields.replicas}}
-}
+type: jira-ticket
+config:
+  ticket:
+    project: ORCHESTRATION
+    issueType: "Incident"
+    priority: "High"
+    summaryTemplate: "Bundle Orchestration Failure - {{bundle.metadata.name}} ({{request.id}})"
+    descriptionTemplate: |
+      **Bundle Information**
+      Bundle: {{bundle.metadata.name}} ({{bundle.metadata.version}})
+      Request ID: {{request.id}}
+      User: {{request.user.email}}
+      Failure Time: {{failure.timestamp}}
+      
+      **Component Status**
+      {{#each components}}
+      - {{id}}: {{status}}{{#if resources}} (Resources: {{join resources ", "}}){{/if}}
+      {{/each}}
+      
+      **Error Details**
+      {{failure.error}}
+      
+      **Cleanup Required**
+      {{#each components}}
+      {{#if succeeded}}
+      - {{id}}: {{cleanup.instructions}}
+      {{/if}}
+      {{/each}}
+      
+      **Original Request Data**
+      ```json
+      {{json request.data}}
+      ```
 ```
 
-Checklist
-- Replace any resource/module label that contains {{ ... }} with a static, valid identifier.
-- Ensure any outputs referencing those labels are updated accordingly.
-- Keep all dynamic values in attribute values (e.g., name, identifier, tags, etc.).
+**Request Status Updates**:
+- Failed requests marked with status: `"escalated"`
+- JIRA ticket ID stored in request metadata
+- Operators can query escalated requests via API: `GET /api/v1/requests?status=escalated`
+```
 
-Rationale
-- Prevents invalid identifier errors and keeps Terraform plans stable and reproducible.
-- Aligns with Terraform syntax: labels are compile-time constants; runtime values belong in attributes.
+### 3. Update Database Schema Section
+
+**Location**: `/workspace/service.md` - "Requests Table" definition (around line 240)
+
+**Change**: Add to the existing CREATE TABLE statement:
+```sql
+    escalation_ticket_id VARCHAR(50),
+    escalation_timestamp TIMESTAMP
+```
+
+So the complete table becomes:
+```sql
+CREATE TABLE requests (
+    id UUID PRIMARY KEY,
+    catalog_item_id VARCHAR(255) NOT NULL,
+    user_id VARCHAR(255) NOT NULL,
+    status VARCHAR(50) NOT NULL,
+    request_data JSONB NOT NULL,
+    created_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP NOT NULL,
+    completed_at TIMESTAMP,
+    escalation_ticket_id VARCHAR(50),
+    escalation_timestamp TIMESTAMP
+);
+```
+
+### 4. Add API Endpoint
+
+**Location**: `/workspace/service.md` - "Essential APIs" section (around line 30)
+
+**Add** to Request Lifecycle endpoints:
+```http
+GET    /api/v1/requests/escalated                  # List escalated requests
+GET    /api/v1/requests/{request_id}/escalation    # Escalation details
+```
+
+## Benefits
+
+1. **Structured Escalation**: Transforms vague "manual intervention" into actionable JIRA workflow
+2. **Operational Visibility**: Centralized tracking of all orchestration failures
+3. **Cleanup Guidance**: Provides specific instructions for each component type
+4. **Audit Trail**: Complete failure context preserved for root cause analysis
+5. **Leverages Existing Infrastructure**: Uses existing JIRA action framework
+
+## Implementation Priority
+
+This should be implemented in **Q4 2025** as part of the "Bundle Orchestration Engine" deliverable, ensuring that multi-service orchestration has proper failure handling from day one.

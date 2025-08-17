@@ -5,10 +5,11 @@
 ## Table of Contents
 
 - [Development Epics](#development-epics)
-  - [Catalog Epic - Schema & Repository](#catalog-epic---schema--repository)
-  - [Service Epic - REST API & Orchestration](#service-epic---rest-api--orchestration)
-  - [DevCtl Epic - Developer Portal & CLI](#devctl-epic---developer-portal--cli)
-- [Quarterly Sprint Breakdown](#quarterly-sprint-breakdown)
+  - [Q3 2025: Foundation Epic](#q3-2025-foundation-epic)
+  - [Q4 2025: Production Epic](#q4-2025-production-epic)
+  - [Q1 2026: Orchestration Epic](#q1-2026-orchestration-epic)
+  - [Q2 2026: Enterprise Epic](#q2-2026-enterprise-epic)
+- [Quarterly Team Coordination](#quarterly-team-coordination)
 - [Team Coordination](#team-coordination)
 - [Success Metrics](#success-metrics)
 - [Implementation Strategy](#implementation-strategy)
@@ -16,252 +17,208 @@
 
 ## Development Epics
 
-*Three parallel workstreams that coordinate deliverables across quarters*
+*Single epic per quarter with unified team coordination toward one goal*
 
-### Catalog Epic - Schema & Repository
-**Epic Owner**: Schema & Catalog Team (2 people)
-**Repository**: orchestrator-catalog-repo
+### Q3 2025: Foundation Epic 🚧 CURRENT (Aug-Oct)
+**Epic Goal**: Establish working foundation with manual and automated fulfillment
 
-**Q3 2025 Deliverables**:
-- **Schema Foundation**: Complete CatalogItem and CatalogBundle schema specification with validation rules
-- **Repository Setup**: GitHub repo with CI/CD, CODEOWNERS enforcement, and automated schema validation
-- **Governance Model**: Team ownership mapping, contribution workflows, and approval processes
-- **Sample Catalog Items**: 5+ basic service definitions demonstrating JIRA, REST API, and webhook actions
+**Value Delivered**: Platform teams can define services and receive automated provisioning through multiple action types
 
-**Q4 2025 Deliverables**:
-- **Terraform Schema**: Enhanced schema supporting Terraform action types with repository mapping
-- **Production Catalog**: 10+ production-ready catalog items for compute, database, storage, networking
-- **Variable Templates**: Complex variable substitution patterns with secrets and outputs scope
-- **Platform Team Onboarding**: Migration tools and training for catalog contribution
+**Team Coordination**:
+- **Catalog Team (2 people)**: Schema design, repository setup, sample catalog items
+- **Service Team (3-4 people)**: REST API, action framework, variable system, database
+- **DevCtl Team (1-2 people)**: Developer portal, CLI, authentication, documentation
 
-**Q1 2026 Deliverables**:
-- **Bundle Orchestration**: CatalogBundle schema with dependency management and component coordination
-- **Complex Workflows**: EKS + RDS + Secrets Manager bundles with cross-service variable passing
-- **Enterprise Catalog**: Comprehensive service catalog covering all platform team offerings
+### Q4 2025: Production Epic 📋 PLANNED (Nov-Jan)
+**Epic Goal**: Production deployment with single service automation
 
-**Q2 2026 Deliverables**:
-- **Advanced Patterns**: Service discovery, health checks, cost optimization, and monitoring integration
-- **Governance Scale**: Support for 20+ platform teams with automated validation and approval workflows
-- **Catalog Analytics**: Usage metrics, adoption tracking, and service performance measurement
+**Value Delivered**: Production-ready platform reducing single service provisioning from weeks to hours
 
-### Service Epic - REST API & Orchestration
-**Epic Owner**: Core Service Team (3 people) + Fulfillment Engine Team (2 people)
-**Repository**: orchestrator-service
+**Team Coordination**:
+- **Catalog Team**: Terraform schema, production catalog items, platform team onboarding
+- **Service Team**: Terraform integration, production infrastructure, fulfillment mode switching
+- **DevCtl Team**: Advanced portal features, CLI automation, self-service tools
 
-**Q3 2025 Deliverables**:
-- **Core REST API**: Complete API with catalog ingestion, request submission, and status tracking
-- **Action Framework**: JIRA, REST API, webhook, GitHub workflow action types with retry logic
-- **Variable System**: Multi-scope templating engine (fields, metadata, request, system, environment, outputs)
-- **Database Foundation**: PostgreSQL schema with request lifecycle and action tracking
+### Q1 2026: Orchestration Epic 🎯 PLANNED (Feb-Apr)
+**Epic Goal**: Multi-service orchestration with dependency management
 
-**Q4 2025 Deliverables**:
-- **Terraform Integration**: Terraform action type with repository mapping and infrastructure provisioning
-- **Production Infrastructure**: AWS deployment with RDS, Redis, monitoring, and alerting
-- **Fulfillment Mode Switching**: Seamless manual/automated mode switching for services
-- **Performance Optimization**: Caching, circuit breakers, and support for 100+ concurrent requests
+**Value Delivered**: Complete application stacks (EKS + RDS + Secrets) provisioned automatically in <4 hours
 
-**Q1 2026 Deliverables**:
-- **Bundle Orchestration Engine**: Sequential/parallel execution with dependency resolution and rollback
-- **Cross-Service Variables**: Output collection and injection between bundle components
-- **Enterprise Security**: AWS IAM integration, audit logging, and compliance frameworks
-- **High Availability**: Multi-region deployment with 99.9% uptime
+**Team Coordination**:
+- **Catalog Team**: Bundle schema, complex workflow examples, enterprise catalog
+- **Service Team**: Bundle orchestration engine, cross-service variables, enterprise security
+- **DevCtl Team**: Bundle management UI, advanced CLI, migration utilities
 
-**Q2 2026 Deliverables**:
-- **Advanced Orchestration**: Complex workflow patterns, conditional execution, and error recovery
-- **Performance Scale**: Support for 1000+ concurrent requests with <200ms P95 response times
-- **Operational Excellence**: Zero-downtime deployments, automated rollback, and comprehensive monitoring
+### Q2 2026: Enterprise Epic 🚀 PLANNED (May-Jul)
+**Epic Goal**: Enterprise-grade platform with full adoption
 
-### DevCtl Epic - Developer Portal & CLI
-**Epic Owner**: Developer Experience Team (1-2 people)
-**Repository**: orchestrator-devctl
+**Value Delivered**: 100% platform team adoption with 90%+ provisioning time reduction and enterprise features
 
-**Q3 2025 Deliverables**:
-- **Developer Portal Foundation**: Dynamic UI consuming catalog API with form generation
-- **Request Tracking**: Real-time status updates and action execution logs
-- **Authentication Integration**: AWS IAM authentication with team-based access control
-- **Basic CLI**: Command-line interface for catalog browsing and request submission
-
-**Q4 2025 Deliverables**:
-- **Advanced Portal Features**: Action status tracking, logs viewing, and fulfillment mode switching
-- **CLI Automation**: Batch request submission, status monitoring, and integration with CI/CD pipelines
-- **Self-Service Tools**: Platform team onboarding, catalog validation, and testing utilities
-- **Documentation Integration**: Auto-generated API docs and catalog documentation
-
-**Q1 2026 Deliverables**:
-- **Bundle Management**: Bundle submission, dependency visualization, and component monitoring
-- **Advanced CLI**: Complex workflow management, template generation, and debugging tools
-- **Platform Team Tools**: Migration utilities, bulk catalog operations, and analytics dashboards
-
-**Q2 2026 Deliverables**:
-- **Enterprise Portal**: Role-based access, advanced search, service discovery, and cost tracking
-- **CLI Ecosystem**: Plugin architecture, custom commands, and integration with enterprise tools
-- **Self-Service Troubleshooting**: Automated diagnostics, error resolution guides, and support workflows
+**Team Coordination**:
+- **Catalog Team**: Governance scale, analytics, comprehensive service catalog
+- **Service Team**: Multi-region HA, performance scale, operational excellence
+- **DevCtl Team**: Enterprise portal, CLI ecosystem, self-service troubleshooting
 
 ## Success Metrics
 
-**Q3 2025 Foundation Quarter Success Metrics**:
-- **Catalog Epic**: Schema specification complete with 100% validation coverage, 5+ sample catalog items
-- **Service Epic**: Core REST API deployed with <200ms response times, 5+ action types implemented
-- **DevCtl Epic**: Developer portal rendering dynamic forms, basic CLI operational
+**Q3 2025 Foundation Epic Success Metrics**:
+- Schema specification complete with 100% validation coverage
+- Core REST API deployed with <200ms response times and 5+ action types
+- Developer portal rendering dynamic forms with working request submission
+- 5+ sample catalog items demonstrating all action types
+- Platform teams can submit requests and receive automated fulfillment
 
-**Q4 2025 Production Quarter Success Metrics**:
-- **Catalog Epic**: 10+ production-ready catalog items, Terraform schema integration, platform team onboarding tools
-- **Service Epic**: Production AWS deployment, fulfillment mode switching, <1 hour provisioning time for single services
-- **DevCtl Epic**: Advanced portal features, CLI automation, self-service tools
+**Q4 2025 Production Epic Success Metrics**:
+- Production AWS deployment with monitoring, alerting, and high availability
+- 10+ production-ready catalog items with Terraform integration
+- Fulfillment mode switching operational (manual ↔ automated)
+- <1 hour provisioning time for single services
+- 5+ platform teams onboarded and actively using the platform
 
-**Q1 2026 Orchestration Quarter Success Metrics**:
-- **Catalog Epic**: CatalogBundle schema operational, EKS + RDS + Secrets Manager bundles, enterprise catalog coverage
-- **Service Epic**: Bundle orchestration engine, cross-service variable passing, high availability deployment
-- **DevCtl Epic**: Bundle management UI, advanced CLI workflow tools, platform team migration utilities
+**Q1 2026 Orchestration Epic Success Metrics**:
+- CatalogBundle schema operational with dependency management
+- EKS + RDS + Secrets Manager stack automated in <4 hours
+- Bundle orchestration engine with cross-service variable passing
+- 10+ platform teams using complex multi-service workflows
+- High availability deployment with enterprise security compliance
 
-**Q2 2026 Enterprise Quarter Success Metrics**:
-- **Catalog Epic**: 20+ platform teams supported, governance scale validation, 100% service catalog coverage
-- **Service Epic**: 99.9% uptime, 1000+ concurrent requests, 90%+ provisioning time reduction
-- **DevCtl Epic**: Enterprise portal, CLI ecosystem maturation, self-service troubleshooting capabilities
+**Q2 2026 Enterprise Epic Success Metrics**:
+- 99.9% uptime with multi-region deployment
+- 1000+ concurrent requests supported with <200ms P95 response times
+- 100% platform team adoption across all service categories
+- 90%+ provisioning time reduction (weeks → hours) measured and verified
+- Enterprise portal with full self-service capabilities
 
 ## Team Coordination
 
-### Three-Epic Team Distribution (6-8 Person Team)
+### Team Distribution (6-8 Person Team)
 
-**Catalog Team (2 people) - Schema & Repository Epic**
-- Owns catalog.md schema design and governance model
+**Catalog Team (2 people)**
+- Owns catalog schema design and governance model
 - GitHub repository setup with CI/CD and CODEOWNERS enforcement
-- Schema validation rules and platform team onboarding
-- Catalog item creation, documentation, and migration tools
+- Catalog item creation, documentation, and platform team onboarding
+- Schema validation rules and migration tools
 
-**Service Team (3-4 people) - REST API & Orchestration Epic**
+**Service Team (3-4 people)**
 - Core Service Sub-team (2 people): REST API, database, authentication, monitoring
 - Fulfillment Sub-team (1-2 people): Action framework, variable system, external integrations
 - Combined ownership of action types, circuit breakers, retry logic, and orchestration engine
 
-**DevCtl Team (1-2 people) - Developer Portal & CLI Epic**
+**DevCtl Team (1-2 people)**
 - Developer portal with dynamic form generation and request tracking
 - CLI tools for catalog browsing, request submission, and automation
 - API documentation, user experience, and platform team support
 - Self-service tools and troubleshooting capabilities"
 
-### Epic Coordination Strategy
+### Team Coordination Strategy
 
-**Cross-Epic Dependencies**:
+**Cross-Team Dependencies**:
 - **Catalog → Service**: Schema changes must be coordinated with API updates
 - **Service → DevCtl**: API changes require portal and CLI updates
 - **Catalog → DevCtl**: Schema presentation definitions drive form generation
 
-**Quarterly Coordination Points**:
-- **End of Q3**: Foundation capabilities proven across all three epics
-- **End of Q4**: Production deployment ready with single service automation
-- **End of Q1**: Multi-service orchestration operational across all components
-- **End of Q2**: Enterprise-grade platform with full feature completeness
+**Quarterly Coordination**:
+- **Sprint Planning**: All teams align on epic goals and interface contracts
+- **Weekly Standups**: Cross-team integration issues and blockers
+- **Sprint Demos**: End-to-end testing across all three repositories
+- **Quarter End**: Epic completion validation and next quarter planning
 
-**Epic Integration Testing**:
-- **Weekly**: Cross-team integration testing during development
-- **Sprint End**: End-to-end testing across all three repositories
-- **Quarter End**: Comprehensive system testing and user acceptance validation"
+**Integration Strategy**:
+- Schema-first development ensures stable interfaces between teams
+- Continuous integration testing across all repositories
+- Feature flags enable independent deployment and testing"
 
-## Quarterly Deliverables by Team
+## Quarterly Team Coordination
 
-*Each team delivers working software every quarter that builds on previous capabilities.*
+*Each quarter focuses all three teams on delivering one unified capability*
 
-### Q3 2025: Foundation Quarter (CURRENT)
-*Goal: Establish working foundation across all three components*
+### Q3 2025: Foundation Epic (CURRENT)
 
-**Catalog Team Deliverables**:
+**Catalog Team Focus**:
 - Complete CatalogItem schema specification with validation rules
-- GitHub repository with CI/CD, CODEOWNERS enforcement, and automated validation
+- GitHub repository with CI/CD, CODEOWNERS enforcement, automated validation
+- 5+ sample catalog items demonstrating JIRA, REST API, webhook, GitHub workflow actions
 - Governance model and platform team contribution workflows
-- 5+ sample catalog items demonstrating JIRA, REST API, webhook, and GitHub workflow actions
-- Schema validation framework with comprehensive error reporting
 
-**Service Team Deliverables**:
-- Core REST API with catalog ingestion, request submission, and status tracking
-- PostgreSQL database schema for requests, actions, and audit logging
-- Action execution framework supporting JIRA, REST API, webhook, GitHub workflow action types
+**Service Team Focus**:
+- Core REST API with catalog ingestion, request submission, status tracking
+- Action execution framework: JIRA, REST API, webhook, GitHub workflow action types
 - Variable substitution system supporting 6+ scopes (fields, metadata, request, system, environment, outputs)
-- Circuit breaker architecture and retry logic for external service calls
-- Basic AWS infrastructure deployment with health endpoints
+- PostgreSQL database schema, circuit breakers, retry logic
 
-**DevCtl Team Deliverables**:
-- Developer portal foundation with dynamic form generation from catalog schema
+**DevCtl Team Focus**:
+- Developer portal with dynamic form generation from catalog schema
 - Request tracking and action status display in real-time
-- Authentication integration with AWS IAM
+- AWS IAM authentication integration
 - Basic CLI for catalog browsing and request submission
-- API documentation and developer onboarding materials
 
-### Q4 2025: Production Quarter (PLANNED)
-*Goal: Production deployment with automated single service provisioning*
+**Epic Success Criteria**: Platform teams can submit requests through portal/CLI and receive automated fulfillment via 5+ action types
 
-**Catalog Team Deliverables**:
+### Q4 2025: Production Epic (PLANNED)
+
+**Catalog Team Focus**:
 - Enhanced schema supporting Terraform action types with repository mapping
-- 10+ production-ready catalog items for compute, database, storage, networking services
-- Complex variable templating patterns with secrets and outputs scope
+- 10+ production-ready catalog items for compute, database, storage, networking
 - Platform team migration tools and training materials
-- Governance workflows for 5+ platform teams
+- Complex variable templating patterns with secrets and outputs scope
 
-**Service Team Deliverables**:
+**Service Team Focus**:
 - Terraform action type with infrastructure provisioning capabilities
-- Production AWS deployment with RDS, Redis, monitoring, and alerting
+- Production AWS deployment with RDS, Redis, monitoring, alerting
 - Fulfillment mode switching (seamless manual ↔ automated switching)
-- Secrets scope integration for sensitive data handling
 - Performance optimization supporting 100+ concurrent requests
-- Production monitoring and operational procedures
 
-**DevCtl Team Deliverables**:
+**DevCtl Team Focus**:
 - Advanced portal features supporting Terraform action tracking and logs
 - CLI automation capabilities for batch operations and CI/CD integration
 - Self-service tools for platform teams (validation, testing, troubleshooting)
 - Documentation integration with auto-generated API docs
-- Onboarding workflows and support documentation
 
-### Q1 2026: Orchestration Quarter (PLANNED)
-*Goal: Multi-service orchestration with dependency management*
+**Epic Success Criteria**: Production platform reducing single service provisioning from weeks to <1 hour with 5+ platform teams onboarded
 
-**Catalog Team Deliverables**:
+### Q1 2026: Orchestration Epic (PLANNED)
+
+**Catalog Team Focus**:
 - CatalogBundle schema with dependency management and component orchestration
-- Complex bundle examples: EKS + RDS + Secrets Manager with variable passing
+- Complex bundle examples: EKS + RDS + Secrets Manager with cross-service variable passing
 - Production-ready bundle catalog for common application stacks
 - Enterprise catalog covering all platform team bundle offerings
-- Platform team onboarding for complex bundle workflows
 
-**Service Team Deliverables**:
-- Bundle orchestration engine with sequential/parallel execution
+**Service Team Focus**:
+- Bundle orchestration engine with sequential/parallel execution and rollback
 - Cross-service variable passing with output collection and injection
-- Rollback capabilities and error recovery for bundle failures
 - AWS IAM, parameter store, CloudFormation, and monitoring integrations
 - High availability deployment and enterprise security compliance
 
-**DevCtl Team Deliverables**:
+**DevCtl Team Focus**:
 - Bundle management UI with dependency visualization
 - Bundle submission and component monitoring interfaces
 - Advanced CLI workflow management and debugging tools
 - Platform team migration utilities and analytics dashboards
-- Advanced CLI ecosystem and plugin architecture
 
-### Q2 2026: Enterprise Quarter (PLANNED)
-*Goal: Enterprise-grade platform with full platform team adoption*
+**Epic Success Criteria**: Complete application stacks (EKS + RDS + Secrets Manager) provisioned automatically in <4 hours
 
-**Catalog Team Deliverables**:
-- Advanced governance patterns and service discovery schemas
-- Security and compliance validation patterns
+### Q2 2026: Enterprise Epic (PLANNED)
+
+**Catalog Team Focus**:
+- Advanced governance patterns supporting 20+ platform teams
 - Catalog analytics, usage metrics, and adoption tracking
-- Comprehensive training and migration tools for 20+ platform teams
 - Service discovery, cost optimization, and advanced workflow patterns
-- 100% platform team adoption with comprehensive service catalog
+- Comprehensive training and automated approval workflows
 
-**Service Team Deliverables**:
+**Service Team Focus**:
 - Multi-region deployment with 99.9% uptime and zero-downtime deployments
-- Enterprise security compliance, AWS IAM integration, and automated audit trails
 - Performance optimization supporting 1000+ concurrent requests
 - Advanced monitoring, health checks, and automated rollback capabilities
-- Final performance tuning and enterprise-grade operational procedures
-- 90%+ provisioning time reduction (weeks → hours) validation
+- Enterprise security compliance and operational excellence
 
-**DevCtl Team Deliverables**:
-- Enterprise portal with role-based access and advanced search
-- Security dashboards and compliance reporting tools
-- Advanced portal features and self-service troubleshooting tools
-- CLI ecosystem maturation and enterprise tool integrations
-- Advanced automation and self-service capabilities
-- User experience optimization and enterprise feature completion
+**DevCtl Team Focus**:
+- Enterprise portal with role-based access, advanced search, cost tracking
+- CLI ecosystem with plugin architecture and enterprise tool integrations
+- Self-service troubleshooting with automated diagnostics and error resolution
+- Advanced automation and user experience optimization
+
+**Epic Success Criteria**: 100% platform team adoption with 90%+ provisioning time reduction and enterprise-grade features
 
 ## Implementation Strategy
 

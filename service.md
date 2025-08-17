@@ -41,6 +41,10 @@ GET    /api/v1/requests                          # List user requests
 GET    /api/v1/requests/{request_id}             # Request details
 GET    /api/v1/requests/{request_id}/status      # Current status
 GET    /api/v1/requests/{request_id}/logs        # Execution logs
+POST   /api/v1/requests/{request_id}/retry       # Retry failed action
+POST   /api/v1/requests/{request_id}/abort       # Abort failed request
+POST   /api/v1/requests/{request_id}/escalate    # Escalate to manual support
+GET    /api/v1/requests/{request_id}/escalation  # Escalation details
 ```
 
 **System Health**
@@ -128,6 +132,8 @@ All list endpoints that return multiple items use cursor-based pagination with t
 - Sequential execution with dependency management
 - Retry logic with exponential backoff
 - No automatic error recovery; failures stop execution and require manual intervention
+- Failed requests provide detailed failure context for human decision-making
+- Operators can retry failed actions, abort the request, or escalate to manual support
 
 ### Technology Stack
 
@@ -184,6 +190,70 @@ Supports 8+ variable scopes:
 - `{{env.VAR}}` - Environment variables
 - `{{output.action_id.field}}` - Previous action outputs
 
+### Manual Failure Resolution
+
+**Failure Context Preservation**:
+When any action fails, the system preserves detailed failure information to support manual decision-making:
+
+- **Partial State Inventory**: Which components succeeded/failed and what resources were created
+- **Error Context**: Full error messages, logs, and failure timestamps  
+- **Cleanup Guidance**: Component-specific cleanup procedures based on action types
+- **Request Metadata**: Original request data and user context for troubleshooting
+
+**Human Decision Options**:
+When reviewing a failed request, operators have three options:
+
+1. **Retry Failed Action**: Re-execute the failed action (useful for transient errors)
+2. **Abort Request**: Mark the request as permanently failed and stop processing
+3. **Escalate to Manual Support**: Create structured JIRA ticket for human intervention
+
+**Manual Support Escalation**:
+When operators choose to escalate, a structured JIRA ticket is created containing the preserved failure context:
+
+**JIRA Ticket Template** (used when operator chooses to escalate):
+```yaml
+type: jira-ticket
+config:
+  ticket:
+    project: ORCHESTRATION
+    issueType: "Incident"
+    priority: "High"
+    summaryTemplate: "Manual Support Required - {{bundle.metadata.name}} ({{request.id}})"
+    descriptionTemplate: |
+      **Request Information**
+      Service: {{bundle.metadata.name}} ({{bundle.metadata.version}})
+      Request ID: {{request.id}}
+      User: {{request.user.email}}
+      Failure Time: {{failure.timestamp}}
+      
+      **Component Status**
+      {{#each components}}
+      - {{id}}: {{status}}{{#if resources}} (Resources: {{join resources ", "}}){{/if}}
+      {{/each}}
+      
+      **Error Details**
+      {{failure.error}}
+      
+      **Cleanup Required**
+      {{#each components}}
+      {{#if succeeded}}
+      - {{id}}: {{cleanup.instructions}}
+      {{/if}}
+      {{/each}}
+      
+      **Original Request Data**
+      ```json
+      {{json request.data}}
+      ```
+```
+
+**Request Status Workflow**:
+- Failed requests remain in `"failed"` status until human decision
+- **Retry**: Status remains `"failed"` until retry succeeds or fails again
+- **Abort**: Status changes to `"aborted"` with timestamp
+- **Escalate**: Status changes to `"escalated"` with JIRA ticket reference
+- Operators can query by status: `GET /api/v1/requests?status=failed|aborted|escalated`
+
 ## Implementation Requirements
 
 ### Core Features
@@ -235,11 +305,14 @@ CREATE TABLE requests (
     id UUID PRIMARY KEY,
     catalog_item_id VARCHAR(255) NOT NULL,
     user_id VARCHAR(255) NOT NULL,
-    status VARCHAR(50) NOT NULL,
+    status VARCHAR(50) NOT NULL,  -- submitted, in_progress, completed, failed, aborted, escalated
     request_data JSONB NOT NULL,
     created_at TIMESTAMP NOT NULL,
     updated_at TIMESTAMP NOT NULL,
-    completed_at TIMESTAMP
+    completed_at TIMESTAMP,
+    aborted_at TIMESTAMP,
+    escalation_ticket_id VARCHAR(50),
+    escalation_timestamp TIMESTAMP
 );
 ```
 
