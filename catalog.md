@@ -50,8 +50,7 @@ All services **MUST** define a manual fulfillment strategy. Automated fulfillmen
 - Stops and waits for human decision on failure
 
 **Error Handling (Phase 1):**
-- **Terminate**: Stop execution, create manual ticket for entire request
-- **Manual Takeover**: Convert remaining actions to manual tickets
+- **Manual Completion**: Convert remaining actions to manual tickets
 - **Human-Triggered Retry**: Operator can retry failed actions (unlimited attempts)
 - **Skip**: Continue with next action (if non-critical)
 
