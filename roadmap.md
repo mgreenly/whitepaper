@@ -199,6 +199,43 @@
 - `/api/v1/webhooks/jira` - JIRA status updates
 - `/api/v1/webhooks/terraform` - Terraform notifications
 
+**Service Team Implementation Tasks**:
+1. **Core Infrastructure Setup**
+   - PostgreSQL database schema (requests, request_actions tables)
+   - Redis caching layer integration
+   - AWS Lambda deployment framework
+   - Environment configuration and secrets management
+
+2. **Catalog Management Implementation** 
+   - GitHub webhook processing for catalog updates
+   - Catalog item parsing and validation
+   - Schema-to-form generation logic
+   - Catalog refresh and caching mechanisms
+
+3. **Request Lifecycle Engine**
+   - Request submission and validation pipeline
+   - Status tracking and state management
+   - Request queuing and processing architecture
+   - Audit logging and correlation IDs
+
+4. **JIRA Action Framework**
+   - JIRA API integration with authentication
+   - Variable substitution engine (6+ scopes)
+   - Template processing and ticket creation
+   - Status polling and webhook handling
+
+5. **Error Handling and Recovery**
+   - Circuit breaker implementation for external calls
+   - Retry logic with exponential backoff
+   - Failure context preservation
+   - Manual escalation workflow
+
+6. **API Endpoint Implementation**
+   - All 20 REST endpoints with proper error handling
+   - Request validation and response formatting
+   - Pagination support for list endpoints
+   - Health checks and metrics export
+
 **DevCtl Team Focus**:
 - Developer portal with dynamic form generation from catalog schema
 - Request tracking and JIRA ticket status display
