@@ -44,7 +44,12 @@ orchestrator-catalog-repo/
 - **IDs and References**: Use **kebab-case**
   - Examples: `database-postgresql-standard`, `bundle-webapp-production`
 
-These conventions align with Go language standards and cloud-native tooling (Kubernetes, Helm, etc.) for optimal compatibility.
+- **Terraform Resource/Module Names**: Use **snake_case** for HCL compatibility
+  - Transform field values when creating Terraform identifiers
+  - Example: `{{fields.appName}}` → `module "eks_app_{{replace(fields.appName, '-', '_')}}"`
+  - Built-in modules should use underscores: `./modules/eks_app` not `./modules/eks-app`
+
+These conventions align with Go language standards and cloud-native tooling (Kubernetes, Helm, etc.) for optimal compatibility. Terraform identifiers require special handling to ensure valid HCL syntax.
 
 ## Schema Reference
 
@@ -219,9 +224,9 @@ fulfillment:
       - type: terraform
         config:
           contentTemplate: |
-            module "eks_app_{{fields.appName}}" {
-              source = "./modules/eks-app"
-              name = "{{fields.appName}}"
+            module "eks_app_{{replace(fields.appName, '-', '_')}}" {
+              source = "./modules/eks_app"
+              name = "{{fields.appName}}"  # Keep original for display
               image = "{{fields.containerImage}}"
               replicas = {{fields.replicas}}
             }
@@ -267,17 +272,17 @@ fulfillment:
       - type: terraform
         config:
           contentTemplate: |
-            module "rds_{{fields.instanceName}}" {
+            module "rds_{{replace(fields.instanceName, '-', '_')}}" {
               source = "terraform-aws-modules/rds/aws"
-              identifier = "{{fields.instanceName}}"
+              identifier = "{{fields.instanceName}}"  # AWS allows dashes
               engine = "postgres"
               instance_class = "{{fields.instanceClass}}"
               allocated_storage = {{fields.storageSize}}
             }
           outputs:
-            - connectionString: "module.rds_{{fields.instanceName}}.connection_string"
-            - host: "module.rds_{{fields.instanceName}}.endpoint"
-            - port: "module.rds_{{fields.instanceName}}.port"
+            - connectionString: "module.rds_{{replace(fields.instanceName, '-', '_')}}.db_connection_string"
+            - host: "module.rds_{{replace(fields.instanceName, '-', '_')}}.db_endpoint"
+            - port: "module.rds_{{replace(fields.instanceName, '-', '_')}}.db_port"
 ```
 
 #### AWS Parameter Store
@@ -318,13 +323,13 @@ fulfillment:
       - type: terraform
         config:
           contentTemplate: |
-            resource "aws_ssm_parameter" "{{fields.secretName}}" {
-              name  = "/{{fields.secretName}}"
+            resource "aws_ssm_parameter" "{{replace(fields.secretName, '/', '_')}}" {
+              name  = "/{{fields.secretName}}"  # Path format preserved
               type  = "SecureString"
               value = jsonencode({{json(fields.secrets)}})
             }
           outputs:
-            - secretArn: "aws_ssm_parameter.{{fields.secretName}}.arn"
+            - secretArn: "aws_ssm_parameter.{{replace(fields.secretName, '/', '_')}}.arn"
 ```
 
 ### Example Complete Bundle
@@ -459,11 +464,11 @@ config:
 type: terraform
 config:
   contentTemplate: |
-    resource "aws_instance" "{{fields.name}}" {
+    resource "aws_instance" "{{replace(fields.name, '-', '_')}}" {
       instance_type = "{{fields.instanceType}}"
     }
-  filename: "{{fields.name}}.tf"
-  repositoryMapping: "terraform-infrastructure"
+  filename: "{{replace(fields.name, '-', '_')}}.tf"
+  repositoryMapping: "terraform_infrastructure"
 ```
 
 ### 4. GitHub Workflow
@@ -514,5 +519,6 @@ Built-in functions for data transformation:
 - `{{timestamp()}}` - Current timestamp
 - `{{upper(string)}}` - Uppercase conversion
 - `{{concat(str1, str2)}}` - String concatenation
+- `{{replace(string, old, new)}}` - String replacement (useful for Terraform names)
 - `{{json(object)}}` - JSON encoding
 - `{{base64(string)}}` - Base64 encoding

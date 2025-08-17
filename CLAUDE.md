@@ -11,4 +11,5 @@
   * read @roadmap.md
   * read @catalog.md
   * read @service.md
+  * read @devctl.md
   * you can NOT modify files unless given explicit permission.
