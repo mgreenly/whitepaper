@@ -10,12 +10,5 @@ The output should be a series of actions broken into phases that describe all wo
 
 ## Guidance
 
-  * Other agents are modifying files in this project.
-  * Never assume that files have not changed.
-  * Never read files unless your're instructed to.
-  * Read these files prior to processing a prompt.
-    * whitepaper.md
-    * agent-planner.md
-    * roadmap.md
-  * You can only modify the file; roadmap.md and agent-planner.md
-  * You can NOT modify any other file unless explicitly instructed to do so.
+  * read and evaluate @CLAUDE.md
+  * You can only modify the files; roadmap.md and agent-planner.md

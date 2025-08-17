@@ -1,0 +1,99 @@
+# Template for Platform Service Catalog Item
+# Replace all placeholder values and remove unnecessary sections
+
+header:
+  id: category-service-variant  # e.g., compute-container-app-standard
+  name: Service Display Name
+  description: Brief description of what this service provides
+  version: 1.0.0
+  category: compute  # compute|databases|messaging|networking|storage|security|monitoring|other
+  owner: platform-team-name
+  tags: []  # Optional tags for search/filtering
+  sla:
+    provisioning_time: 2 hours  # Expected time to provision
+    support_level: tier-1  # tier-1|tier-2|tier-3
+
+presentation:
+  groups:
+    - id: basic_config
+      name: Basic Configuration
+      description: Essential configuration parameters
+      order: 1
+      collapsible: false
+      fields:
+        - id: field_id
+          name: Field Display Name
+          description: Help text for this field
+          type: string  # string|text|integer|number|boolean|selection|date|email|url|json|yaml
+          order: 1
+          required: true
+          default: null  # Optional default value
+          validation:
+            pattern: "^[a-z][a-z0-9-]*$"  # Optional regex pattern
+            min: 1  # Optional minimum value/length
+            max: 100  # Optional maximum value/length
+            enum: []  # Optional list of allowed values
+          conditional:  # Optional conditional display
+            field: other_field_id
+            operator: eq  # eq|ne|gt|lt|gte|lte|in|not_in
+            value: some_value
+
+    - id: advanced_config
+      name: Advanced Configuration
+      description: Optional advanced settings
+      order: 2
+      collapsible: true
+      fields:
+        - id: advanced_field
+          name: Advanced Setting
+          type: boolean
+          order: 1
+          required: false
+          default: false
+
+fulfillment:
+  manual:
+    description: Manual provisioning process via JIRA ticket
+    actions:
+      - type: jira-ticket
+        config:
+          project: PLATFORM
+          issue_type: Task
+          summary_template: "Provision {{header.name}}: {{fields.field_id}}"
+          description_template: |
+            Please provision the following service:
+            
+            Service: {{header.name}}
+            Field Value: {{fields.field_id}}
+            
+            Requested by: {{request.user}}
+            Request ID: {{request.id}}
+          labels:
+            - platform-request
+            - "{{header.category}}"
+          assignee: platform-team
+
+  automatic:  # Optional automated fulfillment
+    actions:
+      - type: terraform
+        config:
+          repository: platform-infrastructure
+          branch: main
+          path: "environments/{{fields.environment}}/{{header.category}}"
+          module: "{{header.id}}"
+          variables:
+            name: "{{fields.field_id}}"
+            # Add more variables as needed
+        retry:
+          attempts: 3
+          delay: 30
+        rollback:
+          type: terraform
+          config:
+            repository: platform-infrastructure
+            branch: main
+            path: "environments/{{fields.environment}}/{{header.category}}"
+            module: "{{header.id}}"
+            variables:
+              action: destroy
+              name: "{{fields.field_id}}"
