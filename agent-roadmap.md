@@ -14,13 +14,16 @@ We should plan around our quarterly schedule.
   * Q3 is August, Septmember, October
   * Q4 is November, December, January
 
-Assume we use 2 week sprints.
-
-The date today is August 17th, 2025
 
 The output should be a series of concise 1-2 sentence actions, broken down into sprints, broken down into quarters.
 
+The output should be categorized so that we know what epic the action should belong to.
+
+There should be several epics.  Each epic should last 1 quarter.
+
 Assume the team is 6-8 people.
+
+Use the `date` cli tool to get today's date.
 
 ## Guidance
 

@@ -1,114 +1,135 @@
 # Platform Automation Orchestrator Development Roadmap
 
+*Last Updated: August 17, 2025*
+
 ## Table of Contents
 
-- [Development Phases](#development-phases)
-  - [Q3 2025: Foundation Setup](#q3-2025-foundation-setup--current-aug-oct)
-  - [Q4 2025: Complete Stack Provisioning](#q4-2025-complete-stack-provisioning--planned-nov-jan)
-  - [2026+: TBD](#2026-tbd)
+- [Development Epics](#development-epics)
+  - [Q3 2025: Foundation Epic - Schema & Core Service](#q3-2025-foundation-epic---schema--core-service)
+  - [Q4 2025: Integration Epic - Fulfillment Engine](#q4-2025-integration-epic---fulfillment-engine)
+  - [Q1 2026: Orchestration Epic - Multi-Service Coordination](#q1-2026-orchestration-epic---multi-service-coordination)
+  - [Q2 2026: Production Epic - Enterprise Readiness](#q2-2026-production-epic---enterprise-readiness)
 - [Sprint Breakdown](#sprint-breakdown)
-  - [Q3 2025 Sprints](#q3-2025-sprints-current)
-  - [Q4 2025 Sprints](#q4-2025-sprints-planned)
+- [Team Coordination](#team-coordination)
 - [Success Metrics](#success-metrics)
 - [Implementation Strategy](#implementation-strategy)
-  - [Binary Fulfillment Model](#binary-fulfillment-model)
-  - [Progressive Enhancement](#progressive-enhancement)
-  - [Change Management](#change-management)
 - [Risk Mitigation](#risk-mitigation)
 
-## Development Phases
+## Development Epics
 
-### Q3 2025: Foundation Setup 🚧 CURRENT (Aug-Oct)
-- **Repository Setup**: Create GitHub repositories for catalog and service with CI/CD workflows and basic documentation
-- **Infrastructure**: Deploy basic Kubernetes infrastructure and empty REST service with health endpoints  
-- **Schema Design**: Define schema specification for catalog items with validation rules
-- **Document Store**: Implement basic YAML catalog ingestion with file-based storage and validation
-- **JIRA Integration**: Create automated JIRA ticket creation with basic variable substitution for manual fulfillment
+### Q3 2025: Foundation Epic - Schema & Core Service 🚧 CURRENT (Aug-Oct)
+**Epic Goal**: Establish schema-driven foundation with manual JIRA fulfillment
 
-### Q4 2025: Complete Stack Provisioning 📋 PLANNED (Nov-Jan)
-**Goals**: 
-1. Enable end-to-end provisioning of EKS container app with database and secrets management
-2. **Fully data-driven process**: Catalog defines capabilities, service API exposes them, developer portal consumes dynamically
+**Key Deliverables**:
+- **Catalog Schema Design**: Complete CatalogItem and CatalogBundle schema specification with validation rules and governance model
+- **GitHub Repository Integration**: Catalog repo with CI/CD, CODEOWNERS enforcement, and automated schema validation
+- **Core REST Service**: Basic API with catalog ingestion, request submission, and status tracking
+- **Manual Fulfillment Engine**: JIRA integration with variable substitution and ticket creation
+- **Developer Portal Foundation**: Basic UI consuming catalog API with dynamic form generation
 
-- **Data-Driven Architecture**: All UI forms, validation rules, and workflows generated dynamically from catalog schema definitions
-- **Dynamic Service Discovery**: Developer portal queries catalog API to render available services without hardcoded UI components
-- **Schema-Generated Forms**: Transform YAML presentation definitions into dynamic UI with conditional logic, validation, and real-time updates
-- **API-First Design**: Service exposes comprehensive REST API that catalog-driven portals consume for complete self-service experience
-- **Multi-Service Orchestration**: Coordinate provisioning across compute, database, and security services in correct dependency order
-- **EKS Container Support**: Implement Terraform actions for EKS cluster, node groups, ingress, and application deployment
-- **Database Integration**: Add RDS PostgreSQL provisioning with connection string generation and security group setup
-- **Secrets Management**: Integrate AWS Secrets Manager with automatic secret creation, rotation, and injection into applications
-- **Complex Variable System**: Support cross-service variable passing (database connection strings to app configs, generated secrets to deployments)
-- **Dependency Management**: Ensure proper sequencing (VPC → Database → Secrets → EKS → App Deployment)
+**Value Delivered**: Platform teams can define services and receive requests through automated JIRA tickets
 
-### 2026+: TBD
-Future roadmap to be determined based on Q4 2025 outcomes and business priorities.
+### Q4 2025: Integration Epic - Fulfillment Engine 📋 PLANNED (Nov-Jan)
+**Epic Goal**: Enable automated fulfillment for single services during restricted change period
+
+**Key Deliverables**:
+- **Action Framework**: Implement REST API, webhook, and GitHub workflow action types with retry logic and circuit breakers
+- **Variable System**: Complete templating engine supporting 8+ scopes (fields, metadata, request, system, environment, secrets, outputs)
+- **Terraform Integration**: Terraform action type with repository mapping and basic infrastructure provisioning
+- **Single Service Automation**: End-to-end automated provisioning for individual services (compute, database, or storage)
+- **Binary Fulfillment Model**: Services operate in manual OR automated mode with seamless switching
+
+**Value Delivered**: Platform teams can automate individual services, reducing provisioning time from weeks to hours
+
+### Q1 2026: Orchestration Epic - Multi-Service Coordination 🎯 PLANNED (Feb-Apr)
+**Epic Goal**: Enable complex multi-service provisioning with dependency management
+
+**Key Deliverables**:
+- **Bundle Orchestration**: CatalogBundle support with sequential/parallel execution and dependency resolution
+- **Cross-Service Variables**: Variable passing between components with output collection and injection
+- **Complex Workflows**: EKS + RDS + Secrets Manager integration with proper sequencing and rollback
+- **Enterprise Integrations**: AWS IAM, parameter store, CloudFormation, and monitoring integrations
+- **Production Deployment**: First production deployment with monitoring and alerting
+
+**Value Delivered**: Complete application stacks provisioned automatically in <4 hours
+
+### Q2 2026: Production Epic - Enterprise Readiness 🚀 PLANNED (May-Jul)
+**Epic Goal**: Scale to enterprise production with full platform team adoption
+
+**Key Deliverables**:
+- **High Availability**: Multi-region deployment with 99.9% uptime and zero-downtime deployments
+- **Enterprise Security**: AWS IAM integration, audit logging, compliance frameworks, and security scanning
+- **Performance Optimization**: Caching, database optimization, and support for 1000+ concurrent requests
+- **Platform Team Enablement**: Training, documentation, migration tools, and support processes
+- **Advanced Features**: Service discovery, health checks, automated rollback, and cost optimization
+
+**Value Delivered**: Enterprise-grade platform supporting 100% platform team adoption and 90%+ provisioning time reduction
 
 ## Success Metrics
 
-**Q3 2025 Goals**:
-- GitHub repositories established with CI/CD workflows and basic documentation
-- Kubernetes infrastructure deployed with health endpoints operational
-- Schema specification defined with basic validation rules
-- First catalog item defined and validated successfully
-- Basic JIRA integration working for manual fulfillment
-- Functional test scripts in repository to add and verify catalog documents
+**Q3 2025 Foundation Epic Success Metrics**:
+- Schema specification complete with 100% validation coverage
+- GitHub catalog repository operational with CODEOWNERS enforcement
+- Core REST service deployed with <200ms API response times
+- Manual JIRA fulfillment working for 3+ catalog items
+- Developer portal rendering dynamic forms from catalog schema
+- 2+ platform teams actively contributing catalog definitions
 
-**Q4 2025 Goals**:
-- **Complete Stack Demo**: Successfully provision EKS app + PostgreSQL + secrets end-to-end in <4 hours
-- **Fully Data-Driven**: Zero hardcoded UI components - all forms, validation, and workflows generated from catalog YAML definitions
-- **Dynamic Portal Integration**: Developer portal consumes catalog API to render services dynamically without code changes
-- **Schema-to-UI Pipeline**: Transform schema presentation definitions into live UI with conditional logic and validation
-- **Multi-Service Coordination**: Support 3+ services with cross-service variable passing (DB credentials → app config)
-- **Advanced Terraform Actions**: EKS cluster, RDS database, security groups, ingress, application deployment
-- **Secrets Integration**: AWS Secrets Manager integration with automatic injection into Kubernetes deployments
-- **Configuration Complexity**: Handle typical production options (instance sizes, storage, networking, monitoring, backup schedules)
-- **Dependency Orchestration**: Proper sequencing of VPC → Database → Secrets → EKS → Application deployment
+**Q4 2025 Integration Epic Success Metrics**:
+- 5+ action types implemented (JIRA, REST API, webhook, GitHub workflow, Terraform)
+- Variable system supporting 8+ scopes with complex templating
+- Binary fulfillment model operational (manual ↔ automated switching)
+- 5+ single services automated with <1 hour provisioning time
+- Circuit breaker architecture preventing external service failures
+- Zero-downtime deployments during restricted change period
 
-**2026 Goals**:
-- 100% platform team adoption with multiple services onboarded
-- 90%+ provisioning time reduction from weeks to hours
-- Production deployment with 99.9% uptime and enterprise security
+**Q1 2026 Orchestration Epic Success Metrics**:
+- CatalogBundle orchestration supporting 3+ service dependencies
+- Cross-service variable passing with output collection and injection
+- Complete EKS + RDS + Secrets Manager stack automated in <4 hours
+- Production deployment with monitoring, alerting, and audit logging
+- 10+ platform teams onboarded with complex multi-service workflows
 
-## Q4 2025 Target: Complete EKS Stack Example
+**Q2 2026 Production Epic Success Metrics**:
+- 99.9% uptime with multi-region high availability deployment
+- 1000+ concurrent requests supported with <200ms P95 response times
+- 100% platform team adoption across all service categories
+- 90%+ provisioning time reduction (weeks → hours) measured and verified
+- Enterprise security compliance with automated audit trails
 
-**User Request**: "Deploy my Node.js app on EKS with PostgreSQL database and proper secrets management"
+## Team Coordination
 
-**Expected Configuration Options**:
-- **Application**: Container image, replicas, resource limits, health checks, environment variables
-- **EKS Cluster**: Node instance types, autoscaling groups, Kubernetes version, networking configuration
-- **Database**: RDS instance class, storage size, backup retention, maintenance windows, encryption
-- **Secrets**: Database credentials, API keys, TLS certificates with automatic rotation
-- **Networking**: VPC setup, security groups, ingress rules, load balancer configuration
-- **Monitoring**: CloudWatch integration, log aggregation, alerting thresholds
+### Work Stream Distribution (6-8 Person Team)
 
-**Data-Driven Architecture Flow**:
-```
-Catalog YAML → Schema Validation → API Exposure → Dynamic UI Generation
+**Schema & Catalog Team (2 people)**
+- Owns catalog.md schema design and governance
+- GitHub repository setup and CI/CD workflows
+- CODEOWNERS enforcement and validation rules
+- Platform team onboarding and training
 
-catalog/compute/eks-app.yaml
-├── metadata: {id, name, category, owner}
-├── presentation: {form fields, validation, conditional logic}
-└── fulfillment: {terraform actions, variable passing}
-                     ↓
-            PAO Service API
-            ├── GET /catalog → Available services
-            ├── GET /catalog/items/{id}/schema → Dynamic form schema  
-            └── POST /requests → Submit with validation
-                     ↓
-            Developer Portal
-            ├── Queries catalog API for available services
-            ├── Renders forms dynamically from schema
-            └── Submits requests without hardcoded logic
-```
+**Core Service Team (3 people)**
+- REST API development and request lifecycle
+- Database design and caching architecture
+- Authentication, authorization, and audit logging
+- Health checks, metrics, and monitoring
 
-**Orchestration Flow**:
-1. Provision VPC and networking components
-2. Create RDS PostgreSQL instance with generated credentials
-3. Store database credentials in AWS Secrets Manager
-4. Provision EKS cluster with worker nodes
-5. Deploy application with secrets injected as environment variables
-6. Configure ingress and monitoring
+**Fulfillment Engine Team (2-3 people)**
+- Action framework and external integrations
+- Variable system and templating engine
+- Circuit breakers and retry logic
+- JIRA, Terraform, GitHub workflow implementations
+
+**Developer Experience Team (1 person)**
+- Developer portal and dynamic form generation
+- API documentation and testing tools
+- User experience and feedback collection
+- Platform team support and troubleshooting
+
+### Epic Handoff Strategy
+
+**Q3 → Q4 Handoff**: Schema specification frozen, core API stable, action framework scaffolded
+**Q4 → Q1 Handoff**: Single service automation proven, bundle orchestration design complete
+**Q1 → Q2 Handoff**: Multi-service workflows operational, production deployment architecture validated
 
 ## Sprint Breakdown
 

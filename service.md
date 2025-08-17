@@ -70,6 +70,33 @@ POST   /api/v1/webhooks/terraform                # Terraform notifications
 - CloudTrail audit logging
 - Enterprise compliance frameworks
 
+### Pagination
+
+**Standard Pagination Pattern**
+All list endpoints that return multiple items use cursor-based pagination with the following standard parameters:
+
+**Query Parameters**
+- `limit`: Number of items per page (default: 50, max: 200)
+- `cursor`: Opaque cursor token for next page (optional)
+
+**Response Format**
+```json
+{
+  "data": [...],
+  "pagination": {
+    "has_more": true,
+    "next_cursor": "eyJpZCI6MTIzLCJ0cyI6MTY5....",
+    "total_count": 1247
+  }
+}
+```
+
+**Implementation Details**
+- Cursor tokens are base64-encoded JSON containing sort keys
+- Cursors are stateless and self-contained
+- `total_count` is optional and may be omitted for performance
+- Empty `next_cursor` indicates no more pages
+
 ## Architecture & Technology Stack
 
 ### Core Design Principles
