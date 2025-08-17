@@ -4,7 +4,7 @@
 
 - [Quick Start Checklist](#quick-start-checklist)
 - [Core Concepts](#core-concepts)
-  - [Binary Fulfillment Model](#binary-fulfillment-model)
+  - [Fulfillment Strategy](#fulfillment-strategy)
   - [Sequential Execution](#sequential-execution)
 - [Repository Structure](#repository-structure)
 - [Schema Reference](#schema-reference)
@@ -48,17 +48,26 @@
 
 ## Core Concepts
 
-### Binary Fulfillment Model
-Services operate in **EITHER** manual **OR** automated mode - no partial automation.
+### Fulfillment Strategy
+All services **MUST** define a manual fulfillment strategy. Automated fulfillment is optional but desired.
 
-**Decision Guide:**
-```
-Is your service ready for full automation?
-├─ NO → Use manual mode (JIRA ticket)
-└─ YES → All actions automated?
-    ├─ NO → Stay in manual mode
-    └─ YES → Use automatic mode
-```
+**Manual Strategy (Required)**
+- Primary fallback mechanism
+- Used before automation is ready
+- Activated on automation errors
+
+**Automated Strategy (Optional)**
+- Progressive enhancement from manual
+- Executes when fully defined and tested
+- Falls back to manual on failure
+
+**Error Handling (Phase 1):**
+- **Terminate**: Stop execution, create manual ticket for entire request
+- **Manual Takeover**: Convert remaining actions to manual tickets
+- **Human-Triggered Retry**: Operator can retry failed actions (unlimited attempts)
+- **Skip**: Continue with next action (if non-critical)
+
+*Note: Future phases will introduce automated retry policies and self-healing capabilities*
 
 ### Sequential Execution
 All actions execute in strict order. Use `order` field to control sequence.
