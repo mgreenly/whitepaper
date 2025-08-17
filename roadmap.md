@@ -2,11 +2,11 @@
 
 ## Table of Contents
 
-- [Current Timeline: Late Q3 2025](#current-timeline-late-q3-2025)
+- [Current Timeline: Early Q3 2025](#current-timeline-early-q3-2025)
 - [Strategic Context](#strategic-context)
 - [Development Phases](#development-phases)
-  - [Q3 2025: Foundation Setup](#q3-2025-foundation-setup--starting-now)
-  - [Q4 2025: Core Orchestration](#q4-2025-core-orchestration--planned)
+  - [Q3 2025: Foundation Setup](#q3-2025-foundation-setup--current-aug-oct)
+  - [Q4 2025: Complete Stack Provisioning](#q4-2025-complete-stack-provisioning--planned-nov-jan)
   - [2026+: Enterprise Features](#2026-enterprise-features--future-work)
 - [Success Metrics](#success-metrics)
 - [Implementation Strategy](#implementation-strategy)
@@ -15,9 +15,9 @@
   - [Change Management](#change-management)
 - [Risk Mitigation](#risk-mitigation)
 
-## Current Timeline: Late Q3 2025
+## Current Timeline: Early Q3 2025
 
-Project starting now (late Q3 2025) to develop the Platform Automation Orchestrator (PAO) that transforms multi-week provisioning into self-service automation. The core vision is a document-driven convergence point where platform teams define services in YAML documents that generate both UI forms and automation workflows.
+Project starting now (early Q3 2025) to develop the Platform Automation Orchestrator (PAO) that transforms multi-week provisioning into self-service automation. The core vision is a document-driven convergence point where platform teams define services in YAML documents that generate both UI forms and automation workflows.
 
 ## Strategic Context
 
@@ -27,14 +27,14 @@ Project starting now (late Q3 2025) to develop the Platform Automation Orchestra
 
 ## Development Phases
 
-### Q3 2025: Foundation Setup 🚧 STARTING NOW
+### Q3 2025: Foundation Setup 🚧 CURRENT (Aug-Oct)
 - **Repository Setup**: Create GitHub repositories for catalog and service with CI/CD workflows and basic documentation
 - **Infrastructure**: Deploy basic Kubernetes infrastructure and empty REST service with health endpoints  
 - **Schema Design**: Define Schema v2.0 specification for catalog items with validation rules
 - **Document Store**: Implement basic YAML catalog ingestion with file-based storage and validation
 - **JIRA Integration**: Create automated JIRA ticket creation with basic variable substitution for manual fulfillment
 
-### Q4 2025: Complete Stack Provisioning 📋 PLANNED
+### Q4 2025: Complete Stack Provisioning 📋 PLANNED (Nov-Jan)
 **Goal**: Enable end-to-end provisioning of EKS container app with database and secrets management
 
 - **Multi-Service Orchestration**: Coordinate provisioning across compute, database, and security services in correct dependency order
@@ -62,16 +62,37 @@ Project starting now (late Q3 2025) to develop the Platform Automation Orchestra
 - Basic JIRA integration working for manual fulfillment
 
 **Q4 2025 Goals**:
-- Catalog API operational with <200ms response time for browsing services
-- Dynamic form generation working for 5+ field types with validation
-- Request lifecycle tracking operational from submission to completion
-- 3+ action types implemented (JIRA, REST API, Terraform) with variable substitution
-- First automated service provisioned end-to-end with <4 hour fulfillment
+- **Complete Stack Demo**: Successfully provision EKS app + PostgreSQL + secrets end-to-end in <4 hours
+- **Multi-Service Coordination**: Support 3+ services with cross-service variable passing (DB credentials → app config)
+- **Advanced Terraform Actions**: EKS cluster, RDS database, security groups, ingress, application deployment
+- **Secrets Integration**: AWS Secrets Manager integration with automatic injection into Kubernetes deployments
+- **Configuration Complexity**: Handle typical production options (instance sizes, storage, networking, monitoring, backup schedules)
+- **Dependency Orchestration**: Proper sequencing of VPC → Database → Secrets → EKS → Application deployment
 
 **2026 Goals**:
 - 100% platform team adoption with multiple services onboarded
 - 90%+ provisioning time reduction from weeks to hours
 - Production deployment with 99.9% uptime and enterprise security
+
+## Q4 2025 Target: Complete EKS Stack Example
+
+**User Request**: "Deploy my Node.js app on EKS with PostgreSQL database and proper secrets management"
+
+**Expected Configuration Options**:
+- **Application**: Container image, replicas, resource limits, health checks, environment variables
+- **EKS Cluster**: Node instance types, autoscaling groups, Kubernetes version, networking configuration
+- **Database**: RDS instance class, storage size, backup retention, maintenance windows, encryption
+- **Secrets**: Database credentials, API keys, TLS certificates with automatic rotation
+- **Networking**: VPC setup, security groups, ingress rules, load balancer configuration
+- **Monitoring**: CloudWatch integration, log aggregation, alerting thresholds
+
+**Orchestration Flow**:
+1. Provision VPC and networking components
+2. Create RDS PostgreSQL instance with generated credentials
+3. Store database credentials in AWS Secrets Manager
+4. Provision EKS cluster with worker nodes
+5. Deploy application with secrets injected as environment variables
+6. Configure ingress and monitoring
 
 ## Implementation Strategy
 
@@ -80,8 +101,9 @@ Platform teams start with manual JIRA fulfillment, then evolve to full automatio
 
 ### Progressive Enhancement
 - **Phase 1**: Teams define catalog items with presentation and manual JIRA fulfillment
-- **Phase 2**: Teams add automated actions while keeping manual fallback
-- **Phase 3**: Teams choose binary fulfillment mode based on automation maturity
+- **Phase 2**: Teams add automated actions while keeping manual fallback  
+- **Phase 3**: Multi-service orchestration with cross-service dependencies (Q4 2025 focus)
+- **Phase 4**: Teams choose binary fulfillment mode based on automation maturity
 
 ### Change Management
 - Respect Sept-Jan restricted change periods for major deployments
