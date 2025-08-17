@@ -12,7 +12,7 @@
 
 ## Overview
 
-The Platform Automation Orchestrator (PAO) is a cloud-native REST service that transforms multi-week provisioning processes into automated self-service workflows by providing a document-driven convergence point where platform teams define services through Schema v2.0 YAML documents.
+The Platform Automation Orchestrator (PAO) is a cloud-native REST service that transforms manual provisioning processes into automated self-service workflows by providing a document-driven convergence point where platform teams define services through Schema v2.0 YAML documents.
 
 **Business Problem**: 2-3 week provisioning delays due to fragmented JIRA workflows across platform teams  
 **Solution**: Central orchestration service enabling binary fulfillment (manual JIRA or complete automation)  
