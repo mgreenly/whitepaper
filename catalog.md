@@ -2,7 +2,6 @@
 
 ## Table of Contents
 
-- [Quick Start Checklist](#quick-start-checklist)
 - [Core Concepts](#core-concepts)
   - [Fulfillment Strategy](#fulfillment-strategy)
   - [Sequential Execution](#sequential-execution)
@@ -35,17 +34,6 @@
 - [Example: Complete PostgreSQL Service](#example-complete-postgresql-service)
 - [Additional Resources](#additional-resources)
 
-## Quick Start Checklist
-
-- [ ] Choose service category: `compute`, `databases`, `messaging`, `networking`, `storage`, `security`, `monitoring`
-- [ ] Copy template from `/templates/minimal-service.yaml`
-- [ ] Define service using the schema
-- [ ] Validate locally: `./scripts/validate-catalog.sh`
-- [ ] Submit PR with `service/{team}/{service}` branch naming
-- [ ] Get team approval via CODEOWNERS
-- [ ] Deploy to staging (automatic)
-- [ ] Deploy to production (manual approval)
-
 ## Core Concepts
 
 ### Fulfillment Strategy
@@ -59,7 +47,7 @@ All services **MUST** define a manual fulfillment strategy. Automated fulfillmen
 **Automated Strategy (Optional)**
 - Progressive enhancement from manual
 - Executes when fully defined and tested
-- Falls back to manual on failure
+- Stops and waits for human decision on failure
 
 **Error Handling (Phase 1):**
 - **Terminate**: Stop execution, create manual ticket for entire request
