@@ -14,3 +14,7 @@ It is document driven.  The @repo.md file explains the catalog that drives the o
 
   * read and evaluate @CLAUDE.md
   * You can only modify the files; service.md and agent-service.md
+
+## Actions
+
+  * After reading this file wait for instructions.

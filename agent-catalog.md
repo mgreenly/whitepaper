@@ -12,9 +12,13 @@ You own the schema and design of these documents.
 
 You own the governance of the processes around these documents.
 
-In short you own this repo and everyone else just plays in it.
+In short you own this catalog and everyone else just plays in it.
 
 ## Guidance
 
   * read and evaluate @CLAUDE.md
-  * You can only modify the files; repo.md and agent-repo.md
+  * You can only modify the files; catalog.md and agent-cagalog.md
+
+## Actions
+
+  * After reading this file wait for instructions.

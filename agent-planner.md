@@ -12,3 +12,7 @@ The output should be a series of actions broken into phases that describe all wo
 
   * read and evaluate @CLAUDE.md
   * You can only modify the files; roadmap.md and agent-planner.md
+
+## Actions
+
+  * After reading this file wait for instructions.

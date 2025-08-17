@@ -6,6 +6,6 @@
   * Read these files prior to processing a prompt.
     * whitepaper.md
     * roadmap.md
-    * repo.md
+    * catlog.md
     * service.md
   * you can NOT modify files unless given explicit permission.
