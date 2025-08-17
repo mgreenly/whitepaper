@@ -63,7 +63,6 @@ orchestrator-catalog-repo/
 │   │   ├── terraform.schema.json
 │   │   ├── github-workflow.schema.json
 │   │   ├── webhook.schema.json
-│   │   ├── approval-workflow.schema.json
 │   │   └── cost-estimation.schema.json
 │   └── extensions/                    # Future extension points
 ├── catalog/                            # Service definitions by category
@@ -168,7 +167,7 @@ presentation:                          # UI/UX definition
 
 fulfillment:                          # Provisioning definition
   strategy:
-    mode: string                       # manual, automatic, hybrid
+    mode: string                       # manual, automatic
     priority: string
     timeout: integer
   
@@ -192,7 +191,7 @@ fulfillment:                          # Provisioning definition
     actions:                           # Automation actions (sequential execution)
       - id: string
         name: string
-        type: string                   # 7+ action types
+        type: string                   # 6 action types
         order: integer                 # Sequential execution order
         
         config: object                 # Type-specific configuration
@@ -320,24 +319,9 @@ config:
 ```yaml
 type: terraform
 config:
-  repository:
-    url: string                        # Git repository URL
-    branch: string                     # Target branch for PR/commit
-    path: string                       # Path in repository for config
-  module:
-    source: string                     # Module source (git, registry, local)
-    version: string                    # Module version
-    name: string                       # Module name
-  variables: object                    # Module variables
-  workspace:
-    name: string                       # Terraform workspace name
-  backend:
-    type: string                       # s3, azurerm, gcs, remote
-    config: object                     # Backend configuration
-  commit:
-    message: string                    # Commit message template
-    author: string                     # Author name
-    auto_merge: boolean                # Auto-merge PR if checks pass
+  content_template: string             # Terraform configuration template
+  filename: string                     # Output filename (e.g., main.tf)
+  repository_mapping: string           # Repository mapping key
 ```
 
 ### 4. GitHub Workflow Dispatch
@@ -378,32 +362,13 @@ config:
     header_name: string
 ```
 
-### 6. Approval Workflow (Enterprise)
-```yaml
-type: approval-workflow
-config:
-  workflow:
-    name: string
-    description: string
-  stages:
-    - name: string
-      order: integer
-      approvers:
-        type: string                   # users, groups, dynamic
-        list: [string]
-        minimum_approvals: integer
-      timeout:
-        duration: integer
-        action: string                 # approve, reject, escalate
-```
-
-### 7. Cost Estimation (Enterprise)
+### 6. Cost Estimation (Enterprise)
 ```yaml
 type: cost-estimation
 config:
   provider:
-    type: string                       # aws, azure, gcp, custom
-    region: string
+    type: string                       # aws, custom
+    region: string                    # AWS region
   resources:
     - type: string
       quantity: integer
@@ -573,7 +538,7 @@ fulfillment:
     actions:
       - type: jira-ticket
 
-# Phase 2: Hybrid (Binary Choice)
+# Phase 2: Automatic Fulfillment (Binary Choice)
 fulfillment:
   manual:
     actions:
@@ -635,7 +600,7 @@ presentation:
 
 fulfillment:
   strategy:
-    mode: hybrid
+    mode: automatic
     priority: normal
   
   manual:
@@ -650,19 +615,33 @@ fulfillment:
       - id: provision-database
         type: terraform
         config:
-          repository:
-            url: "https://github.com/company/terraform-configs"
-            branch: "main"
-            path: "databases/{{fields.environment}}"
-          module:
-            source: "terraform-aws-modules/rds/aws"
-            version: "5.0.0"
-            name: "rds-postgresql"
-          variables:
-            instance_identifier: "{{fields.instance_name}}"
-          commit:
-            message: "Provision PostgreSQL database {{fields.instance_name}}"
-            auto_merge: true
+          content_template: |
+            module "postgresql_{{fields.instance_name}}" {
+              source  = "terraform-aws-modules/rds/aws"
+              version = "5.0.0"
+              
+              identifier = "{{fields.instance_name}}"
+              engine     = "postgres"
+              engine_version = "{{fields.engine_version}}"
+              instance_class = "{{fields.instance_class}}"
+              
+              allocated_storage = {{fields.storage_size}}
+              storage_encrypted = true
+              
+              db_name  = "{{fields.database_name}}"
+              username = "admin"
+              port     = "5432"
+              
+              vpc_security_group_ids = ["{{fields.security_group_id}}"]
+              
+              tags = {
+                Name        = "{{fields.instance_name}}"
+                Environment = "{{fields.environment}}"
+                ManagedBy   = "platform-orchestrator"
+              }
+            }
+          filename: "{{fields.instance_name}}.tf"
+          repository_mapping: "terraform-databases"
 ```
 
 ## Conclusion

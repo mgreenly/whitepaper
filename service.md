@@ -6,6 +6,95 @@ The Platform Automation Orchestrator (PAO) is the strategic convergence engine t
 
 PAO implements a document-driven convergence model where platform teams collaborate through a unified catalog repository, enabling seamless self-service while preserving team autonomy. This hybrid fulfillment architecture supports binary fulfillment choices—either manual JIRA tickets OR complete end-to-end automation—with progressive enhancement capabilities and strict separation between fulfillment modes. The service directly addresses our core business challenge of developer velocity while maintaining operational stability and security required for enterprise environments.
 
+## API Overview
+
+PAO provides a comprehensive REST API organized by functional purpose to support all aspects of the platform automation lifecycle:
+
+### Developer Self-Service APIs
+```http
+# Catalog Discovery & Browsing
+GET    /api/v1/catalog                           # Browse available services
+GET    /api/v1/catalog/{category}                # Category-specific services
+GET    /api/v1/catalog/search?q={query}          # Search services by keywords
+GET    /api/v1/catalog/items/{item_id}           # Service details
+GET    /api/v1/catalog/items/{item_id}/schema    # Dynamic form schema
+
+# Request Lifecycle Management
+POST   /api/v1/requests                          # Submit service request
+GET    /api/v1/requests                          # List user requests
+GET    /api/v1/requests/{request_id}             # Request details
+GET    /api/v1/requests/{request_id}/status      # Real-time status
+GET    /api/v1/requests/{request_id}/logs        # Execution logs
+POST   /api/v1/requests/{request_id}/retry       # Retry failed request
+POST   /api/v1/requests/{request_id}/cancel      # Cancel pending request
+```
+
+### Platform Team APIs
+```http
+# Team Management & Analytics
+GET    /api/v1/teams/{team_id}/requests          # Team request history
+GET    /api/v1/teams/{team_id}/catalog           # Team-owned services
+GET    /api/v1/teams/{team_id}/usage             # Resource usage analytics
+GET    /api/v1/teams/{team_id}/analytics         # Performance dashboards
+
+# Service Development & Testing
+POST   /api/v1/validate/catalog-item             # Validate service definition
+POST   /api/v1/preview/form                      # Preview form generation
+POST   /api/v1/test/variables                    # Test variable substitution
+POST   /api/v1/simulate/fulfillment              # Simulate automation workflow
+```
+
+### Administrative APIs
+```http
+# System Health & Monitoring
+GET    /api/v1/health                            # Service health status
+GET    /api/v1/health/ready                      # Readiness probe
+GET    /api/v1/metrics                           # Prometheus metrics
+GET    /api/v1/version                           # Service version info
+
+# Catalog Management
+POST   /api/v1/catalog/refresh                   # Force catalog refresh
+GET    /api/v1/catalog/validation/{item_id}      # Validation results
+GET    /api/v1/stats/usage                       # Usage statistics
+GET    /api/v1/stats/performance                 # Performance metrics
+GET    /api/v1/audit/requests                    # Audit trail access
+```
+
+### Enterprise Governance APIs
+```http
+# Approval & Workflow Management
+GET    /api/v1/approvals/pending                 # Pending approvals
+POST   /api/v1/approvals/{approval_id}/approve   # Approve request
+POST   /api/v1/approvals/{approval_id}/reject    # Reject request
+
+# Cost & Quota Management
+GET    /api/v1/cost/estimates/{request_id}       # Cost estimates
+GET    /api/v1/quota/usage/{team_id}             # Quota usage
+POST   /api/v1/quota/limits/{team_id}            # Update quota limits
+
+# Team Operations
+GET    /api/v1/teams/{team_id}/settings          # Team-specific settings
+POST   /api/v1/teams/{team_id}/config             # Team configuration
+```
+
+### Integration Webhooks
+```http
+# External System Integration
+POST   /api/v1/webhooks/github                   # GitHub events
+POST   /api/v1/webhooks/jira                     # JIRA status updates
+POST   /api/v1/webhooks/terraform                # Terraform notifications
+POST   /api/v1/webhooks/approval                 # Approval system callbacks
+```
+
+### Real-time Communication
+```http
+# WebSocket Endpoints
+/ws/requests/{request_id}/status                 # Live status updates
+/ws/requests/{request_id}/logs                   # Streaming logs
+/ws/catalog/changes                              # Catalog modifications
+/ws/notifications                                # User notifications
+```
+
 ## Strategic Context & Business Imperative
 
 ### Current Challenge: Fragmented Developer Experience
@@ -65,500 +154,370 @@ PAO's stateless, horizontally-scalable design enables seamless integration acros
 - Automated rollback capabilities with state restoration and recovery procedures
 - Real-time monitoring with distributed tracing and correlation ID tracking
 
-## Comprehensive Schema v2.0 Implementation
+## Schema v2.0 Integration
 
-### Document Structure & Validation
+PAO implements the comprehensive Schema v2.0 specification as detailed in the [Catalog Repository Design](catalog.md). The service provides enterprise-grade validation and processing for all catalog items, supporting:
 
-PAO implements the complete Schema v2.0 specification with enterprise-grade validation:
+- **Metadata Section**: Service identification, ownership, compliance, and cost information
+- **Presentation Section**: Dynamic UI generation with conditional logic and 10+ field types
+- **Fulfillment Section**: Binary fulfillment model with manual fallback and complete automation
+- **Lifecycle Section**: Deprecation, maintenance, and versioning management
+- **Monitoring Section**: Observability configuration and health monitoring
 
-```yaml
-version: "2.0"                         # Schema version
-kind: CatalogItem                      # Document type
+### Advanced Variable System Integration
 
-metadata:                               # Service metadata
-  id: string                           # Unique identifier (pattern validation)
-  name: string                         # Display name (3-64 characters)
-  description: string                  # Service description (50-500 characters)
-  version: string                      # Semantic version (x.y.z format)
-  category: string                     # Primary category (enum validation)
-  owner:                               # Ownership information
-    team: string                       # Platform team identifier
-    contact: string                    # Contact email (format validation)
-    escalation: string                 # Escalation path
-  compliance:                          # Compliance metadata
-    data_classification: string        # Data sensitivity level
-    regulatory_requirements: [string]  # SOC2, HIPAA, etc.
-    audit_logging: boolean             # Audit requirement
-  cost:                                # Cost information
-    estimate_enabled: boolean          # Enable cost estimation
-    base_cost: number                  # Base monthly cost
-    unit_cost: object                  # Variable cost model
-
-presentation:                          # UI/UX definition
-  form:
-    layout: string                     # wizard, single-page, tabbed
-    submit_text: string                # Submit button text
-    confirmation_required: boolean     # Confirmation dialog
-  groups:                              # Field groups with conditional logic
-    - id: string
-      name: string
-      description: string
-      fields:                          # 10+ field types supported
-        - id: string
-          type: string                 # string, integer, boolean, selection, json, etc.
-          validation:                  # Comprehensive validation rules
-            pattern: string            # Regex with examples
-            min/max: number            # Range validation
-            enum: [any]                # Allowed values
-            custom: string             # Custom validation functions
-          conditional:                 # Field visibility logic
-            field: string              # Field to check
-            operator: string           # eq, ne, gt, lt, gte, lte, in, not_in, contains
-            value: any                 # Comparison value
-          datasource:                  # Dynamic data loading
-            type: string               # api, static, reference
-            config: object             # Source configuration with caching
-
-fulfillment:                          # Binary fulfillment model
-  strategy:
-    mode: string                       # manual, automatic, hybrid
-    priority: string                   # low, normal, high, critical
-    timeout: integer                   # Overall timeout (seconds)
-  manual:                              # Manual fallback (always required)
-    description: string                # Process description
-    instructions: string               # Detailed instructions
-    actions:                           # Manual actions
-      - type: jira-ticket             # JIRA integration
-  automatic:                           # Automated fulfillment
-    parallel_execution: boolean        # Enable parallel actions
-    state_management:                  # State tracking
-      enabled: boolean
-      backend: string                  # dynamodb, postgresql
-      encryption: boolean              # Encrypt state data
-    actions:                           # 7+ action types
-      - id: string                     # Action identifier
-        type: string                   # jira-ticket, rest-api, terraform, etc.
-        order: integer                 # Sequential execution order
-        parallel_group: integer        # Parallel execution group
-        config: object                 # Type-specific configuration
-        retry:                         # Retry configuration
-          enabled: boolean
-          attempts: integer            # Max attempts
-          backoff: string              # linear, exponential, fibonacci
-        circuit_breaker:               # Circuit breaker configuration
-          enabled: boolean
-          failure_threshold: integer   # Failures before opening
-        rollback:                      # Rollback definition
-          enabled: boolean
-          automatic: boolean           # Auto-rollback on failure
-
-lifecycle:                             # Lifecycle management
-  deprecation:                         # Deprecation information
-    deprecated: boolean
-    sunset_date: string                # Sunset date
-    migration_path: string             # Migration guide
-  versioning:                          # Version management
-    strategy: string                   # Versioning strategy
-    compatibility: string              # Compatibility rules
-
-monitoring:                            # Observability configuration
-  metrics:                             # Metrics collection
-    enabled: boolean
-    endpoints: [string]                # Metric endpoints
-  tracing:                             # Distributed tracing
-    enabled: boolean
-    sampling_rate: number              # Sampling rate (0-1)
-  health_checks:                       # Health monitoring
-    - name: string                     # Check name
-      type: string                     # Check type
-      interval: integer                # Check interval (seconds)
-```
-
-### Advanced Variable System Implementation
-
-PAO implements comprehensive variable interpolation with multiple scopes and functions:
-
-**Variable Scopes (8 categories)**
-```yaml
-# User Input Variables
-{{fields.field_id}}                   # Form field values
-{{fields.nested.field}}               # Nested field access
-
-# Metadata Variables  
-{{metadata.id}}                       # Service ID
-{{metadata.owner.team}}               # Owner team
-{{metadata.category}}                 # Service category
-
-# Request Context
-{{request.id}}                        # Unique request ID
-{{request.user.email}}                # User email
-{{request.user.department}}           # User department
-{{request.environment}}               # Target environment
-
-# System Variables
-{{system.date}}                       # Current date
-{{system.uuid}}                       # Random UUID
-{{system.region}}                     # Deployment region
-
-# Environment Variables
-{{env.VARIABLE_NAME}}                 # Environment variable
-{{secrets.SECRET_NAME}}               # Secret value
-
-# Action Outputs
-{{output.action_id.field}}            # Previous action output
-{{output.action_id.status}}           # Action status
-
-# Computed Variables
-{{computed.total_cost}}               # Computed values
-{{computed.resource_name}}            # Generated names
-
-# Functions (15+ built-in functions)
-{{uuid()}}                            # Generate UUID
-{{timestamp()}}                       # Current timestamp
-{{concat(str1, str2)}}                # String concatenation
-{{hash(string, algorithm)}}           # Hash string
-{{default(value, fallback)}}          # Default value
-```
-
-**Conditional Logic Support**
-```yaml
-# If-Then-Else with nested conditions
-{{#if fields.environment == "production"}}
-  {{#if fields.multi_az == true}}
-    High availability production deployment
-  {{else}}
-    Standard production deployment
-  {{/if}}
-{{else}}
-  Development deployment
-{{/if}}
-
-# Switch statements
-{{#switch fields.tier}}
-  {{#case "gold"}}Premium resources{{/case}}
-  {{#case "silver"}}Standard resources{{/case}}
-  {{#default}}Evaluation resources{{/default}}
-{{/switch}}
-
-# Complex expressions with operators
-{{#if (fields.cpu_cores > 8 && fields.environment == "production")}}
-  Large instance required
-{{/if}}
-```
+PAO leverages the comprehensive variable system defined in catalog.md, supporting 8 variable scopes and 15+ built-in functions for sophisticated templating across all action types. The variable substitution engine enables dynamic content generation with conditional logic, loops, and complex expressions for enterprise-grade automation workflows.
 
 ## Enterprise Action Types & Integration Patterns
 
-### 1. Enhanced JIRA Integration
-```yaml
-type: jira-ticket
-config:
-  connection:
-    instance: "company-jira"          # Multi-instance support
-    use_default: true
-  ticket:
-    project: PLATFORM
-    issue_type: Task
-    summary_template: "PostgreSQL Database: {{fields.instance_name}} ({{fields.environment}})"
-    description_template: |
-      Database provisioning request
-      
-      Instance: {{fields.instance_name}}
-      Environment: {{fields.environment}}
-      Requester: {{request.user.email}}
-      Request ID: {{request.id}}
-  fields:
-    assignee: "{{metadata.owner.team}}"
-    priority: "{{#if fields.environment == 'production'}}High{{else}}Normal{{/if}}"
-    labels: [platform-automation, "{{fields.environment}}", "database"]
-    custom_fields:
-      business_justification: "{{fields.justification}}"
-      cost_center: "{{request.user.department}}"
-  workflow:
-    transition_on_create: "In Progress"
-    expected_resolution_time: 4        # Hours
-```
+PAO supports 6+ enterprise action types as specified in the [Action Types Reference](catalog.md#action-types-reference) section of the catalog design. These include:
 
-### 2. Advanced REST API Integration
-```yaml
-type: rest-api
-config:
-  endpoint:
-    url: "{{env.DATABASE_API}}/v2/postgresql"
-    method: POST
-    timeout: 300
-  authentication:
-    type: oauth2
-    credentials:
-      client_id: "{{env.API_CLIENT_ID}}"
-      client_secret_ref: "API_CLIENT_SECRET"
-      scope: "database:provision"
-  body:
-    type: json
-    content_template: |
-      {
-        "instance_identifier": "{{fields.instance_name}}",
-        "engine_version": "{{fields.engine_version}}",
-        "instance_class": "{{fields.instance_class}}",
-        "environment": "{{fields.environment}}",
-        "metadata": {
-          "requester": "{{request.user.email}}",
-          "request_id": "{{request.id}}",
-          "cost_center": "{{request.user.department}}"
-        }
-      }
-  response:
-    expected_status: [200, 201, 202]
-  parsing:
-    extract:
-      - path: "$.database_id"
-        name: "database_id"
-        required: true
-      - path: "$.endpoint.host"
-        name: "endpoint_host"
-  circuit_breaker:
-    enabled: true
-    failure_threshold: 5
-    timeout: 60
-```
+1. **JIRA Ticket Creation**: Multi-instance JIRA integration with rich variable templating and workflow automation
+2. **REST API Integration**: Advanced HTTP calls with OAuth2/API key authentication and response parsing
+3. **Terraform Configuration**: Template-based infrastructure provisioning with repository mapping
+4. **GitHub Workflow Dispatch**: Automated GitHub Actions integration with status monitoring
+5. **Webhook Invocation**: HMAC-secured webhooks for system notifications and integrations
+6. **Cost Estimation**: Enterprise cost calculation for resource provisioning decisions
 
-### 3. Enterprise Terraform Orchestration
-```yaml
-type: terraform
-config:
-  source:
-    type: git
-    location: "https://github.com/company/terraform-modules"
-    ref: "v2.1.0"
-  module:
-    name: "rds-postgresql"
-    path: "modules/databases/postgresql"
-  workspace:
-    name: "{{fields.environment}}-{{fields.instance_name}}"
-    create_if_not_exists: true
-  variables:
-    instance_identifier: "{{fields.instance_name}}"
-    engine_version: "{{fields.engine_version}}"
-    vpc_id: "{{fields.vpc_id}}"
-    tags: |
-      {
-        "Environment": "{{fields.environment}}",
-        "Owner": "{{request.user.department}}",
-        "ManagedBy": "platform-orchestrator",
-        "RequestId": "{{request.id}}"
-      }
-  backend:
-    type: s3
-    config:
-      bucket: "company-terraform-state"
-      key: "databases/{{fields.environment}}/{{fields.instance_name}}.tfstate"
-      region: "us-east-1"
-      encrypt: true
-      dynamodb_table: "terraform-state-lock"
-  execution:
-    auto_approve: false
-    parallelism: 10
-  hooks:
-    pre_apply: ["terraform validate", "terraform plan -detailed-exitcode"]
-    post_apply: ["terraform output -json > /tmp/outputs.json"]
-```
+Each action type supports sophisticated configuration options, error handling, retry logic, and circuit breaker patterns for enterprise-grade reliability. For detailed configuration examples and specifications, refer to the comprehensive action type definitions in catalog.md.
 
-### 4. GitHub Workflow Dispatch
-```yaml
-type: github-workflow
-config:
-  repository:
-    owner: "company"
-    name: "platform-deployments"
-  workflow:
-    id: "deploy-database.yml"
-    ref: "main"
-  inputs:
-    database_type: "postgresql"
-    instance_name: "{{fields.instance_name}}"
-    environment: "{{fields.environment}}"
-    auto_approve: "{{#if fields.environment == 'development'}}true{{else}}false{{/if}}"
-  authentication:
-    type: app
-    app_id: "{{env.GITHUB_APP_ID}}"
-    installation_id: "{{env.GITHUB_INSTALLATION_ID}}"
-    private_key_ref: "GITHUB_APP_PRIVATE_KEY"
-  monitoring:
-    wait_for_completion: true
-    timeout: 3600
-    poll_interval: 30
-```
+## API Implementation Details
 
-### 5. Webhook with HMAC Security
-```yaml
-type: webhook
-config:
-  endpoint:
-    url: "{{env.MONITORING_WEBHOOK_URL}}"
-    method: POST
-  body:
-    type: json
-    template: |
-      {
-        "event": "database_provisioned",
-        "database_id": "{{output.create-terraform.database_id}}",
-        "instance_name": "{{fields.instance_name}}",
-        "environment": "{{fields.environment}}",
-        "endpoint": "{{output.create-terraform.endpoint_host}}:{{output.create-terraform.endpoint_port}}",
-        "timestamp": "{{system.datetime}}",
-        "requester": "{{request.user.email}}"
-      }
-  signature:
-    enabled: true
-    algorithm: "sha256"
-    secret_ref: "WEBHOOK_SIGNING_SECRET"
-    header_name: "X-Signature-256"
-    include_timestamp: true
-```
+### Developer Self-Service API Implementation
 
-### 6. Approval Workflow (Enterprise)
-```yaml
-type: approval-workflow
-config:
-  workflow:
-    name: "Production Database Approval"
-    description: "Required approval for production database provisioning"
-  stages:
-    - name: "Technical Review"
-      order: 1
-      approvers:
-        type: groups
-        list: ["platform-database-leads"]
-        minimum_approvals: 1
-      timeout:
-        duration: 24                   # Hours
-        action: "escalate"
-    - name: "Cost Approval"
-      order: 2
-      approvers:
-        type: dynamic
-        list: "{{request.user.manager}}"
-      conditions:
-        - field: "estimated_monthly_cost"
-          operator: "gt"
-          value: 500
-```
+#### Catalog Discovery & Browsing
 
-### 7. Cost Estimation (Enterprise)
-```yaml
-type: cost-estimation
-config:
-  provider:
-    type: "aws"
-    region: "{{fields.aws_region}}"
-  resources:
-    - type: "rds_instance"
-      specifications:
-        instance_class: "{{fields.instance_class}}"
-        storage_gb: "{{fields.storage_size}}"
-        multi_az: "{{fields.multi_az}}"
-        backup_retention: "{{fields.backup_retention}}"
-  pricing:
-    model: "on_demand"
-    include_tax: true
-    currency: "USD"
-  output:
-    format: "json"
-    breakdown: true
-```
+**GET /api/v1/catalog**
+- **Purpose**: Browse available services with filtering and pagination
+- **Implementation**: Query catalog repository with Redis caching, support filters by category, environment, team authorization
+- **Response**: Paginated list of catalog items with metadata
+- **Caching**: 300-second TTL with automatic invalidation on catalog changes
+- **Authorization**: Filter based on IAM principal's team membership and environment access via IAM policy evaluation
 
-## Comprehensive API Specification
+**GET /api/v1/catalog/{category}**
+- **Purpose**: Retrieve category-specific services
+- **Implementation**: Category validation against enum, filtered catalog query
+- **Response**: Services within specified category with availability status
+- **Performance**: Sub-200ms response with Redis caching
 
-### Catalog Operations (Public)
-```http
-GET    /api/v1/catalog                           # Full catalog with filtering
-GET    /api/v1/catalog/{category}                # Category-specific items  
-GET    /api/v1/catalog/items/{item_id}           # Individual catalog item
-GET    /api/v1/catalog/items/{item_id}/schema    # JSON schema for forms
-GET    /api/v1/catalog/items/{item_id}/versions  # Version history
-GET    /api/v1/catalog/search?q={query}          # Text search with scoring
-GET    /api/v1/catalog/categories                # Available categories
-GET    /api/v1/catalog/tags                      # Available tags with usage
-```
+**GET /api/v1/catalog/search?q={query}**
+- **Purpose**: Full-text search across service names, descriptions, and tags
+- **Implementation**: Elasticsearch integration with relevance scoring
+- **Response**: Ranked search results with highlighting
+- **Features**: Fuzzy matching, auto-complete suggestions, search analytics
 
-### Request Management (User)
-```http
-POST   /api/v1/requests                          # Submit new request
-GET    /api/v1/requests                          # List user requests with pagination
-GET    /api/v1/requests/{request_id}             # Request details with full context
-GET    /api/v1/requests/{request_id}/status      # Current status with progress
-GET    /api/v1/requests/{request_id}/logs        # Action logs with correlation IDs
-GET    /api/v1/requests/{request_id}/outputs     # Action outputs with metadata
-POST   /api/v1/requests/{request_id}/retry       # Retry failed request
-POST   /api/v1/requests/{request_id}/rollback    # Rollback completed request
-POST   /api/v1/requests/{request_id}/approve     # Approve pending request
-POST   /api/v1/requests/{request_id}/cancel      # Cancel pending request
-DELETE /api/v1/requests/{request_id}             # Delete request with audit
-```
+**GET /api/v1/catalog/items/{item_id}**
+- **Purpose**: Detailed service information including SLA, cost estimates, and documentation
+- **Implementation**: Catalog repository lookup with variable substitution for dynamic content
+- **Response**: Complete catalog item with resolved variables and user-specific information
+- **Authorization**: Validate IAM principal access to specific service based on IAM policies and team/environment restrictions
 
-### Validation & Testing (Developer)
-```http
-POST   /api/v1/validate/catalog-item             # Validate catalog item against schema
-POST   /api/v1/validate/request                  # Validate request payload
-POST   /api/v1/preview/form                      # Preview form generation
-POST   /api/v1/test/variables                    # Test variable substitution
-POST   /api/v1/simulate/fulfillment              # Simulate fulfillment workflow
-POST   /api/v1/test/actions                      # Test individual actions
-GET    /api/v1/schema/catalog-item               # Get catalog item JSON schema
-GET    /api/v1/schema/actions/{action_type}      # Get action-specific schema
-```
+**GET /api/v1/catalog/items/{item_id}/schema**
+- **Purpose**: Generate dynamic JSON schema for form rendering
+- **Implementation**: Transform presentation section into JSON Schema with conditional logic
+- **Response**: JSON Schema with field validation rules, conditional dependencies, and data sources
+- **Features**: Real-time validation rules, conditional field visibility, dynamic data source integration
 
-### Administrative Operations (Admin)
-```http
-GET    /api/v1/health                            # Service health with dependencies
-GET    /api/v1/health/ready                      # Readiness probe
-GET    /api/v1/metrics                           # Prometheus metrics export
-GET    /api/v1/version                           # Service version and build info
-POST   /api/v1/catalog/refresh                   # Force catalog refresh
-GET    /api/v1/catalog/validation/{item_id}      # Validation results with details
-GET    /api/v1/stats/usage                       # Usage statistics with trends
-GET    /api/v1/stats/performance                 # Performance metrics with SLA tracking
-GET    /api/v1/audit/requests                    # Audit trail with filtering
-POST   /api/v1/admin/cache/invalidate            # Cache invalidation
-```
+#### Request Lifecycle Management
 
-### Platform Team Operations (Team Admin)
-```http
-GET    /api/v1/teams/{team_id}/requests          # Team request history
-GET    /api/v1/teams/{team_id}/catalog           # Team-owned catalog items
-POST   /api/v1/teams/{team_id}/quota             # Update team quotas
-GET    /api/v1/teams/{team_id}/usage             # Resource usage by team
-GET    /api/v1/teams/{team_id}/analytics         # Team analytics dashboard
-PUT    /api/v1/teams/{team_id}/config            # Team configuration
-```
+**POST /api/v1/requests**
+- **Purpose**: Submit new service provisioning request
+- **Implementation**: 
+  - Validate payload against catalog item schema
+  - Execute prerequisite checks (quota, approval requirements)
+  - Generate unique request ID and initialize state tracking
+  - Queue request for processing based on priority
+- **Response**: Request ID with initial status and estimated completion time
+- **State Management**: Persist to PostgreSQL with full audit trail
 
-### WebSocket Endpoints (Real-time)
-```
-/ws/requests/{request_id}/status                  # Real-time status updates
-/ws/requests/{request_id}/logs                    # Live action logs with streaming
-/ws/catalog/changes                               # Catalog modification events
-/ws/notifications                                 # User notifications
-/ws/admin/system                                  # System-wide events for admins
-/ws/teams/{team_id}/activity                     # Team activity stream
-```
+**GET /api/v1/requests**
+- **Purpose**: List user's requests with filtering and pagination
+- **Implementation**: Query user's request history with status filtering, date ranges, service types
+- **Response**: Paginated request list with status, progress, and quick actions
+- **Performance**: Optimized queries with database indexing on user_id, status, created_at
 
-### Webhook Endpoints (Integration)
-```http
-POST   /api/v1/webhooks/github                   # GitHub repository events
-POST   /api/v1/webhooks/jira                     # JIRA status updates
-POST   /api/v1/webhooks/terraform                # Terraform Cloud notifications
-POST   /api/v1/webhooks/monitoring               # Monitoring alerts
-POST   /api/v1/webhooks/approval                 # Approval system callbacks
-POST   /api/v1/webhooks/cost                     # Cost tracking updates
-```
+**GET /api/v1/requests/{request_id}**
+- **Purpose**: Comprehensive request details including all metadata, field values, and execution history
+- **Implementation**: Aggregate request data with action logs, outputs, and state transitions
+- **Response**: Complete request object with timeline, current action, and next steps
+- **Authorization**: Verify IAM principal ownership via request metadata or admin IAM role access
+
+**GET /api/v1/requests/{request_id}/status**
+- **Purpose**: Real-time status with progress percentage and current action
+- **Implementation**: Fast status query optimized for polling, WebSocket notification triggers
+- **Response**: Status object with progress, current action, ETA, and state
+- **Performance**: <50ms response time with Redis caching
+
+**GET /api/v1/requests/{request_id}/logs**
+- **Purpose**: Detailed execution logs with correlation IDs and timestamps
+- **Implementation**: Structured log retrieval with filtering and pagination
+- **Response**: Chronological log entries with severity levels and correlation tracking
+- **Features**: Log streaming, filtering by action/severity, correlation ID tracking
+
+**POST /api/v1/requests/{request_id}/retry**
+- **Purpose**: Retry failed request with option to modify parameters
+- **Implementation**: 
+  - Validate retry eligibility based on failure type and retry count
+  - Reset request state to appropriate checkpoint
+  - Re-queue with exponential backoff consideration
+- **Response**: New execution tracking information
+- **Authorization**: Verify IAM principal ownership via request metadata and retry IAM permissions
+
+**POST /api/v1/requests/{request_id}/cancel**
+- **Purpose**: Cancel pending or in-progress request
+- **Implementation**:
+  - Check cancellation eligibility based on current state
+  - Execute rollback actions if already in progress
+  - Update state with cancellation reason and timestamp
+- **Response**: Cancellation confirmation with rollback status
+- **Safety**: Prevent cancellation of critical operations in progress
+
+### Platform Team API Implementation
+
+#### Team Management & Analytics
+
+**GET /api/v1/teams/{team_id}/requests**
+- **Purpose**: Team request history and analytics
+- **Implementation**: Aggregate team member requests with filtering and analytics
+- **Response**: Request history with success rates, average completion times, cost analysis
+- **Authorization**: Verify IAM principal team membership via IAM policy or admin IAM role access
+- **Analytics**: Success rates, cost trends, popular services, failure patterns
+
+**GET /api/v1/teams/{team_id}/catalog**
+- **Purpose**: Services owned and maintained by the team
+- **Implementation**: Filter catalog by ownership metadata, include usage statistics
+- **Response**: Team-owned services with adoption metrics and feedback
+- **Features**: Service health scores, user satisfaction ratings, improvement suggestions
+
+**GET /api/v1/teams/{team_id}/usage**
+- **Purpose**: Resource usage and cost analysis by team
+- **Implementation**: Aggregate resource consumption across all team requests
+- **Response**: Usage breakdown by service type, cost center allocation, trend analysis
+- **Integration**: Cost tracking systems, resource monitoring APIs
+
+**GET /api/v1/teams/{team_id}/analytics**
+- **Purpose**: Performance dashboards and business intelligence
+- **Implementation**: Generate team-specific analytics from request data and usage metrics
+- **Response**: Dashboard data with KPIs, trends, recommendations
+- **Features**: Customizable metrics, comparative analysis, forecasting
+
+#### Service Development & Testing
+
+**POST /api/v1/validate/catalog-item**
+- **Purpose**: Validate service definition against Schema v2.0
+- **Implementation**: 
+  - Comprehensive JSON schema validation
+  - Cross-reference validation (dependencies, data sources)
+  - Variable substitution testing
+  - Action configuration validation
+- **Response**: Validation results with detailed error messages and remediation suggestions
+- **Features**: Validation severity levels, best practice recommendations, migration guidance
+
+**POST /api/v1/preview/form**
+- **Purpose**: Preview form generation from presentation definition
+- **Implementation**: Transform presentation section into UI components without persistence
+- **Response**: Form preview data with field layout, validation rules, conditional logic
+- **Features**: Multiple layout previews, accessibility validation, mobile responsiveness
+
+**POST /api/v1/test/variables**
+- **Purpose**: Test variable substitution with sample data
+- **Implementation**: Execute variable engine with provided test context and field values
+- **Response**: Substituted templates with highlighting and debug information
+- **Features**: Variable scope testing, conditional logic validation, function testing
+
+**POST /api/v1/simulate/fulfillment**
+- **Purpose**: Simulate automation workflow execution
+- **Implementation**: 
+  - Dry-run action execution with mock external calls
+  - State machine simulation with branching logic
+  - Dependency resolution testing
+  - Error scenario simulation
+- **Response**: Simulation results with execution path, timing estimates, potential issues
+- **Safety**: Sandbox execution environment with no external side effects
+
+### Administrative API Implementation
+
+#### System Health & Monitoring
+
+**GET /api/v1/health**
+- **Purpose**: Comprehensive service health check including dependencies
+- **Implementation**: 
+  - Check database connectivity (PostgreSQL, Redis)
+  - Validate external integrations (JIRA, GitHub, Terraform)
+  - Monitor resource utilization and performance metrics
+  - Check catalog repository accessibility
+- **Response**: Health status with component-level details and degradation information
+- **Performance**: <100ms response time with cached dependency checks
+
+**GET /api/v1/health/ready**
+- **Purpose**: Kubernetes readiness probe for traffic routing
+- **Implementation**: Fast health check focused on request processing capability
+- **Response**: Simple ready/not-ready status
+- **Criteria**: Database connectivity, catalog availability, core service functionality
+
+**GET /api/v1/metrics**
+- **Purpose**: Prometheus metrics export for monitoring and alerting
+- **Implementation**: Export custom metrics including request rates, success rates, performance timings
+- **Response**: Prometheus-formatted metrics
+- **Metrics**: API response times, request counts, error rates, catalog statistics, resource usage
+
+**GET /api/v1/version**
+- **Purpose**: Service version information for debugging and deployment tracking
+- **Implementation**: Return build metadata, version numbers, commit hashes
+- **Response**: Version information with build timestamp and environment details
+
+#### Catalog Management
+
+**POST /api/v1/catalog/refresh**
+- **Purpose**: Force immediate catalog refresh from repository
+- **Implementation**: 
+  - Trigger repository fetch and validation
+  - Update cache with new catalog data
+  - Notify connected clients of changes via WebSocket
+- **Response**: Refresh status with validation results
+- **Authorization**: Admin IAM role required with CloudTrail audit logging
+
+**GET /api/v1/catalog/validation/{item_id}**
+- **Purpose**: Detailed validation results for specific catalog item
+- **Implementation**: Execute comprehensive validation with detailed reporting
+- **Response**: Validation report with errors, warnings, best practice suggestions
+- **Features**: Historical validation results, trend analysis, improvement tracking
+
+**GET /api/v1/stats/usage**
+- **Purpose**: System-wide usage statistics and trends
+- **Implementation**: Aggregate usage data across all teams and services
+- **Response**: Usage statistics with trends, popular services, adoption rates
+- **Analytics**: Service popularity, user engagement, platform health indicators
+
+**GET /api/v1/stats/performance**
+- **Purpose**: Performance metrics and SLA tracking
+- **Implementation**: Calculate performance metrics against defined SLAs
+- **Response**: Performance data with SLA compliance, bottleneck identification
+- **Features**: Historical performance trends, capacity planning insights
+
+**GET /api/v1/audit/requests**
+- **Purpose**: Comprehensive audit trail access for compliance
+- **Implementation**: Query audit logs with filtering and export capabilities
+- **Response**: Audit trail data with compliance reporting features
+- **Authorization**: Admin IAM role access with CloudTrail logging of audit access
+- **Compliance**: SOC2, HIPAA audit trail requirements
+
+### Enterprise Governance API Implementation
+
+#### Approval & Workflow Management
+
+**GET /api/v1/approvals/pending**
+- **Purpose**: List pending approval requests for current user
+- **Implementation**: Query approval workflows where user is designated approver
+- **Response**: Pending approvals with context, urgency, and decision deadlines
+- **Features**: Approval delegation, escalation tracking, batch approval capabilities
+
+**POST /api/v1/approvals/{approval_id}/approve**
+- **Purpose**: Approve pending request with optional comments
+- **Implementation**: 
+  - Validate approver authorization
+  - Record approval decision with timestamp and comments
+  - Trigger next workflow stage or request continuation
+- **Response**: Approval confirmation with next steps
+- **Audit**: Full approval trail with decision rationale
+
+**POST /api/v1/approvals/{approval_id}/reject**
+- **Purpose**: Reject pending request with required justification
+- **Implementation**: 
+  - Record rejection with mandatory reason
+  - Trigger notification to requester
+  - Update request status with rejection details
+- **Response**: Rejection confirmation with communication status
+- **Features**: Rejection templates, escalation options, appeal process
+
+#### Cost & Quota Management
+
+**GET /api/v1/cost/estimates/{request_id}**
+- **Purpose**: Detailed cost estimation for specific request
+- **Implementation**: 
+  - Execute cost calculation based on resource specifications
+  - Include tax, regional pricing, discount calculations
+  - Generate cost breakdown with optimization suggestions
+- **Response**: Comprehensive cost analysis with recommendations
+- **Integration**: Cloud provider pricing APIs, enterprise discount rates
+
+**GET /api/v1/quota/usage/{team_id}**
+- **Purpose**: Current quota usage and available capacity
+- **Implementation**: Calculate current resource consumption against defined limits
+- **Response**: Quota usage with projections and alerts
+- **Features**: Usage forecasting, capacity planning, automatic alerts
+
+**POST /api/v1/quota/limits/{team_id}**
+- **Purpose**: Update team resource quotas and limits
+- **Implementation**: 
+  - Validate new limits against organizational policies
+  - Update quota configuration with effective date
+  - Trigger notifications for quota changes
+- **Response**: Updated quota configuration
+- **Authorization**: Admin IAM role access with approval workflow for significant changes
+
+### Integration Webhook Implementation
+
+**POST /api/v1/webhooks/github**
+- **Purpose**: Process GitHub repository events and workflow notifications
+- **Implementation**: 
+  - Validate webhook signature
+  - Parse event payload and correlate with active requests
+  - Update request status based on workflow completion
+- **Security**: HMAC signature validation, IP allowlisting
+- **Events**: Workflow completion, deployment status, error notifications
+
+**POST /api/v1/webhooks/jira**
+- **Purpose**: Process JIRA ticket status updates
+- **Implementation**: 
+  - Parse JIRA webhook payload
+  - Correlate ticket updates with PAO requests
+  - Update request status and notify stakeholders
+- **Features**: Status mapping, assignment changes, comment synchronization
+
+**POST /api/v1/webhooks/terraform**
+- **Purpose**: Process Terraform Cloud/Enterprise notifications
+- **Implementation**: 
+  - Parse Terraform webhook events
+  - Extract output values and state information
+  - Update request with infrastructure details
+- **Integration**: Terraform Cloud API, state file analysis
+
+### Real-time Communication Implementation
+
+**WebSocket: /ws/requests/{request_id}/status**
+- **Purpose**: Live status updates for request execution
+- **Implementation**: 
+  - Establish WebSocket connection with IAM SigV4 authentication
+  - Stream status changes, progress updates, and state transitions
+  - Handle connection management and reconnection
+- **Features**: Automatic reconnection, message queuing, heartbeat monitoring
+- **Authorization**: IAM principal ownership verification for request access
+
+**WebSocket: /ws/requests/{request_id}/logs**
+- **Purpose**: Real-time log streaming during request execution
+- **Implementation**: 
+  - Stream structured log entries with correlation IDs
+  - Support log filtering and severity-based streaming
+  - Handle high-volume log scenarios with buffering
+- **Performance**: Efficient log streaming with backpressure handling
+
+**WebSocket: /ws/catalog/changes**
+- **Purpose**: Notify clients of catalog modifications
+- **Implementation**: 
+  - Broadcast catalog change events to subscribed clients
+  - Include change details and affected services
+  - Support selective subscriptions by category or service
+- **Features**: Change notifications, service availability updates, deprecation alerts
 
 ## Enterprise Integration Architecture
 
 ### Authentication & Authorization
-- **OIDC Integration**: Single sign-on with existing identity providers supporting multiple protocols
-- **RBAC Enforcement**: Granular role-based access to catalog items, administrative functions, and team resources
-- **API Key Management**: Service-to-service authentication with rotation and audit capabilities
-- **Multi-tenant Support**: Business unit isolation with separate authentication realms
-- **Audit Logging**: Comprehensive request tracking for SOC2, HIPAA compliance
+- **IAM Authentication**: AWS IAM-based authentication for all API access with SigV4 request signing
+- **RBAC Enforcement**: IAM role-based access to catalog items, administrative functions, and team resources
+- **Service Authentication**: IAM roles for service-to-service authentication with automatic credential rotation
+- **Team-based Access**: Business unit and team isolation through IAM policy-based access control
+- **Audit Logging**: Comprehensive CloudTrail integration for SOC2, HIPAA compliance with IAM principal tracking
 
 ### State Management & Persistence
 - **Request State**: PostgreSQL with connection pooling, read replicas, and automated backups
@@ -839,7 +798,7 @@ spec:
 - Deploy 7+ action types with enterprise configuration and comprehensive error handling
 - Implement dynamic form generation supporting 10+ field types and conditional logic
 - Expand to 15+ API endpoints including validation, testing, and administrative operations
-- Deploy OIDC authentication and granular RBAC enforcement with team-based authorization
+- Deploy IAM authentication and granular RBAC enforcement with team-based authorization
 - Implement WebSocket real-time updates with 6 endpoint types and event streaming
 
 **Phase 4: Enterprise Reliability & State Management (Weeks 21-26)**
@@ -875,7 +834,7 @@ spec:
 - Deploy CMDB integration with automated asset management and configuration drift detection
 - Implement ITSM tool integration for ServiceNow, Remedy, Cherwell with comprehensive workflows
 - Establish compliance framework for SOC2, HIPAA with automated reporting and audit trails
-- Deploy multi-tenant architecture with business unit isolation and independent governance
+- Deploy team-based architecture with business unit isolation and team-specific governance
 - Implement security and vulnerability management integration with automated scanning and reporting
 
 ## Success Metrics & Performance Targets
