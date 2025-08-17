@@ -18,6 +18,7 @@ In short you own this catalog and everyone else just plays in it.
 
   * read and evaluate @CLAUDE.md
   * You can only modify the files; catalog.md and agent-cagalog.md
+  * when I refernece "this document" or "the document" I am refering to catalog.md
 
 ## Actions
 

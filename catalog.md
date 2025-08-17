@@ -15,27 +15,11 @@
 - [Migration Strategy](#migration-strategy)
 - [Complete Examples](#complete-examples)
 
-## Executive Summary
+## Overview
 
-The Orchestrator Catalog Repository serves as the document-driven convergence point for the Platform Automation Orchestrator (PAO), transforming fragmented multi-week provisioning into streamlined self-service. Operating within the Integration and Delivery Plane of our five-plane reference architecture, this repository houses structured YAML catalog definitions following Schema v2.0 specifications. These definitions serve triple purposes: generating dynamic developer portal interfaces, defining multi-action fulfillment workflows, and providing enterprise governance metadata. By enabling platform teams to collaborate through unified catalog definitions while maintaining full ownership and control, we achieve 90%+ provisioning time reduction (weeks to hours) while respecting operational constraints including September-January restricted change periods.
+The Catalog Repository is the central document store where platform teams define their services for the Platform Automation Orchestrator (PAO). Teams create YAML documents following Schema v2.0 that define service metadata, UI forms, and fulfillment automation. This enables the transformation from multi-week manual provisioning to self-service automation.
 
-## Strategic Context
-
-### Business Imperative
-Our organization's innovation capacity is constrained by 2-3 week provisioning delays across compute, database, messaging, networking, storage, security, and monitoring teams. The catalog repository addresses this by:
-- Creating a single convergence point for all platform service definitions
-- Enabling self-service provisioning through standardized Schema v2.0 specifications
-- Supporting progressive enhancement from manual JIRA tickets to fully automated fulfillment
-- Respecting operational constraints including restricted change periods
-- Maintaining team autonomy while enabling collaboration
-
-### Architectural Alignment
-The catalog repository operates as the foundation for PAO within our five-plane reference architecture:
-- **Developer Control Plane**: Catalog definitions generate sophisticated portal interfaces
-- **Integration and Delivery Plane**: PAO consumes catalog for orchestration logic
-- **Security and Compliance Plane**: Catalog enforces policies and compliance metadata
-- **Monitoring and Logging Plane**: Catalog defines observability requirements
-- **Resource Plane**: Catalog orchestrates provisioning across all infrastructure domains
+For strategic context and business rationale, see the [Platform Automation Orchestrator Whitepaper](whitepaper.md).
 
 ## Repository Architecture
 

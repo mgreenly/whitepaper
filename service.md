@@ -1,5 +1,74 @@
 # Platform Automation Orchestrator Service
 
+## Table of Contents
+
+- [Executive Summary](#executive-summary)
+- [API Overview](#api-overview)
+  - [Developer Self-Service APIs](#developer-self-service-apis)
+  - [Platform Team APIs](#platform-team-apis)
+  - [Administrative APIs](#administrative-apis)
+  - [Enterprise Governance APIs](#enterprise-governance-apis)
+  - [Integration Webhooks](#integration-webhooks)
+- [Authentication & Authorization](#authentication--authorization)
+  - [IAM Authentication](#iam-authentication)
+  - [Role-Based Access Control (RBAC)](#role-based-access-control-rbac)
+  - [Permission Model](#permission-model)
+  - [Audit & Compliance](#audit--compliance)
+- [Strategic Context & Business Imperative](#strategic-context--business-imperative)
+  - [Current Challenge: Fragmented Developer Experience](#current-challenge-fragmented-developer-experience)
+  - [Solution Architecture: Document-Driven Convergence](#solution-architecture-document-driven-convergence)
+  - [Reference Architecture Integration](#reference-architecture-integration)
+- [Service Architecture & Core Design Principles](#service-architecture--core-design-principles)
+  - [Five-Plane Integration Architecture](#five-plane-integration-architecture)
+  - [Core Service Components](#core-service-components)
+- [Schema v2.0 Integration](#schema-v20-integration)
+  - [Advanced Variable System Integration](#advanced-variable-system-integration)
+- [Enterprise Action Types & Integration Patterns](#enterprise-action-types--integration-patterns)
+- [API Implementation](#api-implementation)
+  - [Developer Self-Service APIs](#developer-self-service-apis-1)
+  - [Platform Team APIs](#platform-team-apis-1)
+  - [Administrative APIs](#administrative-apis-1)
+  - [Enterprise Governance APIs](#enterprise-governance-apis-1)
+  - [Integration Webhooks](#integration-webhooks-1)
+- [Enterprise Integration Architecture](#enterprise-integration-architecture)
+  - [Authentication & Authorization](#authentication--authorization-1)
+  - [State Management & Persistence](#state-management--persistence)
+  - [Reliability & Performance Architecture](#reliability--performance-architecture)
+  - [Monitoring & Observability](#monitoring--observability)
+- [Technology Implementation Stack](#technology-implementation-stack)
+  - [Service Runtime & Framework](#service-runtime--framework)
+  - [Data Storage & Caching](#data-storage--caching)
+  - [External Integrations & Security](#external-integrations--security)
+  - [Deployment & Infrastructure](#deployment--infrastructure)
+- [Operational Deployment Architecture](#operational-deployment-architecture)
+  - [Kubernetes Production Deployment](#kubernetes-production-deployment)
+  - [Configuration Management](#configuration-management)
+  - [Security Implementation](#security-implementation)
+- [Roadmap Integration & Implementation Phases](#roadmap-integration--implementation-phases)
+  - [Phase Alignment with 8-Phase Roadmap](#phase-alignment-with-8-phase-roadmap)
+- [Success Metrics & Performance Targets](#success-metrics--performance-targets)
+  - [Performance Targets (SLA Commitments)](#performance-targets-sla-commitments)
+  - [Business Impact Metrics (ROI Measurement)](#business-impact-metrics-roi-measurement)
+  - [Operational Excellence Metrics](#operational-excellence-metrics)
+  - [Quality & Governance Metrics](#quality--governance-metrics)
+- [Security & Compliance Framework](#security--compliance-framework)
+  - [Enterprise Data Protection](#enterprise-data-protection)
+  - [Comprehensive Audit & Compliance](#comprehensive-audit--compliance)
+  - [Identity & Access Management](#identity--access-management)
+- [Risk Mitigation & Business Continuity](#risk-mitigation--business-continuity)
+  - [Technical Risk Mitigation](#technical-risk-mitigation)
+  - [Operational Risk Management](#operational-risk-management)
+  - [Business Continuity Planning](#business-continuity-planning)
+- [Future Evolution & Strategic Roadmap](#future-evolution--strategic-roadmap)
+  - [Advanced Capabilities (Post-Phase 8)](#advanced-capabilities-post-phase-8)
+  - [Platform Ecosystem Development](#platform-ecosystem-development)
+  - [Enterprise Scalability](#enterprise-scalability)
+- [Implementation Success Factors](#implementation-success-factors)
+  - [Organizational Alignment](#organizational-alignment)
+  - [Technical Excellence](#technical-excellence)
+  - [Change Management Success](#change-management-success)
+- [Conclusion](#conclusion)
+
 ## Executive Summary
 
 The Platform Automation Orchestrator (PAO) is the strategic convergence engine that transforms our organization's fragmented, multi-week provisioning process into a streamlined, self-service developer experience delivering 90%+ time reduction (weeks to hours). Operating as a cloud-native REST API within the Integration and Delivery Plane of our five-plane reference architecture, PAO consumes structured YAML catalog definitions following comprehensive Schema v2.0 specifications to generate sophisticated developer interfaces and orchestrate complex, multi-action fulfillment workflows across all platform domains.
@@ -23,7 +92,7 @@ GET    /api/v1/catalog/items/{item_id}/schema    # Dynamic form schema
 POST   /api/v1/requests                          # Submit service request
 GET    /api/v1/requests                          # List user requests
 GET    /api/v1/requests/{request_id}             # Request details
-GET    /api/v1/requests/{request_id}/status      # Real-time status
+GET    /api/v1/requests/{request_id}/status      # Current status
 GET    /api/v1/requests/{request_id}/logs        # Execution logs
 POST   /api/v1/requests/{request_id}/retry       # Retry failed request
 POST   /api/v1/requests/{request_id}/cancel      # Cancel pending request
@@ -86,14 +155,51 @@ POST   /api/v1/webhooks/terraform                # Terraform notifications
 POST   /api/v1/webhooks/approval                 # Approval system callbacks
 ```
 
-### Real-time Communication
-```http
-# WebSocket Endpoints
-/ws/requests/{request_id}/status                 # Live status updates
-/ws/requests/{request_id}/logs                   # Streaming logs
-/ws/catalog/changes                              # Catalog modifications
-/ws/notifications                                # User notifications
+## Authentication & Authorization
+
+PAO uses AWS IAM as the exclusive authentication and authorization mechanism for all API access:
+
+### IAM Authentication
+- **SigV4 Request Signing**: All API requests must be signed using AWS Signature Version 4
+- **IAM Principal Authentication**: Users and services authenticate using IAM credentials (access keys, roles, temporary credentials)
+- **Service Authentication**: Service-to-service communication uses IAM roles with automatic credential rotation
+- **Token Management**: Temporary credentials supported through AWS STS for enhanced security
+
+### Role-Based Access Control (RBAC)
+- **IAM Policy-Based Authorization**: Access control enforced through IAM policies attached to users, groups, and roles
+- **Resource-Level Permissions**: Fine-grained access control down to individual catalog items and requests
+- **Team-Based Access**: Business unit and team isolation through IAM policy conditions and resource tags
+- **Environment Restrictions**: Environment-specific access (dev, staging, production) controlled via IAM policies
+
+### Permission Model
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "pao:GetCatalog",
+        "pao:GetCatalogItem",
+        "pao:SubmitRequest"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "pao:Team": "${aws:PrincipalTag/Team}",
+          "pao:Environment": ["development", "staging"]
+        }
+      }
+    }
+  ]
+}
 ```
+
+### Audit & Compliance
+- **CloudTrail Integration**: All API calls logged to AWS CloudTrail for comprehensive audit trails
+- **Request Attribution**: Every request tracked with IAM principal information for accountability
+- **Compliance Support**: SOC2, HIPAA audit requirements met through CloudTrail logging and IAM governance
+- **Access Reviews**: Regular access reviews enabled through IAM Access Analyzer integration
 
 ## Strategic Context & Business Imperative
 
@@ -104,7 +210,7 @@ Furthermore, our operational calendar imposes significant constraints during res
 
 ### Solution Architecture: Document-Driven Convergence
 PAO establishes a central document store serving as the convergence point for collaboration, where platform teams define services through structured YAML documents following Schema v2.0. These documents serve triple purposes:
-1. **Dynamic UI Generation**: Generate sophisticated forms with conditional logic, validation, and real-time data sources
+1. **Dynamic UI Generation**: Generate sophisticated forms with conditional logic, validation, and dynamic data sources
 2. **Automation Workflows**: Define complex multi-action fulfillment with parallel execution groups and comprehensive error handling
 3. **Governance Metadata**: Provide enterprise compliance, audit trails, and cost tracking information
 
@@ -113,7 +219,7 @@ This approach creates seamless self-service while allowing platform teams to mai
 ### Reference Architecture Integration
 PAO operates within the **Integration and Delivery Plane** while orchestrating across all five planes:
 
-- **Developer Control Plane**: Unified catalog API for sophisticated developer portal with dynamic form generation and real-time validation
+- **Developer Control Plane**: Unified catalog API for sophisticated developer portal with dynamic form generation and validation
 - **Security and Compliance Plane**: RBAC enforcement, data classification, regulatory compliance (SOC2, HIPAA), comprehensive audit trails, and approval workflows
 - **Monitoring and Logging Plane**: Distributed tracing, structured logging, health checks, performance metrics, and business intelligence
 - **Resource Plane**: Multi-domain orchestration across compute, databases, messaging, networking, storage, security, and monitoring
@@ -145,14 +251,14 @@ PAO's stateless, horizontally-scalable design enables seamless integration acros
 - Comprehensive variable substitution supporting 8 variable scopes and conditional logic
 - Enterprise action execution with parallel groups, dependencies, and state management
 - Circuit breaker architecture with configurable thresholds and automatic recovery
-- WebSocket real-time updates with event streaming and notification distribution
+- HTTP status polling with optimized caching and notification distribution
 
 **Multi-Action Fulfillment Engine**
 - 7+ enterprise action types with sophisticated configuration and error handling
 - Sequential and parallel execution with dependency management
 - Comprehensive retry logic with exponential backoff and circuit breakers
 - Automated rollback capabilities with state restoration and recovery procedures
-- Real-time monitoring with distributed tracing and correlation ID tracking
+- Comprehensive monitoring with distributed tracing and correlation ID tracking
 
 ## Schema v2.0 Integration
 
@@ -181,9 +287,9 @@ PAO supports 6+ enterprise action types as specified in the [Action Types Refere
 
 Each action type supports sophisticated configuration options, error handling, retry logic, and circuit breaker patterns for enterprise-grade reliability. For detailed configuration examples and specifications, refer to the comprehensive action type definitions in catalog.md.
 
-## API Implementation Details
+## API Implementation
 
-### Developer Self-Service API Implementation
+### Developer Self-Service APIs
 
 #### Catalog Discovery & Browsing
 
@@ -216,7 +322,7 @@ Each action type supports sophisticated configuration options, error handling, r
 - **Purpose**: Generate dynamic JSON schema for form rendering
 - **Implementation**: Transform presentation section into JSON Schema with conditional logic
 - **Response**: JSON Schema with field validation rules, conditional dependencies, and data sources
-- **Features**: Real-time validation rules, conditional field visibility, dynamic data source integration
+- **Features**: Validation rules, conditional field visibility, dynamic data source integration
 
 #### Request Lifecycle Management
 
@@ -243,8 +349,8 @@ Each action type supports sophisticated configuration options, error handling, r
 - **Authorization**: Verify IAM principal ownership via request metadata or admin IAM role access
 
 **GET /api/v1/requests/{request_id}/status**
-- **Purpose**: Real-time status with progress percentage and current action
-- **Implementation**: Fast status query optimized for polling, WebSocket notification triggers
+- **Purpose**: Current status with progress percentage and current action
+- **Implementation**: Fast status query optimized for polling with Redis caching
 - **Response**: Status object with progress, current action, ETA, and state
 - **Performance**: <50ms response time with Redis caching
 
@@ -272,7 +378,7 @@ Each action type supports sophisticated configuration options, error handling, r
 - **Response**: Cancellation confirmation with rollback status
 - **Safety**: Prevent cancellation of critical operations in progress
 
-### Platform Team API Implementation
+### Platform Team APIs
 
 #### Team Management & Analytics
 
@@ -335,7 +441,7 @@ Each action type supports sophisticated configuration options, error handling, r
 - **Response**: Simulation results with execution path, timing estimates, potential issues
 - **Safety**: Sandbox execution environment with no external side effects
 
-### Administrative API Implementation
+### Administrative APIs
 
 #### System Health & Monitoring
 
@@ -373,7 +479,7 @@ Each action type supports sophisticated configuration options, error handling, r
 - **Implementation**: 
   - Trigger repository fetch and validation
   - Update cache with new catalog data
-  - Notify connected clients of changes via WebSocket
+  - Return refresh status immediately
 - **Response**: Refresh status with validation results
 - **Authorization**: Admin IAM role required with CloudTrail audit logging
 
@@ -402,7 +508,7 @@ Each action type supports sophisticated configuration options, error handling, r
 - **Authorization**: Admin IAM role access with CloudTrail logging of audit access
 - **Compliance**: SOC2, HIPAA audit trail requirements
 
-### Enterprise Governance API Implementation
+### Enterprise Governance APIs
 
 #### Approval & Workflow Management
 
@@ -456,7 +562,7 @@ Each action type supports sophisticated configuration options, error handling, r
 - **Response**: Updated quota configuration
 - **Authorization**: Admin IAM role access with approval workflow for significant changes
 
-### Integration Webhook Implementation
+### Integration Webhooks
 
 **POST /api/v1/webhooks/github**
 - **Purpose**: Process GitHub repository events and workflow notifications
@@ -483,32 +589,6 @@ Each action type supports sophisticated configuration options, error handling, r
   - Update request with infrastructure details
 - **Integration**: Terraform Cloud API, state file analysis
 
-### Real-time Communication Implementation
-
-**WebSocket: /ws/requests/{request_id}/status**
-- **Purpose**: Live status updates for request execution
-- **Implementation**: 
-  - Establish WebSocket connection with IAM SigV4 authentication
-  - Stream status changes, progress updates, and state transitions
-  - Handle connection management and reconnection
-- **Features**: Automatic reconnection, message queuing, heartbeat monitoring
-- **Authorization**: IAM principal ownership verification for request access
-
-**WebSocket: /ws/requests/{request_id}/logs**
-- **Purpose**: Real-time log streaming during request execution
-- **Implementation**: 
-  - Stream structured log entries with correlation IDs
-  - Support log filtering and severity-based streaming
-  - Handle high-volume log scenarios with buffering
-- **Performance**: Efficient log streaming with backpressure handling
-
-**WebSocket: /ws/catalog/changes**
-- **Purpose**: Notify clients of catalog modifications
-- **Implementation**: 
-  - Broadcast catalog change events to subscribed clients
-  - Include change details and affected services
-  - Support selective subscriptions by category or service
-- **Features**: Change notifications, service availability updates, deprecation alerts
 
 ## Enterprise Integration Architecture
 
@@ -799,7 +879,7 @@ spec:
 - Implement dynamic form generation supporting 10+ field types and conditional logic
 - Expand to 15+ API endpoints including validation, testing, and administrative operations
 - Deploy IAM authentication and granular RBAC enforcement with team-based authorization
-- Implement WebSocket real-time updates with 6 endpoint types and event streaming
+- Implement HTTP polling-based status updates with optimized caching and response times
 
 **Phase 4: Enterprise Reliability & State Management (Weeks 21-26)**
 - Deploy PostgreSQL state persistence with connection pooling, read replicas, and automated backups
@@ -826,7 +906,7 @@ spec:
 **Phase 7: Advanced Enterprise Features (Weeks 41-48)**
 - Implement complex service dependency management with parallel execution groups and validation
 - Deploy configurable approval workflow engine with SLA enforcement and escalation chains
-- Establish enterprise resource quota management with real-time enforcement and budget alerts
+- Establish enterprise resource quota management with automated enforcement and budget alerts
 - Deploy multi-environment orchestration with automated promotion pipelines (dev→test→prod)
 - Implement advanced cost tracking with optimization recommendations and chargeback reporting
 
@@ -844,7 +924,7 @@ spec:
 - **Request Processing**: 95% of automated requests complete within documented SLA timeframes
 - **System Availability**: 99.9% uptime with graceful degradation and zero-downtime deployments
 - **Throughput**: Support 1000+ concurrent requests without performance degradation
-- **WebSocket Latency**: <100ms for real-time status updates with event streaming
+- **Status Polling**: <50ms for status endpoint responses with optimized Redis caching
 - **Database Performance**: <50ms query response time (P95) with connection pooling optimization
 
 ### Business Impact Metrics (ROI Measurement)
