@@ -11,16 +11,15 @@
 
 **Epic Goal**: Establish working foundation with manual JIRA fulfillment
 
-**Value Delivered**: Platform teams can define services in catalog, users can request them, and they can be fulfilled with JIRA actions
+**Value Delivered**: Platform teams can define services in catalog, users can request them, and requests are fulfilled through JIRA actions
 
 **Success Metrics**:
 - Schema specification complete with 100% validation coverage
 - Core REST API deployed with <200ms response times and JIRA action type
-- Developer portal rendering dynamic forms with working request submission
 - Test catalog items working: EKS app, PostgreSQL database, parameter store (all JIRA fulfillment)
 - Developers can submit requests and receive JIRA tickets with proper variable substitution
 
-### Catalog Team Focus
+### Catalog Focus
 - Complete CatalogItem schema specification with validation rules
 - GitHub repository with CI/CD, CODEOWNERS enforcement, automated validation
 - Test catalog items: EKS app, PostgreSQL database, parameter store (all JIRA fulfillment)
@@ -48,7 +47,7 @@
 - `README.md`
 - `.gitignore`
 
-### Service Team Focus
+### Service Focus
 - Core REST API with catalog ingestion, request submission, status tracking
 - JIRA action execution framework with variable substitution
 - Variable substitution system supporting 6+ scopes (fields, metadata, request, system, environment, outputs)
@@ -145,13 +144,13 @@
 - <1 hour automated provisioning time for EKS app, PostgreSQL, parameter store
 - 5+ platform teams can define services with automated and manual fulfillment options
 
-### Catalog Team Focus
+### Catalog Focus
 - Enhanced schema supporting Terraform action types with repository mapping
 - 10+ production-ready catalog items for compute, database, storage, networking
 - Platform team migration tools and training materials
 - Complex variable templating patterns with secrets and outputs scope
 
-### Service Team Focus
+### Service Focus
 - Terraform action type with infrastructure provisioning capabilities
 - Production AWS deployment with RDS, Redis, monitoring, alerting
 - Fulfillment mode switching (seamless manual ↔ automated switching)
