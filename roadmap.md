@@ -35,8 +35,14 @@ Project starting now (early Q3 2025) to develop the Platform Automation Orchestr
 - **JIRA Integration**: Create automated JIRA ticket creation with basic variable substitution for manual fulfillment
 
 ### Q4 2025: Complete Stack Provisioning 📋 PLANNED (Nov-Jan)
-**Goal**: Enable end-to-end provisioning of EKS container app with database and secrets management
+**Goals**: 
+1. Enable end-to-end provisioning of EKS container app with database and secrets management
+2. **Fully data-driven process**: Catalog defines capabilities, service API exposes them, developer portal consumes dynamically
 
+- **Data-Driven Architecture**: All UI forms, validation rules, and workflows generated dynamically from catalog Schema v2.0 definitions
+- **Dynamic Service Discovery**: Developer portal queries catalog API to render available services without hardcoded UI components
+- **Schema-Generated Forms**: Transform YAML presentation definitions into dynamic UI with conditional logic, validation, and real-time updates
+- **API-First Design**: Service exposes comprehensive REST API that catalog-driven portals consume for complete self-service experience
 - **Multi-Service Orchestration**: Coordinate provisioning across compute, database, and security services in correct dependency order
 - **EKS Container Support**: Implement Terraform actions for EKS cluster, node groups, ingress, and application deployment
 - **Database Integration**: Add RDS PostgreSQL provisioning with connection string generation and security group setup
@@ -63,6 +69,9 @@ Project starting now (early Q3 2025) to develop the Platform Automation Orchestr
 
 **Q4 2025 Goals**:
 - **Complete Stack Demo**: Successfully provision EKS app + PostgreSQL + secrets end-to-end in <4 hours
+- **Fully Data-Driven**: Zero hardcoded UI components - all forms, validation, and workflows generated from catalog YAML definitions
+- **Dynamic Portal Integration**: Developer portal consumes catalog API to render services dynamically without code changes
+- **Schema-to-UI Pipeline**: Transform Schema v2.0 presentation definitions into live UI with conditional logic and validation
 - **Multi-Service Coordination**: Support 3+ services with cross-service variable passing (DB credentials → app config)
 - **Advanced Terraform Actions**: EKS cluster, RDS database, security groups, ingress, application deployment
 - **Secrets Integration**: AWS Secrets Manager integration with automatic injection into Kubernetes deployments
@@ -85,6 +94,26 @@ Project starting now (early Q3 2025) to develop the Platform Automation Orchestr
 - **Secrets**: Database credentials, API keys, TLS certificates with automatic rotation
 - **Networking**: VPC setup, security groups, ingress rules, load balancer configuration
 - **Monitoring**: CloudWatch integration, log aggregation, alerting thresholds
+
+**Data-Driven Architecture Flow**:
+```
+Catalog YAML → Schema Validation → API Exposure → Dynamic UI Generation
+
+catalog/compute/eks-app.yaml
+├── metadata: {id, name, category, owner}
+├── presentation: {form fields, validation, conditional logic}
+└── fulfillment: {terraform actions, variable passing}
+                     ↓
+            PAO Service API
+            ├── GET /catalog → Available services
+            ├── GET /catalog/items/{id}/schema → Dynamic form schema  
+            └── POST /requests → Submit with validation
+                     ↓
+            Developer Portal
+            ├── Queries catalog API for available services
+            ├── Renders forms dynamically from schema
+            └── Submits requests without hardcoded logic
+```
 
 **Orchestration Flow**:
 1. Provision VPC and networking components
