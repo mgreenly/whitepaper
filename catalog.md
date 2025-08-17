@@ -17,9 +17,9 @@
 
 ## Overview
 
-The Catalog Repository is the central document store where platform teams define their services for the Platform Automation Orchestrator (PAO). Teams create YAML documents following Schema v2.0 that define service metadata, UI forms, and fulfillment automation. This enables the transformation from multi-week manual provisioning to self-service automation.
+The Catalog Repository is the central document store where platform teams define services for the Platform Automation Orchestrator (PAO) using Schema v2.0 YAML documents.
 
-For strategic context and business rationale, see the [Platform Automation Orchestrator Whitepaper](whitepaper.md).
+For strategic context, see [whitepaper.md](whitepaper.md).
 
 ## Repository Architecture
 
@@ -630,4 +630,4 @@ fulfillment:
 
 ## Conclusion
 
-The Orchestrator Catalog Repository provides the document-driven foundation for transforming our developer experience from fragmented multi-week provisioning to streamlined self-service. By establishing Schema v2.0 specifications, governance processes, and progressive enhancement paths, we enable platform teams to modernize at their own pace while delivering immediate value through 90%+ provisioning time reduction. This design respects operational constraints, leverages existing systems, and provides a clear path toward full automation, positioning our platform as a strategic accelerator for innovation.
+The Catalog Repository provides the document-driven foundation for Schema v2.0 specifications, governance processes, and progressive enhancement paths that enable platform teams to modernize at their own pace. For broader strategic impact and business value, see [whitepaper.md](whitepaper.md).
