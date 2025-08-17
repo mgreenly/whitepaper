@@ -2,16 +2,17 @@
 
 ## Executive Summary
 
-The Orchestrator Catalog Repository serves as the foundational convergence point for the Platform Automation Orchestrator (PAO), enabling the transformation from a fragmented, multi-week provisioning process to a streamlined, self-service developer experience. This repository implements a document-driven architecture where platform teams define their service offerings through structured YAML documents, creating a unified catalog that powers both the developer portal interface and automated fulfillment orchestration.
+The Orchestrator Catalog Repository serves as the foundational convergence point for the Platform Automation Orchestrator (PAO), enabling the transformation from a fragmented, multi-week provisioning process to a streamlined, self-service developer experience. Operating as a cloud-native REST API within the Integration and Delivery Plane, PAO consumes structured YAML catalog definitions following comprehensive Schema v2.0 specifications to generate sophisticated developer interfaces and orchestrate complex, multi-action fulfillment workflows. This document-driven architecture enables platform teams to collaborate through unified catalog definitions that serve triple purposes: generating dynamic UI forms with conditional logic, defining enterprise automation workflows with parallel execution, and providing comprehensive governance metadata for compliance and auditing.
 
 ## Strategic Context
 
 ### Business Imperative
-Our organization's innovation capacity is directly constrained by provisioning delays that force development teams to wait multiple weeks for essential resources. The catalog repository addresses this by:
-- Eliminating fragmented JIRA ticket workflows across multiple platform teams
-- Enabling self-service provisioning through standardized service definitions
-- Supporting progressive automation without disrupting existing processes
+Our organization's innovation capacity is directly constrained by provisioning delays that force development teams to wait 2-3 weeks for essential resources across compute, database, messaging, networking, storage, security, and monitoring teams. The catalog repository addresses this by:
+- Eliminating fragmented JIRA ticket workflows across 8+ platform domains
+- Enabling self-service provisioning through standardized Schema v2.0 service definitions
+- Supporting progressive automation (manual → hybrid → fully automated) with parallel execution
 - Respecting operational constraints including restricted change periods (September-January)
+- Achieving 90%+ provisioning time reduction (weeks to hours) while maintaining enterprise security
 
 ### Architectural Alignment
 The catalog repository operates within the Integration and Delivery Plane of our five-plane reference architecture:
@@ -24,11 +25,13 @@ The catalog repository operates within the Integration and Delivery Plane of our
 ## Repository Architecture
 
 ### Core Design Principles
-1. **Progressive Enhancement**: Support evolution from manual to automated fulfillment
-2. **Team Autonomy**: Platform teams maintain full ownership of their service definitions
-3. **Value-Driven**: Focus on immediate value delivery over idealized future states
-4. **Operational Respect**: Align with business rhythms and change windows
-5. **Architectural Integrity**: Prevent fragmentation through structured governance
+1. **Schema-Driven Architecture**: All service definitions follow comprehensive Schema v2.0 with strict validation, governance, and versioning
+2. **Progressive Enhancement**: Teams evolve from manual JIRA to hybrid to fully automated fulfillment with parallel execution and rollback capabilities
+3. **Advanced Variable System**: Rich templating with functions, conditional logic, loops, and multi-scope variable interpolation
+4. **Enterprise Action Orchestration**: Complex workflow support with parallel execution groups, state management, error handling, and comprehensive retry logic
+5. **Cloud-Native Design**: Stateless, horizontally scalable service with Kubernetes-ready deployment and enterprise integration patterns
+6. **Team Autonomy**: Platform teams maintain full ownership while collaborating through unified catalog repository
+7. **Operational Respect**: Align with business rhythms, change windows, and enterprise security requirements
 
 ### Directory Structure
 ```
@@ -244,43 +247,61 @@ fulfillment:                          # Provisioning definition
     parallel_execution: boolean        # Enable parallel actions
     state_management:                  # State tracking
       enabled: boolean
-      backend: string                  # State backend type
+      backend: string                  # State backend (dynamodb, postgresql)
+      encryption: boolean              # Encrypt state data
       
     actions:                           # Automation actions
       - id: string                     # Action identifier
         name: string                   # Action name
         description: string            # Action purpose
-        type: string                   # Action type
-        order: integer                 # Execution order
-        parallel_group: integer        # Parallel execution group
+        type: string                   # Action type (jira-ticket, rest-api, terraform, github-workflow, webhook, approval-workflow, cost-estimation)
+        order: integer                 # Execution order (sequential)
+        parallel_group: integer        # Parallel execution group (same group runs concurrently)
         
-        config: object                 # Type-specific config
+        config: object                 # Type-specific config (see Action Types Reference)
         
         conditions:                    # Execution conditions
           - field: string              # Field to check
-            operator: string           # Comparison operator
+            operator: string           # Comparison operator (eq, ne, gt, lt, gte, lte, in, not_in, contains)
             value: any                 # Expected value
+            
+        dependencies:                  # Action dependencies
+          wait_for: [string]           # Action IDs to wait for
+          require_success: boolean     # Require dependency success
             
         retry:                         # Retry configuration
           enabled: boolean
-          attempts: integer            # Max attempts
-          delay: integer               # Initial delay (seconds)
-          backoff: string              # Backoff strategy
+          attempts: integer            # Max attempts (default: 3)
+          delay: integer               # Initial delay in seconds (default: 30)
+          backoff: string              # Backoff strategy (linear, exponential, fibonacci)
+          max_delay: integer           # Maximum delay between retries
+          retry_on: [string]           # Retry conditions (timeout, error, specific_errors)
           
-        timeout: integer               # Action timeout (seconds)
+        timeout: integer               # Action timeout in seconds (default: 300)
+        
+        circuit_breaker:               # Circuit breaker configuration
+          enabled: boolean
+          failure_threshold: integer   # Failures before opening circuit
+          success_threshold: integer   # Successes before closing circuit
+          timeout: integer             # Circuit reset timeout
         
         error_handling:                # Error handling
-          strategy: string             # fail, continue, retry
+          strategy: string             # fail, continue, retry, fallback
           fallback_action: string      # Fallback action ID
+          notification: boolean        # Send error notification
+          escalation_after: integer    # Minutes before escalation
           
         rollback:                      # Rollback definition
           enabled: boolean
           action: string               # Rollback action ID
           automatic: boolean           # Auto-rollback on failure
+          preserve_state: boolean      # Preserve state for debugging
           
         output:                        # Output mapping
           capture: boolean             # Capture output
-          fields: object               # Field extraction
+          fields: object               # Field extraction mapping
+          store_in_state: boolean      # Store in state backend
+          ttl: integer                 # Output TTL in seconds
           
   notifications:                       # Notification configuration
     on_start:                          # Start notifications
@@ -725,20 +746,69 @@ The template system supports comprehensive variable interpolation with multiple 
   Standard deployment
 {{/if}}
 
+# Nested Conditions
+{{#if fields.environment == "production"}}
+  {{#if fields.multi_az == true}}
+    High availability production deployment
+  {{else}}
+    Standard production deployment
+  {{/if}}
+{{else}}
+  Development deployment
+{{/if}}
+
 # Switch Statement
 {{#switch fields.tier}}
   {{#case "gold"}}
-    Premium resources
+    Premium resources with 24/7 support
   {{#case "silver"}}
-    Standard resources
+    Standard resources with business hours support
+  {{#case "bronze"}}
+    Basic resources with community support
   {{#default}}
-    Basic resources
+    Evaluation resources
 {{/switch}}
 
 # Loops
 {{#each fields.servers as server}}
   Server: {{server.name}} ({{server.ip}})
+  CPU: {{server.cpu_cores}} cores
+  Memory: {{server.memory_gb}} GB
 {{/each}}
+
+# Complex Expressions
+{{#if (fields.cpu_cores > 8 && fields.environment == "production")}}
+  Large instance required
+{{/if}}
+
+# Array Operations
+{{#if fields.security_groups includes "public-access"}}
+  Warning: Public access enabled
+{{/if}}
+```
+
+### Real-time Updates via WebSocket
+
+The catalog repository integrates with PAO's WebSocket endpoints for real-time updates:
+
+```javascript
+// Connect to request status updates
+const ws = new WebSocket('wss://orchestrator.company.com/ws/requests/{{request.id}}/status');
+
+ws.onmessage = (event) => {
+  const status = JSON.parse(event.data);
+  console.log(`Request {{request.id}} status: ${status.state}`);
+  console.log(`Current action: ${status.current_action}`);
+  console.log(`Progress: ${status.progress_percentage}%`);
+};
+
+// Subscribe to catalog changes
+const catalogWs = new WebSocket('wss://orchestrator.company.com/ws/catalog/changes');
+
+catalogWs.onmessage = (event) => {
+  const change = JSON.parse(event.data);
+  console.log(`Catalog item ${change.item_id} ${change.action}`);
+};
 ```
 
 ## Governance Framework
@@ -907,49 +977,64 @@ The template system supports comprehensive variable interpolation with multiple 
 
 ### Phase Alignment
 
-The catalog repository implementation aligns with the PAO roadmap phases:
+The catalog repository implementation aligns with the comprehensive PAO roadmap phases:
 
-#### Phase 1: Foundation (Weeks 1-6)
-- Establish basic repository structure
-- Create minimal JSON schema
-- Implement simple JIRA fulfillment
-- Single service POC
+#### Phase 1: Foundation & Reference Architecture (Weeks 1-6)
+- Establish version-controlled catalog repository with GitOps workflows
+- Define comprehensive Schema v2.0 with required sections (metadata, presentation, fulfillment)
+- Implement JSON schema validation pipeline with detailed error reporting
+- Deploy webhook/polling integration for repository monitoring
+- Technology stack: Go/Java runtime, PostgreSQL + Redis, Kubernetes deployment
 
-#### Phase 2: Core API Integration (Weeks 7-14)
-- Enhance schema for API consumption
-- Add validation pipeline
-- Implement variable substitution
-- Multiple service definitions
+#### Phase 2: Core Orchestration Engine (Weeks 7-14)
+- REST API with core endpoints (GET /catalog, POST /requests, GET /health)
+- Advanced variable substitution engine supporting all scopes and functions
+- Request lifecycle management (Submitted → Validated → Queued → In Progress → Completed/Failed)
+- JIRA integration with rich templating and custom fields
+- In-memory caching with TTL and automatic refresh
 
-#### Phase 3: Portal Integration (Weeks 15-20)
-- Add presentation layer enhancements
-- Implement conditional fields
-- Add form validation rules
-- Create UI hint system
+#### Phase 3: Multi-Action Fulfillment & Portal (Weeks 15-20)
+- 7+ action types: JIRA, REST API, Terraform, GitHub, Webhook, Approval, Cost Estimation
+- Dynamic form generation with 10+ field types and conditional logic
+- 15+ API endpoints including validation and testing endpoints
+- OIDC authentication and RBAC enforcement
+- WebSocket real-time updates (/ws/requests/{id}/status, /ws/catalog/changes)
 
-#### Phase 4: State Management (Weeks 21-26)
-- Add state tracking metadata
-- Implement rollback definitions
-- Add action dependencies
-- Create output mappings
+#### Phase 4: Enterprise Reliability & State Management (Weeks 21-26)
+- PostgreSQL state persistence with connection pooling and read replicas
+- Redis caching layer with distributed cache and invalidation strategies
+- Circuit breaker architecture for all external integrations
+- Comprehensive retry logic with exponential backoff
+- Prometheus metrics, structured logging, distributed tracing
 
-#### Phase 5: Platform Onboarding (Weeks 27-34)
-- Migrate all platform team services
-- Create team-specific templates
-- Implement progressive enhancement
-- Document patterns per team
+#### Phase 5: Platform Team Onboarding (Weeks 27-34)
+- Schema v2.0 templates for 8 platform domains
+- Migration tooling for existing JIRA process conversion
+- Sandbox environment with validation and simulation
+- Progressive enhancement tracking (manual → hybrid → automated)
+- Comprehensive training program with documentation automation
 
-#### Phase 6: Production Operations (Weeks 35-40)
-- Add monitoring configuration
-- Implement health checks
-- Add performance optimizations
-- Production deployment
+#### Phase 6: Production Deployment & Operations (Weeks 35-40)
+- Kubernetes deployment with Helm charts and horizontal pod autoscaling
+- Enterprise security: TLS, network policies, HashiCorp Vault, SAST/DAST
+- Comprehensive monitoring: Prometheus, JSON logging, distributed tracing
+- Business intelligence dashboard with usage analytics
+- Backup and disaster recovery procedures
+**⚠️ Schedule outside Sept-Jan restricted period**
 
-#### Phase 7: Enterprise Features (Weeks 41-48)
-- Add approval workflows
-- Implement cost estimation
-- Add quota management
-- Multi-environment support
+#### Phase 7: Advanced Enterprise Features (Weeks 41-48)
+- Complex service dependency management with parallel execution groups
+- Configurable approval workflow engine with SLA enforcement
+- Resource quota management with real-time enforcement
+- Multi-environment orchestration (dev→test→prod)
+- Advanced cost tracking with optimization recommendations
+
+#### Phase 8: Enterprise Integration & Governance (Weeks 49-54)
+- CMDB integration with automated asset management
+- ITSM tool integration (ServiceNow, Remedy, Cherwell)
+- Compliance framework for SOC2, HIPAA requirements
+- Multi-tenant architecture with business unit isolation
+- Security and vulnerability management integration
 
 ## Best Practices
 
@@ -1005,31 +1090,42 @@ The catalog repository implementation aligns with the PAO roadmap phases:
    - Refactor based on patterns
    - Optimize based on performance data
 
-## Success Metrics
+## Success Metrics & Performance Targets
 
-### Catalog Metrics
-- **Service Coverage**: 100% of platform services represented
-- **Automation Rate**: 80% with automatic fulfillment by month 12
-- **Schema Compliance**: 100% validation pass rate
-- **Documentation Coverage**: 100% of services documented
+### Performance Targets
+- **API Response Time**: <200ms for catalog operations, <2s for request submission
+- **Request Processing**: 95% of automated requests complete within SLA timeframes
+- **System Availability**: 99.9% uptime with graceful degradation and zero-downtime deployments
+- **Throughput**: Support 1000+ concurrent requests without performance degradation
+- **WebSocket Latency**: <100ms for real-time status updates
 
-### Adoption Metrics
-- **Team Participation**: All platform teams contributing
-- **Service Additions**: 5+ new services per month
-- **Progressive Enhancement**: 70% services enhanced quarterly
-- **User Satisfaction**: >4.5/5 developer satisfaction score
+### Business Impact Metrics
+- **Provisioning Time Reduction**: From 2-3 weeks to <4 hours (90%+ improvement)
+- **Platform Team Adoption**: 100% of 8 platform domains onboarded with at least one service
+- **Developer Satisfaction**: >4.5/5 rating on self-service experience
+- **Automation Rate**: 80%+ of common services fully automated within 12 months
+- **Cost Optimization**: 30% reduction in provisioning costs through automation
 
-### Operational Metrics
-- **Provisioning Time**: <2 hours for automated services
-- **Error Rate**: <5% fulfillment failure rate
-- **Validation Time**: <1 second per catalog item
-- **Deployment Frequency**: Weekly catalog updates
+### Catalog & Schema Metrics
+- **Service Coverage**: 100% of platform services represented in Schema v2.0
+- **Schema Compliance**: 100% validation pass rate with comprehensive error reporting
+- **Documentation Coverage**: 100% of services with API documentation and examples
+- **Migration Success**: 95% of existing JIRA processes successfully converted
+- **Progressive Enhancement**: 70% services enhanced from manual to automated quarterly
 
-### Quality Metrics
-- **PR Approval Time**: <24 hours for standard changes
-- **Breaking Changes**: <1 per quarter
-- **Rollback Success**: 100% successful rollbacks
-- **Security Incidents**: Zero security breaches
+### Operational Excellence
+- **Error Rate**: <5% request failure rate for automated actions
+- **Security Compliance**: Zero security incidents, full SOC2/HIPAA audit trail
+- **MTTR**: <30 minutes for incident resolution with automated rollback
+- **Support Efficiency**: <24 hour resolution time for platform team issues
+- **Change Success Rate**: >95% successful production deployments
+
+### Quality & Governance Metrics
+- **PR Approval Time**: <24 hours for standard changes with CODEOWNERS enforcement
+- **Breaking Changes**: <1 per quarter with comprehensive migration support
+- **Rollback Success**: 100% successful rollbacks with state restoration
+- **Security Scanning**: 100% of catalog items pass security validation
+- **Compliance Coverage**: 100% audit trail for all provisioning activities
 
 ## Migration Strategy
 
@@ -1704,7 +1800,79 @@ monitoring:
       interval: 300
 ```
 
-## Appendix B: Schema Validation Rules
+## Appendix B: Enterprise Integration Patterns
+
+### API Integration Examples
+
+```python
+# Python SDK Example
+from pao_client import OrchestratorClient
+
+client = OrchestratorClient(
+    base_url="https://orchestrator.company.com/api/v1",
+    auth_type="oauth2",
+    client_id=os.environ["PAO_CLIENT_ID"],
+    client_secret=os.environ["PAO_CLIENT_SECRET"]
+)
+
+# Submit a request
+request = client.submit_request(
+    catalog_item_id="database-postgresql-standard",
+    fields={
+        "instance_name": "analytics-db",
+        "environment": "production",
+        "instance_class": "db.m5.xlarge",
+        "storage_size": 500
+    }
+)
+
+# Monitor status via WebSocket
+async def monitor_request(request_id):
+    async with client.websocket(f"/ws/requests/{request_id}/status") as ws:
+        async for message in ws:
+            status = json.loads(message)
+            print(f"Status: {status['state']}, Progress: {status['progress']}%")
+```
+
+### Terraform Integration
+
+```hcl
+# Terraform Provider for PAO
+terraform {
+  required_providers {
+    pao = {
+      source  = "company/pao"
+      version = "~> 1.0"
+    }
+  }
+}
+
+provider "pao" {
+  endpoint = "https://orchestrator.company.com/api/v1"
+  auth_token = var.pao_token
+}
+
+# Provision via catalog
+resource "pao_request" "database" {
+  catalog_item_id = "database-postgresql-standard"
+  
+  fields = {
+    instance_name = "terraform-db"
+    environment   = "production"
+    instance_class = "db.m5.large"
+    storage_size  = 250
+  }
+  
+  wait_for_completion = true
+  timeout = "30m"
+}
+
+output "database_endpoint" {
+  value = pao_request.database.outputs.endpoint
+}
+```
+
+## Appendix C: Schema Validation Rules
 
 ### JSON Schema for Catalog Items
 
@@ -1712,8 +1880,8 @@ monitoring:
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://company.com/schemas/catalog-item/v2.0",
-  "title": "Catalog Item Schema",
-  "description": "Schema for Platform Automation Orchestrator catalog items",
+  "title": "Catalog Item Schema v2.0",
+  "description": "Comprehensive schema for Platform Automation Orchestrator catalog items with enterprise features",
   "type": "object",
   "required": ["version", "kind", "metadata", "presentation", "fulfillment"],
   "properties": {

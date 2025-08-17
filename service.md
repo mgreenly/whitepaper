@@ -2,205 +2,383 @@
 
 ## Executive Summary
 
-The Platform Automation Orchestrator (PAO) is the foundational technology component that transforms developer experience from weeks of manual provisioning to hours of self-service automation. Operating as a stateless REST API within the Integration and Delivery Plane, PAO orchestrates the entire service lifecycle from catalog presentation through automated fulfillment, enabling platform teams to maintain ownership while developers gain unprecedented agility.
+The Platform Automation Orchestrator (PAO) is the central coordination engine that transforms our fragmented, multi-week provisioning process into a streamlined, self-service developer experience. Operating as a cloud-native REST API within the Integration and Delivery Plane, PAO consumes structured YAML catalog definitions to generate dynamic developer interfaces and orchestrate complex, multi-action fulfillment workflows across all platform domains.
 
 ## Strategic Context
 
 ### Business Problem
-Current developer provisioning requires navigating multiple JIRA tickets across compute, storage, messaging, and networking teams, creating multi-week delays that directly constrain innovation velocity. This fragmentation forces engineers to become experts in internal bureaucracy rather than software delivery.
+Our current developer provisioning requires navigating multiple JIRA tickets across compute, database, messaging, networking, storage, security, and monitoring teams, creating 2-3 week delays that directly constrain innovation velocity. This fragmentation forces engineers to become experts in internal bureaucracy rather than software delivery, while platform teams struggle with inconsistent interfaces and manual coordination overhead.
 
 ### Solution Architecture
-PAO implements a convergence-point model where platform teams define services through structured YAML documents in a central catalog repository. These documents serve dual purposes: generating dynamic UI forms for the developer portal and providing technical definitions for automated fulfillment. This creates seamless self-service while preserving team autonomy and enabling progressive automation.
+PAO implements a document-driven convergence model where platform teams collaborate through a unified catalog repository using the comprehensive Schema v2.0 specification. These YAML catalog items serve triple purposes: generating sophisticated UI forms with conditional logic, defining complex multi-action automation workflows, and providing enterprise governance metadata. This creates seamless self-service while preserving team autonomy and enabling progressive enhancement from manual to fully automated fulfillment.
 
 ## Service Architecture
 
 ### Five-Plane Integration
 PAO operates within the **Integration and Delivery Plane** while orchestrating across all reference architecture planes:
 
-- **Developer Control Plane**: Provides unified catalog API for developer portal integration
-- **Security and Compliance Plane**: Enforces RBAC, audit trails, and policy validation
-- **Monitoring and Logging Plane**: Comprehensive observability for request lifecycle
-- **Resource Plane**: Orchestrates provisioning across compute, storage, messaging, and networking
+- **Developer Control Plane**: Provides unified catalog API for sophisticated developer portal with dynamic form generation, conditional fields, and real-time validation
+- **Security and Compliance Plane**: Enforces RBAC, data classification, regulatory compliance (SOC2, HIPAA), comprehensive audit trails, and approval workflows
+- **Monitoring and Logging Plane**: Comprehensive observability with distributed tracing, structured logging, health checks, and performance metrics
+- **Resource Plane**: Orchestrates provisioning across compute, databases, messaging, networking, storage, security, and monitoring domains
 
 ### Core Design Principles
 
-1. **Document-Driven Architecture**: All service definitions live in version-controlled YAML, enabling GitOps workflows
-2. **Progressive Enhancement**: Teams start with manual JIRA fulfillment, evolve to full automation at their pace
-3. **Variable Substitution**: Rich templating system for dynamic service configuration
-4. **Action Composition**: Sequential action chains with retry, rollback, and error handling
-5. **Stateless Orchestration**: Horizontally scalable, cloud-native service design
+1. **Schema-Driven Architecture**: All service definitions follow comprehensive Schema v2.0 with strict validation, governance, and versioning
+2. **Progressive Enhancement**: Teams evolve from manual JIRA to hybrid to fully automated fulfillment with parallel execution and rollback capabilities
+3. **Advanced Variable System**: Rich templating with functions, conditional logic, loops, and multi-scope variable interpolation
+4. **Enterprise Action Orchestration**: Complex workflow support with parallel execution groups, state management, error handling, and comprehensive retry logic
+5. **Cloud-Native Design**: Stateless, horizontally scalable service with Kubernetes-ready deployment and enterprise integration patterns
 
 ## Detailed Functionality
 
-### Catalog Management Engine
+### Advanced Catalog Management Engine
 
-**Repository Integration**
-- Monitors catalog repository for changes via webhooks or polling
-- Validates YAML documents against comprehensive JSON schema
-- Caches processed catalog items with automatic refresh
-- Supports multi-environment catalog synchronization
+**Repository Integration & Governance**
+- Monitors catalog repository changes via GitHub webhooks with CODEOWNERS enforcement
+- Validates YAML documents against comprehensive Schema v2.0 with 1700+ line specification
+- Implements multi-tier caching: Redis cluster for performance, DynamoDB for state persistence
+- Supports multi-environment catalog synchronization with automated promotion pipelines
+- Enforces contribution workflows with automated testing, security scanning, and approval processes
 
-**Schema Validation**
-- Enforces required sections: header, presentation, fulfillment.manual
-- Validates field types, references, and conditional logic
-- Prevents duplicate IDs and maintains referential integrity
-- Provides detailed validation error reporting
+**Comprehensive Schema Validation**
+- Enforces Schema v2.0 with metadata, presentation, fulfillment, lifecycle, and monitoring sections
+- Validates complex field dependencies, conditional logic, and cross-references
+- Prevents duplicate IDs, maintains referential integrity across 8 service categories
+- Provides detailed validation error reporting with actionable remediation guidance
+- Supports version migration with backward compatibility and automated transformation
 
-**Dynamic Form Generation**
-- Transforms presentation definitions into JSON schema for UI frameworks
-- Supports complex field types: string, text, integer, number, boolean, selection, multi-selection, date, datetime, email, url, password, file, json, yaml
-- Implements conditional field display based on user selections
-- Generates client-side validation rules
+**Sophisticated Form Generation**
+- Transforms presentation definitions into dynamic UI with wizard, tabbed, and single-page layouts
+- Supports 10+ field types including JSON/YAML editors with syntax validation
+- Implements advanced conditional logic with operators (eq, ne, gt, lt, gte, lte, in, not_in, contains)
+- Generates real-time client-side validation with custom error messages
+- Supports dynamic data sources with API integration and caching
 
-### Request Orchestration System
+### Enterprise Request Orchestration System
 
-**Request Lifecycle Management**
+**Advanced Request Lifecycle Management**
 ```
-Submitted → Validated → Queued → In Progress → Completed/Failed
+Submitted → Prerequisites → Validation → Approval → Queued → In Progress → Post-Fulfillment → Completed/Failed
 ```
 
-**Variable Substitution Engine**
-- `{{fields.field_id}}` - User input values from presentation fields
-- `{{header.id}}` - Catalog item metadata (id, name, version, owner)
-- `{{request.id}}` - Unique request identifier (UUID)
-- `{{request.timestamp}}` - ISO 8601 request submission time
-- `{{request.user}}` - Requesting user (email, roles, organization)
-- `{{env.VARIABLE}}` - Environment variables for secrets/configuration
-- `{{response.action_name.field}}` - Previous action outputs for chaining
+**Comprehensive Variable Substitution Engine**
+- **User Context**: `{{fields.field_id}}`, `{{fields.nested.field}}` - Form field values with nested access
+- **Metadata Context**: `{{metadata.id}}`, `{{metadata.owner.team}}`, `{{metadata.category}}` - Service metadata
+- **Request Context**: `{{request.id}}`, `{{request.user.department}}`, `{{request.environment}}` - Request details
+- **System Context**: `{{system.date}}`, `{{system.uuid}}`, `{{system.region}}` - System-generated values
+- **Security Context**: `{{env.VARIABLE}}`, `{{secrets.SECRET_NAME}}` - Environment and secret references
+- **Action Outputs**: `{{output.action_id.field}}`, `{{output.action_id.status}}` - Previous action results
+- **Functions**: `{{uuid()}}`, `{{timestamp()}}`, `{{concat()}}`, `{{hash()}}` - Template functions
+- **Conditional Logic**: If-then-else, switch statements, loops with `{{#each}}` syntax
 
-**Action Execution Framework**
-- Sequential action processing with dependency resolution
-- Comprehensive error handling and recovery procedures
-- Configurable retry logic with exponential backoff
-- Rollback capabilities for failed provisions
-- Real-time status updates via WebSocket connections
+**Enterprise Action Execution Framework**
+- Parallel execution groups with configurable concurrency and dependencies
+- State management with DynamoDB backend for resource tracking
+- Comprehensive error handling with fallback actions and escalation paths
+- Advanced retry logic with exponential backoff and circuit breakers
+- Automated rollback capabilities with state restoration
+- Real-time status updates via WebSocket with event streaming
 
-### Multi-Action Fulfillment Support
+### Comprehensive Multi-Action Fulfillment Engine
 
-**JIRA Integration**
+PAO supports 7+ action types with enterprise-grade configuration, security, and error handling:
+
+**1. Enhanced JIRA Integration**
 ```yaml
 type: jira-ticket
 config:
-  project: PLATFORM
-  issue_type: Task
-  summary_template: "Deploy {{fields.app_name}} to {{fields.environment}}"
-  description_template: |
-    Application: {{fields.app_name}}
-    Environment: {{fields.environment}}
-    Requested by: {{request.user.email}}
-  assignee: "{{header.owner}}"
-  labels: [platform-automation, "{{fields.environment}}"]
-  custom_fields:
-    business_justification: "{{fields.justification}}"
+  connection:
+    instance: "company-jira"  # Multi-instance support
+    use_default: true
+  ticket:
+    project: PLATFORM
+    issue_type: Task
+    summary_template: "PostgreSQL Database: {{fields.instance_name}} ({{fields.environment}})"
+    description_template: |
+      Database provisioning request
+      
+      Instance: {{fields.instance_name}}
+      Environment: {{fields.environment}}
+      Requester: {{request.user.email}}
+      Request ID: {{request.id}}
+  fields:
+    assignee: "{{metadata.owner.team}}"
+    priority: "{{#if fields.environment == 'production'}}High{{else}}Normal{{/if}}"
+    labels: [platform-automation, "{{fields.environment}}", "database"]
+    custom_fields:
+      business_justification: "{{fields.justification}}"
+      cost_center: "{{request.user.department}}"
+  workflow:
+    transition_on_create: "In Progress"
+    expected_resolution_time: 4  # Hours
 ```
 
-**REST API Integration**
+**2. Advanced REST API Integration**
 ```yaml
 type: rest-api
 config:
-  method: POST
-  url: "https://api.platform.company.com/v1/databases"
-  headers:
-    Content-Type: application/json
-    Authorization: "Bearer {{env.API_TOKEN}}"
-  body_template: |
-    {
-      "name": "{{fields.db_name}}",
-      "engine": "{{fields.db_engine}}",
-      "environment": "{{fields.environment}}",
-      "requester": "{{request.user.email}}"
-    }
-  success_codes: [200, 201, 202]
-  response_mapping:
-    database_id: "$.id"
-    connection_string: "$.connection.url"
+  endpoint:
+    url: "{{env.DATABASE_API}}/v2/postgresql"
+    method: POST
+    timeout: 300
+  authentication:
+    type: oauth2
+    credentials:
+      client_id: "{{env.API_CLIENT_ID}}"
+      client_secret_ref: "API_CLIENT_SECRET"
+      scope: "database:provision"
+  body:
+    type: json
+    content_template: |
+      {
+        "instance_identifier": "{{fields.instance_name}}",
+        "engine_version": "{{fields.engine_version}}",
+        "instance_class": "{{fields.instance_class}}",
+        "environment": "{{fields.environment}}",
+        "metadata": {
+          "requester": "{{request.user.email}}",
+          "request_id": "{{request.id}}",
+          "cost_center": "{{request.user.department}}"
+        }
+      }
+  response:
+    expected_status: [200, 201, 202]
+  parsing:
+    extract:
+      - path: "$.database_id"
+        name: "database_id"
+        required: true
+      - path: "$.endpoint.host"
+        name: "endpoint_host"
+      - path: "$.endpoint.port"
+        name: "endpoint_port"
+  circuit_breaker:
+    enabled: true
+    failure_threshold: 5
+    timeout: 60
 ```
 
-**Terraform Orchestration**
+**3. Enterprise Terraform Orchestration**
 ```yaml
 type: terraform
 config:
-  repository: "platform-infrastructure"
-  branch: main
-  path: "environments/{{fields.environment}}/databases"
-  module: "postgresql-cluster"
+  source:
+    type: git
+    location: "https://github.com/company/terraform-modules"
+    ref: "v2.1.0"
+  module:
+    name: "rds-postgresql"
+    path: "modules/databases/postgresql"
+  workspace:
+    name: "{{fields.environment}}-{{fields.instance_name}}"
+    create_if_not_exists: true
   variables:
-    cluster_name: "{{fields.app_name}}-{{fields.environment}}"
-    instance_class: "{{fields.instance_size}}"
-    storage_gb: "{{fields.storage_size}}"
-    backup_retention: 7
+    instance_identifier: "{{fields.instance_name}}"
+    engine_version: "{{fields.engine_version}}"
+    vpc_id: "{{fields.vpc_id}}"
+    multi_az: "{{fields.multi_az}}"
+    tags: |
+      {
+        "Environment": "{{fields.environment}}",
+        "Owner": "{{request.user.department}}",
+        "ManagedBy": "platform-orchestrator",
+        "RequestId": "{{request.id}}"
+      }
   backend:
     type: s3
     config:
-      bucket: "terraform-state-{{fields.environment}}"
-      key: "databases/{{fields.app_name}}/terraform.tfstate"
+      bucket: "company-terraform-state"
+      key: "databases/{{fields.environment}}/{{fields.instance_name}}.tfstate"
+      region: "us-east-1"
+      encrypt: true
+      dynamodb_table: "terraform-state-lock"
+  execution:
+    auto_approve: false
+    parallelism: 10
+  hooks:
+    pre_apply: ["terraform validate", "terraform plan -detailed-exitcode"]
+    post_apply: ["terraform output -json > /tmp/outputs.json"]
 ```
 
-**GitHub Workflow Triggers**
+**4. GitHub Workflow Dispatch**
 ```yaml
 type: github-workflow
 config:
-  repository: "platform-deployments"
-  workflow_id: "deploy-application.yml"
-  ref: main
+  repository:
+    owner: "company"
+    name: "platform-deployments"
+  workflow:
+    id: "deploy-database.yml"
+    ref: "main"
   inputs:
-    app_name: "{{fields.app_name}}"
+    database_type: "postgresql"
+    instance_name: "{{fields.instance_name}}"
     environment: "{{fields.environment}}"
-    image_tag: "{{fields.image_tag}}"
-    cpu_request: "{{fields.cpu_request}}"
-    memory_request: "{{fields.memory_request}}"
+    terraform_workspace: "{{fields.environment}}-{{fields.instance_name}}"
+    auto_approve: "{{#if fields.environment == 'development'}}true{{else}}false{{/if}}"
+  authentication:
+    type: app
+    app_id: "{{env.GITHUB_APP_ID}}"
+    installation_id: "{{env.GITHUB_INSTALLATION_ID}}"
+    private_key_ref: "GITHUB_APP_PRIVATE_KEY"
+  monitoring:
+    wait_for_completion: true
+    timeout: 3600
+    poll_interval: 30
 ```
 
-**Webhook Notifications**
+**5. Webhook with HMAC Security**
 ```yaml
 type: webhook
 config:
-  url: "{{env.SLACK_WEBHOOK_URL}}"
-  method: POST
-  headers:
-    Content-Type: application/json
-  body_template: |
-    {
-      "text": "✅ {{fields.app_name}} deployed to {{fields.environment}}",
-      "channel": "#platform-notifications",
-      "username": "Platform Orchestrator"
-    }
+  endpoint:
+    url: "{{env.MONITORING_WEBHOOK_URL}}"
+    method: POST
+  body:
+    type: json
+    template: |
+      {
+        "event": "database_provisioned",
+        "database_id": "{{output.create-terraform.database_id}}",
+        "instance_name": "{{fields.instance_name}}",
+        "environment": "{{fields.environment}}",
+        "endpoint": "{{output.create-terraform.endpoint_host}}:{{output.create-terraform.endpoint_port}}",
+        "timestamp": "{{system.datetime}}",
+        "requester": "{{request.user.email}}"
+      }
+  signature:
+    enabled: true
+    algorithm: "sha256"
+    secret_ref: "WEBHOOK_SIGNING_SECRET"
+    header_name: "X-Signature-256"
+    include_timestamp: true
+```
+
+**6. Approval Workflow (Enterprise)**
+```yaml
+type: approval-workflow
+config:
+  workflow:
+    name: "Production Database Approval"
+    description: "Required approval for production database provisioning"
+  stages:
+    - name: "Technical Review"
+      order: 1
+      approvers:
+        type: groups
+        list: ["platform-database-leads"]
+        minimum_approvals: 1
+      timeout:
+        duration: 24  # Hours
+        action: "escalate"
+    - name: "Cost Approval"
+      order: 2
+      approvers:
+        type: dynamic
+        list: "{{request.user.manager}}"
+      conditions:
+        - field: "estimated_monthly_cost"
+          operator: "gt"
+          value: 500
+```
+
+**7. Cost Estimation (Enterprise)**
+```yaml
+type: cost-estimation
+config:
+  provider:
+    type: "aws"
+    region: "{{fields.aws_region}}"
+  resources:
+    - type: "rds_instance"
+      specifications:
+        instance_class: "{{fields.instance_class}}"
+        storage_gb: "{{fields.storage_size}}"
+        multi_az: "{{fields.multi_az}}"
+        backup_retention: "{{fields.backup_retention}}"
+  pricing:
+    model: "on_demand"
+    include_tax: true
+    currency: "USD"
+  output:
+    format: "json"
+    breakdown: true
 ```
 
 ## Comprehensive API Specification
 
-### Catalog Operations
+### Catalog Operations (Public)
 ```http
-GET /api/v1/catalog
-GET /api/v1/catalog/{category}
-GET /api/v1/catalog/items/{item_id}
-GET /api/v1/catalog/items/{item_id}/schema
+GET    /api/v1/catalog                           # Full catalog with filtering
+GET    /api/v1/catalog/{category}                # Category-specific items
+GET    /api/v1/catalog/items/{item_id}           # Individual catalog item
+GET    /api/v1/catalog/items/{item_id}/schema    # JSON schema for forms
+GET    /api/v1/catalog/items/{item_id}/versions  # Version history
+GET    /api/v1/catalog/search?q={query}          # Text search
+GET    /api/v1/catalog/categories                # Available categories
+GET    /api/v1/catalog/tags                      # Available tags
 ```
 
-### Request Management
+### Request Management (User)
 ```http
-POST /api/v1/requests
-GET /api/v1/requests
-GET /api/v1/requests/{request_id}
-GET /api/v1/requests/{request_id}/status
-GET /api/v1/requests/{request_id}/logs
-POST /api/v1/requests/{request_id}/retry
-POST /api/v1/requests/{request_id}/rollback
-DELETE /api/v1/requests/{request_id}
+POST   /api/v1/requests                          # Submit new request
+GET    /api/v1/requests                          # List user requests
+GET    /api/v1/requests/{request_id}             # Request details
+GET    /api/v1/requests/{request_id}/status      # Current status
+GET    /api/v1/requests/{request_id}/logs        # Action logs
+GET    /api/v1/requests/{request_id}/outputs     # Action outputs
+POST   /api/v1/requests/{request_id}/retry       # Retry failed request
+POST   /api/v1/requests/{request_id}/rollback    # Rollback completed request
+POST   /api/v1/requests/{request_id}/approve     # Approve pending request
+POST   /api/v1/requests/{request_id}/cancel      # Cancel pending request
+DELETE /api/v1/requests/{request_id}             # Delete request
 ```
 
-### Administrative Operations
+### Validation & Testing (Developer)
 ```http
-GET /api/v1/health
-GET /api/v1/metrics
-POST /api/v1/catalog/refresh
-GET /api/v1/catalog/validation/{item_id}
+POST   /api/v1/validate/catalog-item             # Validate catalog item
+POST   /api/v1/validate/request                  # Validate request payload
+POST   /api/v1/preview/form                      # Preview form generation
+POST   /api/v1/test/variables                    # Test variable substitution
+POST   /api/v1/simulate/fulfillment              # Simulate fulfillment
 ```
 
-### WebSocket Endpoints
+### Administrative Operations (Admin)
+```http
+GET    /api/v1/health                            # Service health
+GET    /api/v1/health/ready                      # Readiness probe
+GET    /api/v1/metrics                           # Prometheus metrics
+GET    /api/v1/version                           # Service version
+POST   /api/v1/catalog/refresh                   # Force catalog refresh
+GET    /api/v1/catalog/validation/{item_id}      # Validation results
+GET    /api/v1/stats/usage                       # Usage statistics
+GET    /api/v1/stats/performance                 # Performance metrics
 ```
-/ws/requests/{request_id}/status - Real-time status updates
-/ws/catalog/changes - Catalog modification notifications
+
+### Platform Team Operations (Team Admin)
+```http
+GET    /api/v1/teams/{team_id}/requests          # Team request history
+GET    /api/v1/teams/{team_id}/catalog           # Team-owned catalog items
+POST   /api/v1/teams/{team_id}/quota             # Update team quotas
+GET    /api/v1/teams/{team_id}/usage             # Resource usage by team
+```
+
+### WebSocket Endpoints (Real-time)
+```
+/ws/requests/{request_id}/status              # Real-time status updates
+/ws/requests/{request_id}/logs                # Live action logs
+/ws/catalog/changes                           # Catalog modification events
+/ws/notifications                             # User notifications
+/ws/admin/system                              # System-wide events
+```
+
+### Webhook Endpoints (Integration)
+```http
+POST   /api/v1/webhooks/github                   # GitHub repository events
+POST   /api/v1/webhooks/jira                     # JIRA status updates
+POST   /api/v1/webhooks/terraform                # Terraform Cloud notifications
+POST   /api/v1/webhooks/monitoring               # Monitoring alerts
 ```
 
 ## Enterprise Integration Architecture
