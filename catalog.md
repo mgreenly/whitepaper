@@ -1,591 +1,116 @@
-# Platform Automation Orchestrator - Catalog Repository Design
+# Platform Automation Orchestrator - Catalog Repository
 
 ## Table of Contents
 
-- [Executive Summary](#executive-summary)
-- [Strategic Context](#strategic-context)
-- [Repository Architecture](#repository-architecture)
-- [Catalog Item Schema v2.0](#catalog-item-schema-v20)
-- [Action Types Reference](#action-types-reference)
-- [Variable System & Templating](#variable-system--templating)
-- [Governance Framework](#governance-framework)
-- [Implementation Roadmap](#implementation-roadmap)
-- [Best Practices](#best-practices)
+- [Quick Start Checklist](#quick-start-checklist)
+- [Core Concepts](#core-concepts)
+  - [Binary Fulfillment Model](#binary-fulfillment-model)
+  - [Sequential Execution](#sequential-execution)
+- [Repository Structure](#repository-structure)
+- [Schema v2.0 Reference](#schema-v20-reference)
+  - [Minimal Service Definition](#minimal-service-definition)
+  - [Field Types](#field-types)
+  - [Action Types](#action-types)
+- [Variable System](#variable-system)
+  - [Available Variables](#available-variables)
+  - [Functions](#functions)
+  - [Conditionals](#conditionals)
+- [Progressive Enhancement Path](#progressive-enhancement-path)
+- [Governance](#governance)
+  - [CODEOWNERS Mapping](#codeowners-mapping)
+  - [Approval Requirements](#approval-requirements)
+- [Validation & Testing](#validation--testing)
+  - [Pre-Commit Checklist](#pre-commit-checklist)
+  - [Testing Strategy](#testing-strategy)
+- [Common Patterns](#common-patterns)
+  - [Multi-Environment Service](#multi-environment-service)
+  - [Approval-Required Service](#approval-required-service)
+  - [Cost-Aware Service](#cost-aware-service)
+- [Troubleshooting Guide](#troubleshooting-guide)
 - [Success Metrics](#success-metrics)
-- [Migration Strategy](#migration-strategy)
-- [Complete Examples](#complete-examples)
+  - [Service KPIs](#service-kpis)
+  - [Platform KPIs](#platform-kpis)
+- [Migration Guide](#migration-guide)
+- [Quick Reference](#quick-reference)
+- [Example: Complete PostgreSQL Service](#example-complete-postgresql-service)
+- [Additional Resources](#additional-resources)
 
-## Overview
+## Quick Start Checklist
 
-The Catalog Repository is the central document store where platform teams define services for the Platform Automation Orchestrator (PAO) using Schema v2.0 YAML documents.
+- [ ] Choose service category: `compute`, `databases`, `messaging`, `networking`, `storage`, `security`, `monitoring`
+- [ ] Copy template from `/templates/minimal-service.yaml`
+- [ ] Define service using Schema v2.0
+- [ ] Validate locally: `./scripts/validate-catalog.sh`
+- [ ] Submit PR with `service/{team}/{service}` branch naming
+- [ ] Get team approval via CODEOWNERS
+- [ ] Deploy to staging (automatic)
+- [ ] Deploy to production (manual approval)
 
-For strategic context, see [whitepaper.md](whitepaper.md).
+## Core Concepts
 
-## Repository Architecture
+### Binary Fulfillment Model
+Services operate in **EITHER** manual **OR** automated mode - no partial automation.
 
-### Core Design Principles
+**Decision Guide:**
+```
+Is your service ready for full automation?
+├─ NO → Use manual mode (JIRA ticket)
+└─ YES → All actions automated?
+    ├─ NO → Stay in manual mode
+    └─ YES → Use automatic mode
+```
 
-1. **Document-Driven Convergence**: Platform teams collaborate through YAML definitions without organizational restructuring
-2. **Schema v2.0 Compliance**: Comprehensive 1700+ line specification with strict validation
-3. **Progressive Enhancement**: Teams evolve from manual to automated at their own pace
-4. **Binary Fulfillment Model**: Services operate in either manual OR fully automated mode (no partial automation)
-5. **Sequential Execution**: All actions execute in strict sequential order for predictability
-6. **Enterprise Governance**: Built-in support for compliance, security, and audit requirements
-7. **GitOps Workflow**: Version-controlled with CODEOWNERS enforcement and automated validation
+### Sequential Execution
+All actions execute in strict order. Use `order` field to control sequence.
 
-### Directory Structure
+## Repository Structure
 
 ```
 orchestrator-catalog-repo/
-├── README.md                           # Quick start guide
-├── GOVERNANCE.md                       # Contribution guidelines
-├── schema/
-│   ├── catalog-item.schema.json       # Core Schema v2.0 specification
-│   ├── action-types/                  # Action-specific schemas
-│   │   ├── jira-ticket.schema.json
-│   │   ├── rest-api.schema.json
-│   │   ├── terraform.schema.json
-│   │   ├── github-workflow.schema.json
-│   │   ├── webhook.schema.json
-│   │   └── cost-estimation.schema.json
-│   └── extensions/                    # Future extension points
-├── catalog/                            # Service definitions by category
-│   ├── _index.yaml                    # Catalog metadata
-│   ├── compute/                       # Compute services
-│   ├── databases/                     # Database services
-│   ├── messaging/                     # Messaging services
-│   ├── networking/                    # Network services
-│   ├── storage/                       # Storage services
-│   ├── security/                      # Security services
-│   └── monitoring/                    # Observability services
-├── templates/                          # Starter templates
-│   ├── minimal-service.yaml
-│   ├── full-featured-service.yaml
-│   └── migration-guide.yaml
-├── scripts/                            # Utility scripts
-│   ├── validate-catalog.sh
-│   ├── generate-docs.py
-│   └── migrate-service.py
-├── tests/                              # Test fixtures
+├── catalog/                    # Service definitions by category
+│   ├── {category}/            # compute, databases, etc.
+│   │   └── {service}.yaml     # Your service definition
+├── schema/                     # Schema v2.0 specifications
+├── templates/                  # Starter templates
+├── scripts/                    # Validation tools
 └── .github/
-    ├── CODEOWNERS                      # Ownership mapping
-    └── workflows/                      # CI/CD pipelines
+    └── CODEOWNERS             # Team ownership mapping
 ```
 
-## Catalog Item Schema v2.0
+## Schema v2.0 Reference
 
-### Core Document Structure
+### Minimal Service Definition
 
-```yaml
-version: "2.0"
-kind: CatalogItem
-
-metadata:                               # Service metadata
-  id: string                           # Unique identifier
-  name: string                         # Display name
-  description: string                  # Service description (50-500 chars)
-  version: string                      # Semantic version
-  category: string                     # Primary category
-  owner:
-    team: string                       # Platform team identifier
-    contact: string                    # Contact email
-    escalation: string                 # Escalation path
-  tags: [string]                       # Search tags
-  visibility:
-    environments: [string]             # Available environments
-    teams: [string]                    # Authorized teams
-    require_approval: boolean          # Approval requirement
-  sla:
-    provisioning_time: string          # Expected time
-    support_level: string              # Support tier
-    availability: string               # Uptime commitment
-  cost:
-    estimate_enabled: boolean
-    base_cost: number
-    unit_cost: object
-  compliance:
-    data_classification: string        # Data sensitivity
-    regulatory_requirements: [string]  # SOC2, HIPAA, etc.
-    audit_logging: boolean
-
-presentation:                          # UI/UX definition
-  display:
-    icon: string
-    color: string
-    documentation_url: string
-  
-  form:
-    layout: string                     # wizard, single-page, tabbed
-    submit_text: string
-    confirmation_required: boolean
-    
-  groups:                              # Field groups
-    - id: string
-      name: string
-      description: string
-      order: integer
-      collapsible: boolean
-      conditional:                     # Group visibility logic
-        field: string
-        operator: string               # eq, ne, gt, lt, gte, lte, in, not_in, contains
-        value: any
-      
-      fields:                          # Field definitions
-        - id: string
-          name: string
-          type: string                 # 10+ field types supported
-          required: boolean
-          validation:
-            pattern: string
-            min: number
-            max: number
-            enum: [any]
-            messages: object
-          conditional:                 # Field visibility
-            field: string
-            operator: string
-            value: any
-          datasource:                  # Dynamic data
-            type: string               # api, static, reference
-            config: object
-
-fulfillment:                          # Provisioning definition
-  strategy:
-    mode: string                       # manual, automatic
-    priority: string
-    timeout: integer
-  
-  prerequisites:                       # Pre-execution checks
-    - type: string
-      config: object
-      required: boolean
-  
-  manual:                              # Manual fallback (required)
-    description: string
-    instructions: string
-    actions:
-      - type: jira-ticket
-        config: object
-  
-  automatic:                           # Automated fulfillment
-    state_management:
-      enabled: boolean
-      backend: string                  # dynamodb, postgresql
-    
-    actions:                           # Automation actions (sequential execution)
-      - id: string
-        name: string
-        type: string                   # 6 action types
-        order: integer                 # Sequential execution order
-        
-        config: object                 # Type-specific configuration
-        
-        conditions:                    # Execution conditions
-          - field: string
-            operator: string
-            value: any
-        
-        dependencies:
-          wait_for: [string]
-          require_success: boolean
-        
-        retry:
-          enabled: boolean
-          attempts: integer
-          delay: integer
-          backoff: string              # linear, exponential, fibonacci
-        
-        circuit_breaker:
-          enabled: boolean
-          failure_threshold: integer
-          timeout: integer
-        
-        error_handling:
-          strategy: string             # fail, continue, retry, fallback
-          fallback_action: string
-        
-        rollback:
-          enabled: boolean
-          automatic: boolean
-        
-        output:
-          capture: boolean
-          fields: object
-  
-  notifications:
-    on_start:
-      enabled: boolean
-      channels: [string]
-    on_success:
-      enabled: boolean
-      template: string
-    on_failure:
-      enabled: boolean
-      escalation_after: integer
-
-lifecycle:                             # Lifecycle management
-  deprecation:
-    deprecated: boolean
-    sunset_date: string
-    migration_path: string
-  maintenance:
-    windows: [object]
-  versioning:
-    strategy: string
-    compatibility: string
-
-monitoring:                            # Observability
-  metrics:
-    enabled: boolean
-    endpoints: [string]
-  logging:
-    enabled: boolean
-    level: string
-    retention: integer
-  health_checks:
-    - name: string
-      type: string
-      config: object
-      interval: integer
-```
-
-## Action Types Reference
-
-### 1. JIRA Ticket Creation
-```yaml
-type: jira-ticket
-config:
-  connection:
-    instance: string                   # JIRA instance
-    use_default: boolean
-  ticket:
-    project: string
-    issue_type: string
-    summary_template: string           # Supports variables
-    description_template: string
-  fields:
-    assignee: string
-    priority: string
-    labels: [string]
-    custom_fields: object
-  workflow:
-    transition_on_create: string
-    expected_resolution_time: integer
-```
-
-### 2. REST API Integration
-```yaml
-type: rest-api
-config:
-  endpoint:
-    url: string                        # Supports variables
-    method: string                    # GET, POST, PUT, DELETE, PATCH
-    timeout: integer
-  authentication:
-    type: string                       # none, basic, bearer, oauth2, api-key
-    credentials: object
-  body:
-    type: string                       # json, xml, form, raw
-    content_template: string
-  response:
-    expected_status: [integer]
-  parsing:
-    extract:                           # Extract fields from response
-      - path: string                   # JSONPath or XPath
-        name: string
-        required: boolean
-  circuit_breaker:
-    enabled: boolean
-    failure_threshold: integer
-```
-
-### 3. Terraform Configuration
-```yaml
-type: terraform
-config:
-  content_template: string             # Terraform configuration template
-  filename: string                     # Output filename (e.g., main.tf)
-  repository_mapping: string           # Repository mapping key
-```
-
-### 4. GitHub Workflow Dispatch
-```yaml
-type: github-workflow
-config:
-  repository:
-    owner: string
-    name: string
-  workflow:
-    id: string                         # Workflow ID or filename
-    ref: string                        # Git ref
-  inputs: object                       # Workflow inputs
-  authentication:
-    type: string                       # token, app
-    token_ref: string
-    app_id: string
-  monitoring:
-    wait_for_completion: boolean
-    timeout: integer
-```
-
-### 5. Webhook Invocation
-```yaml
-type: webhook
-config:
-  endpoint:
-    url: string
-    method: string
-  headers: object
-  body:
-    type: string
-    template: string
-  signature:                           # HMAC signing
-    enabled: boolean
-    algorithm: string
-    secret_ref: string
-    header_name: string
-```
-
-### 6. Cost Estimation (Enterprise)
-```yaml
-type: cost-estimation
-config:
-  provider:
-    type: string                       # aws, custom
-    region: string                    # AWS region
-  resources:
-    - type: string
-      quantity: integer
-      specifications: object
-  pricing:
-    model: string
-    include_tax: boolean
-    currency: string
-```
-
-## Variable System & Templating
-
-### Variable Scopes
-```yaml
-# User Input
-{{fields.field_id}}                   # Form field values
-{{fields.nested.field}}                # Nested field access
-
-# Metadata
-{{metadata.id}}                        # Service ID
-{{metadata.owner.team}}                # Owner team
-{{metadata.category}}                  # Service category
-
-# Request Context
-{{request.id}}                         # Unique request ID
-{{request.user.email}}                 # User email
-{{request.user.department}}            # User department
-{{request.environment}}                # Target environment
-
-# System Variables
-{{system.date}}                        # Current date
-{{system.uuid}}                        # Random UUID
-{{system.region}}                      # Deployment region
-
-# Environment & Secrets
-{{env.VARIABLE_NAME}}                  # Environment variable
-{{secrets.SECRET_NAME}}                # Secret value
-
-# Action Outputs
-{{output.action_id.field}}             # Previous action output
-{{output.action_id.status}}            # Action status
-
-# Functions
-{{uuid()}}                             # Generate UUID
-{{timestamp()}}                        # Current timestamp
-{{concat(str1, str2)}}                 # String concatenation
-{{upper(string)}}                      # Uppercase
-{{json(object)}}                       # JSON encode
-{{base64(string)}}                     # Base64 encode
-```
-
-### Conditional Logic
-```yaml
-# If-Then-Else
-{{#if fields.environment == "production"}}
-  High priority deployment
-{{else}}
-  Standard deployment
-{{/if}}
-
-# Switch Statement
-{{#switch fields.tier}}
-  {{#case "gold"}}
-    Premium resources
-  {{#case "silver"}}
-    Standard resources
-  {{#default}}
-    Basic resources
-{{/switch}}
-
-# Loops
-{{#each fields.servers as server}}
-  Server: {{server.name}} ({{server.ip}})
-{{/each}}
-```
-
-## Governance Framework
-
-### Repository Governance
-
-#### CODEOWNERS Structure
-```yaml
-# Global owners
-* @platform-architecture-team
-
-# Category owners
-/catalog/compute/ @platform-compute-team
-/catalog/databases/ @platform-database-team
-/catalog/messaging/ @platform-messaging-team
-/catalog/networking/ @platform-networking-team
-/catalog/storage/ @platform-storage-team
-/catalog/security/ @platform-security-team
-/catalog/monitoring/ @platform-observability-team
-
-# Schema ownership
-/schema/ @platform-architecture-team
-```
-
-#### Contribution Workflow
-1. Create feature branch: `service/team-name/service-name`
-2. Copy template and define service
-3. Validate locally: `./scripts/validate-catalog.sh`
-4. Submit PR with automated validation
-5. Owner team approval required
-6. Architecture review for new patterns
-7. Staging deployment (automatic)
-8. Production deployment (manual approval)
-
-### Quality Standards
-
-#### Service Definition Standards
-- **Naming**: `{category}-{service}-{variant}` (e.g., `database-postgresql-standard`)
-- **Documentation**: Minimum 50 character descriptions with examples
-- **Validation**: All required fields must have validation rules
-- **SLA**: Realistic provisioning times based on metrics
-- **Progressive Enhancement**: Clear migration path from manual to automated
-
-#### Compliance Requirements
-- No secrets in catalog items (use references only)
-- Data classification in metadata
-- Regulatory requirement tags (SOC2, HIPAA)
-- Audit logging configuration
-- RBAC for catalog modifications
-
-## Best Practices
-
-### For Platform Teams
-1. **Start Simple**: Begin with manual JIRA fulfillment
-2. **Iterate**: Add automation incrementally
-3. **User-Centric**: Use clear, non-technical language
-4. **Robust Error Handling**: Plan for failure scenarios
-5. **Performance**: Optimize action sequences
-
-### For Catalog Maintainers
-1. **Consistency**: Enforce naming conventions
-2. **Documentation First**: Document before implementing
-3. **Testing Rigor**: Validate all scenarios
-4. **Continuous Improvement**: Monitor usage metrics
-
-## Success Metrics
-
-### Performance Targets
-- **API Response Time**: <200ms catalog operations
-- **Request Processing**: 95% within SLA
-- **System Availability**: 99.9% uptime
-- **Throughput**: 1000+ concurrent requests
-
-### Business Impact
-- **Provisioning Time**: 90%+ reduction (weeks to hours)
-- **Platform Adoption**: 100% teams with 1+ service
-- **Developer Satisfaction**: >4.5/5 rating
-- **Automation Rate**: 80%+ services automated
-
-### Operational Excellence
-- **Error Rate**: <5% failure rate
-- **Security Compliance**: Zero incidents
-- **Documentation**: 100% coverage
-- **Support Resolution**: <24 hours
-
-## Migration Strategy
-
-### Progressive Enhancement Path
-```yaml
-# Phase 1: Manual Only
-fulfillment:
-  manual:
-    actions:
-      - type: jira-ticket
-
-# Phase 2: Automatic Fulfillment (Binary Choice)
-fulfillment:
-  manual:
-    actions:
-      - type: jira-ticket
-  automatic:
-    actions:
-      - type: terraform
-      - type: rest-api
-
-# Phase 3: Fully Automated (Default)
-fulfillment:
-  automatic:
-    actions:
-      - type: terraform
-      - type: rest-api
-      - type: webhook
-```
-
-### Migration Process
-1. **Discovery**: Document current processes
-2. **Definition**: Create catalog items
-3. **Testing**: Validate in sandbox
-4. **Enhancement**: Add automation
-5. **Optimization**: Continuous improvement
-
-## Complete Examples
-
-### PostgreSQL Database Service (Abbreviated)
 ```yaml
 version: "2.0"
 kind: CatalogItem
 
 metadata:
-  id: database-postgresql-standard
-  name: PostgreSQL Database
-  description: Provision a managed PostgreSQL database with automatic backups
-  version: 2.1.0
+  id: {category}-{service}-{variant}  # e.g., database-postgresql-standard
+  name: Display Name
+  description: 50-500 character description
+  version: 1.0.0
   category: databases
   owner:
-    team: platform-database-team
-    contact: platform-db@company.com
-  sla:
-    provisioning_time: 4 hours
-    support_level: tier-1
+    team: platform-{category}-team
+    contact: team@company.com
 
 presentation:
   form:
-    layout: wizard
-  groups:
-    - id: basic_config
-      name: Basic Configuration
-      fields:
-        - id: instance_name
-          name: Instance Name
-          type: string
-          required: true
-          validation:
-            pattern: "^[a-z][a-z0-9-]{2,28}[a-z0-9]$"
+    groups:
+      - id: config
+        name: Configuration
+        fields:
+          - id: name
+            name: Resource Name
+            type: string
+            required: true
+            validation:
+              pattern: "^[a-z][a-z0-9-]{2,28}[a-z0-9]$"
 
 fulfillment:
   strategy:
-    mode: automatic
-    priority: normal
+    mode: manual  # or automatic
   
   manual:
     actions:
@@ -593,41 +118,402 @@ fulfillment:
         config:
           ticket:
             project: PLATFORM
-  
+            issue_type: Task
+            summary_template: "Provision {{fields.name}}"
+```
+
+### Field Types
+
+| Type | Use Case | Validation |
+|------|----------|------------|
+| `string` | Text input | pattern, min/max length |
+| `number` | Numeric values | min/max, step |
+| `boolean` | Yes/No choices | - |
+| `select` | Single choice | enum values |
+| `multiselect` | Multiple choices | enum values |
+| `date` | Date picker | min/max date |
+| `file` | File upload | size, type |
+| `textarea` | Multi-line text | min/max length |
+| `password` | Sensitive data | pattern, strength |
+| `email` | Email addresses | format validation |
+
+### Action Types
+
+#### 1. JIRA Ticket (Manual Fallback)
+```yaml
+type: jira-ticket
+config:
+  ticket:
+    project: PLATFORM
+    summary_template: "{{fields.name}} request"
+```
+
+#### 2. REST API
+```yaml
+type: rest-api
+config:
+  endpoint:
+    url: "https://api.internal.com/provision"
+    method: POST
+  body:
+    type: json
+    content_template: '{"name": "{{fields.name}}"}'
+```
+
+#### 3. Terraform
+```yaml
+type: terraform
+config:
+  content_template: |
+    resource "aws_instance" "{{fields.name}}" {
+      instance_type = "{{fields.instance_type}}"
+    }
+  filename: "{{fields.name}}.tf"
+  repository_mapping: "terraform-infrastructure"
+```
+
+#### 4. GitHub Workflow
+```yaml
+type: github-workflow
+config:
+  repository:
+    owner: platform-team
+    name: automation-workflows
+  workflow:
+    id: provision.yml
+  inputs:
+    resource_name: "{{fields.name}}"
+```
+
+#### 5. Webhook
+```yaml
+type: webhook
+config:
+  endpoint:
+    url: "{{env.WEBHOOK_URL}}"
+    method: POST
+  body:
+    template: '{"resource": "{{fields.name}}"}'
+```
+
+#### 6. Cost Estimation
+```yaml
+type: cost-estimation
+config:
+  provider:
+    type: aws
+    region: "{{fields.region}}"
+  resources:
+    - type: ec2_instance
+      specifications:
+        instance_type: "{{fields.instance_type}}"
+```
+
+## Variable System
+
+### Available Variables
+
+| Scope | Example | Description |
+|-------|---------|-------------|
+| **User Input** | `{{fields.name}}` | Form field values |
+| **Metadata** | `{{metadata.id}}` | Service metadata |
+| **Request** | `{{request.user.email}}` | Request context |
+| **System** | `{{system.date}}` | System variables |
+| **Environment** | `{{env.API_KEY}}` | Environment variables |
+| **Secrets** | `{{secrets.DB_PASSWORD}}` | Secret values |
+| **Output** | `{{output.action_id.field}}` | Previous action output |
+
+### Functions
+
+- `{{uuid()}}` - Generate UUID
+- `{{timestamp()}}` - Current timestamp
+- `{{upper(string)}}` - Uppercase conversion
+- `{{concat(str1, str2)}}` - String concatenation
+- `{{json(object)}}` - JSON encoding
+- `{{base64(string)}}` - Base64 encoding
+
+### Conditionals
+
+```yaml
+{{#if fields.environment == "production"}}
+  priority: high
+{{else}}
+  priority: normal
+{{/if}}
+```
+
+## Progressive Enhancement Path
+
+### Phase 1: Manual Only
+Start with JIRA ticket creation. No automation required.
+
+### Phase 2: Hybrid Mode
+Add automatic fulfillment alongside manual fallback.
+
+### Phase 3: Full Automation
+Remove manual option when confidence is high.
+
+## Governance
+
+### CODEOWNERS Mapping
+
+```
+/catalog/compute/        @platform-compute-team
+/catalog/databases/      @platform-database-team
+/catalog/messaging/      @platform-messaging-team
+/catalog/networking/     @platform-networking-team
+/catalog/storage/        @platform-storage-team
+/catalog/security/       @platform-security-team
+/catalog/monitoring/     @platform-observability-team
+/schema/                 @platform-architecture-team
+```
+
+### Approval Requirements
+
+1. **New Service**: Team owner + Architecture review
+2. **Major Update**: Team owner approval
+3. **Minor Update**: Auto-merge after validation
+4. **Schema Change**: Architecture team only
+
+## Validation & Testing
+
+### Pre-Commit Checklist
+
+- [ ] Schema validates: `./scripts/validate-catalog.sh {file}`
+- [ ] No secrets in plaintext
+- [ ] Documentation complete
+- [ ] SLA defined
+- [ ] Owner contact valid
+- [ ] Manual fallback present
+
+### Testing Strategy
+
+1. **Local**: Validate schema compliance
+2. **CI/CD**: Automated validation on PR
+3. **Staging**: Test with real infrastructure
+4. **Production**: Gradual rollout with monitoring
+
+## Common Patterns
+
+### Multi-Environment Service
+
+```yaml
+presentation:
+  form:
+    groups:
+      - id: environment
+        fields:
+          - id: env
+            type: select
+            enum: [dev, staging, prod]
+
+fulfillment:
   automatic:
     actions:
-      - id: provision-database
+      - type: terraform
+        conditions:
+          - field: env
+            operator: eq
+            value: prod
+        config:
+          content_template: |
+            # Production configuration
+```
+
+### Approval-Required Service
+
+```yaml
+metadata:
+  visibility:
+    require_approval: true
+    
+fulfillment:
+  prerequisites:
+    - type: approval
+      config:
+        approvers: ["manager@company.com"]
+        timeout: 72h
+```
+
+### Cost-Aware Service
+
+```yaml
+metadata:
+  cost:
+    estimate_enabled: true
+    base_cost: 100
+    unit_cost:
+      per_gb: 0.10
+      
+fulfillment:
+  automatic:
+    actions:
+      - type: cost-estimation
+        order: 1
+      - type: terraform
+        order: 2
+        conditions:
+          - field: output.cost-estimation.total
+            operator: lt
+            value: 1000
+```
+
+## Troubleshooting Guide
+
+| Issue | Solution |
+|-------|----------|
+| Schema validation fails | Check required fields and types |
+| Variable not replaced | Verify variable scope and syntax |
+| Action fails | Check retry and fallback configuration |
+| Approval timeout | Configure escalation path |
+| Cost exceeds budget | Add cost estimation action |
+
+## Success Metrics
+
+### Service KPIs
+- **Provisioning Time**: Target < 4 hours
+- **Automation Rate**: Target > 80%
+- **Error Rate**: Target < 5%
+- **User Satisfaction**: Target > 4.5/5
+
+### Platform KPIs
+- **Service Coverage**: 100% teams with 1+ service
+- **Request Volume**: Track monthly growth
+- **MTTR**: < 30 minutes for failures
+- **Compliance**: 100% audit logging
+
+## Migration Guide
+
+### From Manual to Automated
+
+1. **Document** current manual process
+2. **Define** catalog item with manual mode
+3. **Test** in staging environment
+4. **Add** automation actions incrementally
+5. **Monitor** success rate > 95%
+6. **Switch** to automatic mode
+7. **Remove** manual fallback (optional)
+
+## Quick Reference
+
+### File Naming Convention
+`{category}-{service}-{variant}.yaml`
+
+### Branch Naming
+`service/{team-name}/{service-name}`
+
+### Version Format
+Semantic versioning: `MAJOR.MINOR.PATCH`
+
+### Required Metadata Fields
+- `id`, `name`, `description`, `version`, `category`, `owner.team`, `owner.contact`
+
+### Required Fulfillment Fields
+- `strategy.mode`, `manual.actions` (always required as fallback)
+
+## Example: Complete PostgreSQL Service
+
+```yaml
+version: "2.0"
+kind: CatalogItem
+
+metadata:
+  id: database-postgresql-standard
+  name: PostgreSQL Database
+  description: Managed PostgreSQL with automatic backups and monitoring
+  version: 2.1.0
+  category: databases
+  owner:
+    team: platform-database-team
+    contact: db-team@company.com
+  sla:
+    provisioning_time: 4h
+  cost:
+    estimate_enabled: true
+    base_cost: 50
+
+presentation:
+  form:
+    layout: wizard
+    groups:
+      - id: basic
+        name: Basic Configuration
+        fields:
+          - id: instance_name
+            name: Instance Name
+            type: string
+            required: true
+            validation:
+              pattern: "^[a-z][a-z0-9-]{2,28}[a-z0-9]$"
+          - id: instance_class
+            name: Instance Size
+            type: select
+            required: true
+            enum: [db.t3.micro, db.t3.small, db.t3.medium]
+          - id: storage_size
+            name: Storage (GB)
+            type: number
+            required: true
+            validation:
+              min: 20
+              max: 1000
+
+fulfillment:
+  strategy:
+    mode: automatic
+    
+  manual:
+    actions:
+      - type: jira-ticket
+        config:
+          ticket:
+            project: DBA
+            summary_template: "PostgreSQL: {{fields.instance_name}}"
+            
+  automatic:
+    actions:
+      - id: estimate-cost
+        type: cost-estimation
+        order: 1
+        config:
+          provider:
+            type: aws
+            region: us-east-1
+            
+      - id: provision-db
         type: terraform
+        order: 2
         config:
           content_template: |
             module "postgresql_{{fields.instance_name}}" {
-              source  = "terraform-aws-modules/rds/aws"
-              version = "5.0.0"
-              
-              identifier = "{{fields.instance_name}}"
-              engine     = "postgres"
-              engine_version = "{{fields.engine_version}}"
+              source         = "terraform-aws-modules/rds/aws"
+              identifier     = "{{fields.instance_name}}"
+              engine         = "postgres"
               instance_class = "{{fields.instance_class}}"
-              
               allocated_storage = {{fields.storage_size}}
-              storage_encrypted = true
-              
-              db_name  = "{{fields.database_name}}"
-              username = "admin"
-              port     = "5432"
-              
-              vpc_security_group_ids = ["{{fields.security_group_id}}"]
-              
-              tags = {
-                Name        = "{{fields.instance_name}}"
-                Environment = "{{fields.environment}}"
-                ManagedBy   = "platform-orchestrator"
-              }
             }
           filename: "{{fields.instance_name}}.tf"
           repository_mapping: "terraform-databases"
+          
+      - id: notify-completion
+        type: webhook
+        order: 3
+        config:
+          endpoint:
+            url: "{{env.NOTIFICATION_WEBHOOK}}"
+          body:
+            template: |
+              {
+                "service": "postgresql",
+                "instance": "{{fields.instance_name}}",
+                "status": "provisioned"
+              }
 ```
 
-## Conclusion
+## Additional Resources
 
-The Catalog Repository provides the document-driven foundation for Schema v2.0 specifications, governance processes, and progressive enhancement paths that enable platform teams to modernize at their own pace. For broader strategic impact and business value, see [whitepaper.md](whitepaper.md).
+- [Whitepaper](whitepaper.md) - Strategic context
+- [Roadmap](roadmap.md) - Implementation timeline
+- [Service Catalog](service.md) - Service details
+- [API Documentation](/docs/api) - Technical reference
+- [Support](platform-team@company.com) - Get help

@@ -4,7 +4,7 @@ You are a expert software architect.  You are helping to design the Orchestrator
 
 This Orchestrator is partially explained in @whitepaper.md
 
-Your Job si to define everything about the Orchestrator Catalog Repo.
+Your Job is to define everything about the Orchestrator Catalog Repo.
 
 This is a github repo.  Where the developer exierence team and all of the platform teams come together to define offerings of this catalog.
 
@@ -17,8 +17,9 @@ In short you own this catalog and everyone else just plays in it.
 ## Guidance
 
   * read and evaluate @CLAUDE.md
-  * You can only modify the files; catalog.md and agent-cagalog.md
   * when I refernece "this document" or "the document" I am refering to catalog.md
+  * You have been permission to modify catalog.md
+  * You have been permission to modify agent-catalog.md
 
 ## Actions
 
