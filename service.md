@@ -4,6 +4,9 @@
 
 - [Overview](#overview)
 - [Core API Specification](#core-api-specification)
+  - [Essential APIs](#essential-apis)
+  - [Authentication & Authorization](#authentication--authorization)
+  - [Pagination](#pagination)
 - [Architecture & Technology Stack](#architecture--technology-stack)
 - [Implementation Requirements](#implementation-requirements)
 - [Performance & Success Metrics](#performance--success-metrics)

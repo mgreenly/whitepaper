@@ -3,6 +3,7 @@
 ## Table of Contents
 
 - [Repository Structure](#repository-structure)
+- [Naming Conventions](#naming-conventions)
 - [Schema Reference](#schema-reference)
   - [CatalogItem - Individual Service](#catalogitem---individual-service)
   - [CatalogBundle - Composite Service](#catalogbundle---composite-service)
@@ -26,6 +27,24 @@ orchestrator-catalog-repo/
 └── .github/
     └── CODEOWNERS             # Team ownership mapping
 ```
+
+## Naming Conventions
+
+**Important**: This catalog uses specific naming conventions to ensure consistency and compatibility with the Go-based orchestrator service:
+
+- **Type Names** (`kind` field): Use **PascalCase**
+  - Examples: `CatalogItem`, `CatalogBundle`
+  
+- **Field Names**: Use **camelCase**
+  - Examples: `catalogItem`, `instanceClass`, `contentTemplate`, `issueType`
+  
+- **File Names**: Use **kebab-case**
+  - Examples: `database-postgresql-standard.yaml`, `compute-eks-containerapp.yaml`
+  
+- **IDs and References**: Use **kebab-case**
+  - Examples: `database-postgresql-standard`, `bundle-webapp-production`
+
+These conventions align with Go language standards and cloud-native tooling (Kubernetes, Helm, etc.) for optimal compatibility.
 
 ## Schema Reference
 
@@ -67,8 +86,8 @@ fulfillment:
         config:
           ticket:
             project: PLATFORM
-            issue_type: Task
-            summary_template: "Provision {{fields.name}}"
+            issueType: Task
+            summaryTemplate: "Provision {{fields.name}}"
 ```
 
 ### CatalogBundle - Composite Service
@@ -90,47 +109,47 @@ metadata:
 
 components:
   - id: database
-    catalog_item: database-postgresql-standard
+    catalogItem: database-postgresql-standard
     config:
-      instance_class: "{{fields.db_size}}"
-      storage_size: "{{fields.db_storage}}"
+      instanceClass: "{{fields.dbSize}}"
+      storageSize: "{{fields.dbStorage}}"
     outputs:
-      - connection_string
+      - connectionString
       - host
       - port
   
   - id: secrets
-    catalog_item: security-parameterstore-standard
+    catalogItem: security-parameterstore-standard
     config:
-      secret_name: "{{fields.app_name}}-secrets"
+      secretName: "{{fields.appName}}-secrets"
       secrets:
-        - key: db_connection_string
-          value: "{{components.database.outputs.connection_string}}"
+        - key: dbConnectionString
+          value: "{{components.database.outputs.connectionString}}"
     outputs:
-      - secret_arn
+      - secretArn
   
   - id: application
-    catalog_item: compute-eks-containerapp
-    depends_on: [database, secrets]
+    catalogItem: compute-eks-containerapp
+    dependsOn: [database, secrets]
     config:
-      app_name: "{{fields.app_name}}"
-      container_image: "{{fields.container_image}}"
+      appName: "{{fields.appName}}"
+      containerImage: "{{fields.containerImage}}"
       replicas: "{{fields.replicas}}"
-      environment_variables:
+      environmentVariables:
         - name: DB_CONNECTION_SECRET
-          value: "{{components.secrets.outputs.secret_arn}}"
+          value: "{{components.secrets.outputs.secretArn}}"
 
 presentation:
   form:
     groups:
-      - id: app_config
+      - id: appConfig
         name: Application Configuration
         fields:
-          - id: app_name
+          - id: appName
             name: Application Name
             type: string
             required: true
-          - id: container_image
+          - id: containerImage
             name: Container Image
             type: string
             required: true
@@ -139,14 +158,14 @@ presentation:
             type: number
             default: 2
       
-      - id: database_config
+      - id: databaseConfig
         name: Database Configuration
         fields:
-          - id: db_size
+          - id: dbSize
             name: Database Size
             type: select
             enum: [db.t3.micro, db.t3.small, db.t3.medium]
-          - id: db_storage
+          - id: dbStorage
             name: Storage (GB)
             type: number
             default: 100
@@ -154,7 +173,7 @@ presentation:
 fulfillment:
   orchestration:
     mode: sequential  # or parallel where dependencies allow
-    error_handling: stop  # stop, rollback, or continue
+    errorHandling: stop  # stop, rollback, or continue
 ```
 
 ### Example CatalogItems for Bundle Components
@@ -175,10 +194,10 @@ presentation:
     groups:
       - id: basic
         fields:
-          - id: app_name
+          - id: appName
             type: string
             required: true
-          - id: container_image
+          - id: containerImage
             type: string
             required: true
           - id: replicas
@@ -194,16 +213,16 @@ fulfillment:
         config:
           ticket:
             project: COMPUTE
-            summary_template: "Deploy {{fields.app_name}} to EKS"
+            summaryTemplate: "Deploy {{fields.appName}} to EKS"
   automatic:
     actions:
       - type: terraform
         config:
-          content_template: |
-            module "eks_app_{{fields.app_name}}" {
+          contentTemplate: |
+            module "eks_app_{{fields.appName}}" {
               source = "./modules/eks-app"
-              name = "{{fields.app_name}}"
-              image = "{{fields.container_image}}"
+              name = "{{fields.appName}}"
+              image = "{{fields.containerImage}}"
               replicas = {{fields.replicas}}
             }
 ```
@@ -224,13 +243,13 @@ presentation:
     groups:
       - id: config
         fields:
-          - id: instance_name
+          - id: instanceName
             type: string
             required: true
-          - id: instance_class
+          - id: instanceClass
             type: select
             enum: [db.t3.micro, db.t3.small, db.t3.medium]
-          - id: storage_size
+          - id: storageSize
             type: number
 
 fulfillment:
@@ -242,23 +261,23 @@ fulfillment:
         config:
           ticket:
             project: DBA
-            summary_template: "PostgreSQL: {{fields.instance_name}}"
+            summaryTemplate: "PostgreSQL: {{fields.instanceName}}"
   automatic:
     actions:
       - type: terraform
         config:
-          content_template: |
-            module "rds_{{fields.instance_name}}" {
+          contentTemplate: |
+            module "rds_{{fields.instanceName}}" {
               source = "terraform-aws-modules/rds/aws"
-              identifier = "{{fields.instance_name}}"
+              identifier = "{{fields.instanceName}}"
               engine = "postgres"
-              instance_class = "{{fields.instance_class}}"
-              allocated_storage = {{fields.storage_size}}
+              instance_class = "{{fields.instanceClass}}"
+              allocated_storage = {{fields.storageSize}}
             }
           outputs:
-            - connection_string: "module.rds_{{fields.instance_name}}.connection_string"
-            - host: "module.rds_{{fields.instance_name}}.endpoint"
-            - port: "module.rds_{{fields.instance_name}}.port"
+            - connectionString: "module.rds_{{fields.instanceName}}.connection_string"
+            - host: "module.rds_{{fields.instanceName}}.endpoint"
+            - port: "module.rds_{{fields.instanceName}}.port"
 ```
 
 #### AWS Parameter Store
@@ -277,7 +296,7 @@ presentation:
     groups:
       - id: config
         fields:
-          - id: secret_name
+          - id: secretName
             type: string
             required: true
           - id: secrets
@@ -293,19 +312,19 @@ fulfillment:
         config:
           ticket:
             project: SECURITY
-            summary_template: "Create secrets: {{fields.secret_name}}"
+            summaryTemplate: "Create secrets: {{fields.secretName}}"
   automatic:
     actions:
       - type: terraform
         config:
-          content_template: |
-            resource "aws_ssm_parameter" "{{fields.secret_name}}" {
-              name  = "/{{fields.secret_name}}"
+          contentTemplate: |
+            resource "aws_ssm_parameter" "{{fields.secretName}}" {
+              name  = "/{{fields.secretName}}"
               type  = "SecureString"
               value = jsonencode({{json(fields.secrets)}})
             }
           outputs:
-            - secret_arn: "aws_ssm_parameter.{{fields.secret_name}}.arn"
+            - secretArn: "aws_ssm_parameter.{{fields.secretName}}.arn"
 ```
 
 ### Example Complete Bundle
@@ -321,32 +340,32 @@ metadata:
 
 components:
   - id: database
-    catalog_item: database-postgresql-standard
+    catalogItem: database-postgresql-standard
     config:
-      instance_name: "{{fields.app_name}}-db"
-      instance_class: "{{fields.db_size}}"
-      storage_size: "{{fields.db_storage}}"
+      instanceName: "{{fields.appName}}-db"
+      instanceClass: "{{fields.dbSize}}"
+      storageSize: "{{fields.dbStorage}}"
     
   - id: secrets
-    catalog_item: security-parameterstore-standard
+    catalogItem: security-parameterstore-standard
     config:
-      secret_name: "{{fields.app_name}}/secrets"
+      secretName: "{{fields.appName}}/secrets"
       secrets:
-        - key: db_host
+        - key: dbHost
           value: "{{components.database.outputs.host}}"
-        - key: db_port
+        - key: dbPort
           value: "{{components.database.outputs.port}}"
     
   - id: app
-    catalog_item: compute-eks-containerapp
-    depends_on: [database, secrets]
+    catalogItem: compute-eks-containerapp
+    dependsOn: [database, secrets]
     config:
-      app_name: "{{fields.app_name}}"
-      container_image: "{{fields.container_image}}"
+      appName: "{{fields.appName}}"
+      containerImage: "{{fields.containerImage}}"
       replicas: "{{fields.replicas}}"
-      environment_variables:
+      environmentVariables:
         - name: PARAM_STORE_PATH
-          value: "{{components.secrets.outputs.secret_arn}}"
+          value: "{{components.secrets.outputs.secretArn}}"
 
 presentation:
   form:
@@ -354,13 +373,13 @@ presentation:
       - id: application
         name: Application Settings
         fields:
-          - id: app_name
+          - id: appName
             name: Application Name
             type: string
             required: true
             validation:
               pattern: "^[a-z][a-z0-9-]{2,28}[a-z0-9]$"
-          - id: container_image
+          - id: containerImage
             name: Docker Image
             type: string
             required: true
@@ -375,13 +394,13 @@ presentation:
       - id: database
         name: Database Settings
         fields:
-          - id: db_size
+          - id: dbSize
             name: Database Size
             type: select
             required: true
             enum: [db.t3.small, db.t3.medium, db.t3.large]
             default: db.t3.medium
-          - id: db_storage
+          - id: dbStorage
             name: Storage (GB)
             type: number
             required: true
@@ -393,8 +412,8 @@ presentation:
 fulfillment:
   orchestration:
     mode: sequential
-    error_handling: stop
-    rollback_on_failure: true
+    errorHandling: stop
+    rollbackOnFailure: true
 ```
 
 ## Field Types
@@ -420,7 +439,7 @@ type: jira-ticket
 config:
   ticket:
     project: PLATFORM
-    summary_template: "{{fields.name}} request"
+    summaryTemplate: "{{fields.name}} request"
 ```
 
 ### 2. REST API
@@ -432,19 +451,19 @@ config:
     method: POST
   body:
     type: json
-    content_template: '{"name": "{{fields.name}}"}'
+    contentTemplate: '{"name": "{{fields.name}}"}'
 ```
 
 ### 3. Terraform
 ```yaml
 type: terraform
 config:
-  content_template: |
+  contentTemplate: |
     resource "aws_instance" "{{fields.name}}" {
-      instance_type = "{{fields.instance_type}}"
+      instance_type = "{{fields.instanceType}}"
     }
   filename: "{{fields.name}}.tf"
-  repository_mapping: "terraform-infrastructure"
+  repositoryMapping: "terraform-infrastructure"
 ```
 
 ### 4. GitHub Workflow
@@ -457,7 +476,7 @@ config:
   workflow:
     id: provision.yml
   inputs:
-    resource_name: "{{fields.name}}"
+    resourceName: "{{fields.name}}"
 ```
 
 ### 5. Webhook
@@ -485,7 +504,7 @@ Variables allow dynamic content insertion throughout catalog definitions. Variab
 | **System** | `{{system.date}}` | System-generated variables |
 | **Environment** | `{{env.API_KEY}}` | Environment variables from orchestrator |
 | **Secrets** | `{{secrets.DB_PASSWORD}}` | Secret values from vault |
-| **Output** | `{{output.action_id.field}}` | Previous action outputs |
+| **Output** | `{{output.actionId.field}}` | Previous action outputs |
 
 ### Functions
 
