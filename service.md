@@ -14,8 +14,8 @@
 
 The Platform Automation Orchestrator (PAO) is a cloud-native REST service that transforms manual provisioning processes into automated self-service workflows by providing a document-driven convergence point where platform teams define services through Schema v2.0 YAML documents.
 
-**Business Problem**: 2-3 week provisioning delays due to fragmented JIRA workflows across platform teams  
-**Solution**: Central orchestration service enabling binary fulfillment (manual JIRA or complete automation)  
+**Business Problem**: Multi-week provisioning delays due to fragmented JIRA workflows across platform teams  
+**Solution**: Central orchestration service with automated fulfillment that falls back to manual JIRA when needed  
 **Value**: 90%+ reduction in provisioning time (weeks to hours)
 
 For strategic context see [whitepaper.md](whitepaper.md). For catalog design see [catalog.md](catalog.md).
@@ -102,7 +102,7 @@ POST   /api/v1/webhooks/terraform                # Terraform notifications
 
 ### Core Design Principles
 1. **Schema-Driven**: All services defined via Schema v2.0 YAML documents
-2. **Binary Fulfillment**: Either manual JIRA OR complete automation (no partial states)
+2. **Smart Fulfillment**: Automated actions with manual fallback - uses automation when available, falls back to manual JIRA when needed or for error recovery
 3. **Document-Driven Convergence**: Platform teams collaborate through central document store
 4. **Progressive Enhancement**: Teams evolve from manual to automated at their own pace
 5. **Cloud-Native**: Kubernetes-ready with horizontal scaling and zero-downtime deployments
@@ -158,7 +158,7 @@ PAO implements the Schema v2.0 specification from [catalog.md](catalog.md):
 
 - **Metadata**: Service identification, ownership, SLA commitments
 - **Presentation**: Dynamic form generation with conditional logic and validation
-- **Fulfillment**: Binary model supporting manual JIRA and automated actions
+- **Fulfillment**: Automated actions with manual JIRA fallback
 - **Lifecycle**: Deprecation and versioning management
 - **Monitoring**: Health checks and observability configuration
 
@@ -291,7 +291,7 @@ resources:
 - **Status Polling**: <50ms response with Redis caching
 
 ### Business Impact Metrics
-- **Provisioning Time**: Reduce from 2-3 weeks to <4 hours (90%+ improvement)
+- **Provisioning Time**: Reduce from multi-week to <4 hours (90%+ improvement)
 - **Platform Adoption**: 100% of platform teams onboarded with ≥1 service
 - **Developer Satisfaction**: >4.5/5 rating on self-service experience
 - **Automation Rate**: 80%+ of services automated within 12 months

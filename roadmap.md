@@ -34,12 +34,15 @@ Project starting now (late Q3 2025) to develop the Platform Automation Orchestra
 - **Document Store**: Implement basic YAML catalog ingestion with file-based storage and validation
 - **JIRA Integration**: Create automated JIRA ticket creation with basic variable substitution for manual fulfillment
 
-### Q4 2025: Core Orchestration 📋 PLANNED
-- **API Expansion**: Build comprehensive REST endpoints for catalog browsing, request submission, and status tracking
-- **Form Generation**: Transform catalog presentation definitions into dynamic JSON schemas for UI rendering
-- **Variable System**: Implement advanced templating with user context, metadata, system variables, and functions
-- **Request Lifecycle**: Deploy complete workflow with state tracking from submission to completion
-- **Action Framework**: Implement core action types (REST API, Terraform, GitHub workflows) beyond basic JIRA
+### Q4 2025: Complete Stack Provisioning 📋 PLANNED
+**Goal**: Enable end-to-end provisioning of EKS container app with database and secrets management
+
+- **Multi-Service Orchestration**: Coordinate provisioning across compute, database, and security services in correct dependency order
+- **EKS Container Support**: Implement Terraform actions for EKS cluster, node groups, ingress, and application deployment
+- **Database Integration**: Add RDS PostgreSQL provisioning with connection string generation and security group setup
+- **Secrets Management**: Integrate AWS Secrets Manager with automatic secret creation, rotation, and injection into applications
+- **Complex Variable System**: Support cross-service variable passing (database connection strings to app configs, generated secrets to deployments)
+- **Dependency Management**: Ensure proper sequencing (VPC → Database → Secrets → EKS → App Deployment)
 
 ### 2026+: Enterprise Features 🔮 FUTURE WORK
 - **State Persistence**: Deploy PostgreSQL for request state and resource tracking with Redis caching layer
