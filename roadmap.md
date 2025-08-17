@@ -5,7 +5,7 @@
 - [Development Phases](#development-phases)
   - [Q3 2025: Foundation Setup](#q3-2025-foundation-setup--current-aug-oct)
   - [Q4 2025: Complete Stack Provisioning](#q4-2025-complete-stack-provisioning--planned-nov-jan)
-  - [2026+: Enterprise Features](#2026-enterprise-features--future-work)
+  - [2026+: TBD](#2026-tbd)
 - [Sprint Breakdown](#sprint-breakdown)
   - [Q3 2025 Sprints](#q3-2025-sprints-current)
   - [Q4 2025 Sprints](#q4-2025-sprints-planned)
@@ -41,13 +41,8 @@
 - **Complex Variable System**: Support cross-service variable passing (database connection strings to app configs, generated secrets to deployments)
 - **Dependency Management**: Ensure proper sequencing (VPC → Database → Secrets → EKS → App Deployment)
 
-### 2026+: Enterprise Features 🔮 FUTURE WORK
-- **State Persistence**: Deploy PostgreSQL for request state and resource tracking with Redis caching layer
-- **Reliability**: Add circuit breakers, retry logic, rollback capabilities, and comprehensive error handling
-- **Monitoring**: Implement Prometheus metrics, structured logging, distributed tracing, and alerting
-- **Authentication**: Deploy IAM-based authentication with comprehensive RBAC and team-based access control
-- **Platform Onboarding**: Create templates and migration tools for all platform teams
-- **Enterprise Integration**: CMDB integration, ITSM tools, compliance frameworks, approval workflows
+### 2026+: TBD
+Future roadmap to be determined based on Q4 2025 outcomes and business priorities.
 
 ## Success Metrics
 
@@ -57,6 +52,7 @@
 - Schema specification defined with basic validation rules
 - First catalog item defined and validated successfully
 - Basic JIRA integration working for manual fulfillment
+- Functional test scripts in repository to add and verify catalog documents
 
 **Q4 2025 Goals**:
 - **Complete Stack Demo**: Successfully provision EKS app + PostgreSQL + secrets end-to-end in <4 hours

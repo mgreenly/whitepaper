@@ -11,7 +11,7 @@
 
 ## Overview
 
-The Platform Automation Orchestrator (PAO) is a cloud-native REST service that transforms manual provisioning processes into automated self-service workflows by providing a document-driven convergence point where platform teams define services through Schema v2.0 YAML documents.
+The Platform Automation Orchestrator (PAO) is a cloud-native REST service that transforms manual provisioning processes into automated self-service workflows by providing a document-driven convergence point where platform teams define services through schema YAML documents.
 
 **Business Problem**: Multi-week provisioning delays due to fragmented JIRA workflows across platform teams  
 **Solution**: Central orchestration service with automated fulfillment that falls back to manual JIRA when needed  
@@ -66,7 +66,6 @@ POST   /api/v1/webhooks/terraform                # Terraform notifications
 
 **Implementation**
 - AWS IAM authentication with SigV4 request signing
-- Role-based access control (RBAC)
 - Team-based access isolation
 - CloudTrail audit logging
 - Enterprise compliance frameworks
@@ -74,17 +73,17 @@ POST   /api/v1/webhooks/terraform                # Terraform notifications
 ## Architecture & Technology Stack
 
 ### Core Design Principles
-1. **Schema-Driven**: All services defined via Schema v2.0 YAML documents
+1. **Schema-Driven**: All services defined via schema YAML documents
 2. **Smart Fulfillment**: Automated actions with manual fallback - uses automation when available, falls back to manual JIRA when needed or for error recovery
 3. **Document-Driven Convergence**: Platform teams collaborate through central document store
 4. **Progressive Enhancement**: Teams evolve from manual to automated at their own pace
-5. **Cloud-Native**: Kubernetes-ready with horizontal scaling and zero-downtime deployments
+5. **Serverless-First**: Likely AWS Lambda deployment with event-driven architecture
 
 ### Service Components
 
 **Catalog Management Engine**
 - GitHub repository integration with webhook processing
-- Schema v2.0 validation and error reporting
+- Schema validation and error reporting
 - Multi-tier caching (Redis + PostgreSQL)
 - CODEOWNERS enforcement for governance
 
@@ -104,7 +103,7 @@ POST   /api/v1/webhooks/terraform                # Terraform notifications
 
 **Runtime & Framework**
 - Go programming language
-- Gin web framework
+- HTTP router framework (handling 1000+ catalog endpoints internally)
 - OpenAPI 3.0 specification
 - JSON Schema validation
 
@@ -119,15 +118,15 @@ POST   /api/v1/webhooks/terraform                # Terraform notifications
 - Terraform Cloud API
 - HashiCorp Vault (secrets)
 
-**Deployment**
-- Kubernetes 1.24+
-- Helm 3+ charts
-- NGINX Ingress Controller
-- Prometheus + Grafana monitoring
+**Deployment (Likely Path)**
+- AWS Lambda functions
+- API Gateway for REST endpoints
+- CloudFormation/CDK for infrastructure
+- CloudWatch for monitoring and logging
 
-### Schema v2.0 Integration
+### Schema Integration
 
-PAO implements the Schema v2.0 specification from [catalog.md](catalog.md):
+PAO implements the schema specification from [catalog.md](catalog.md):
 
 - **Metadata**: Service identification, ownership, SLA commitments
 - **Presentation**: Dynamic form generation with conditional logic and validation
@@ -161,7 +160,7 @@ Supports 8+ variable scopes:
 - Catalog browsing and service discovery
 - Request submission and status tracking
 - Health checks and metrics export
-- Dynamic form generation from Schema v2.0
+- Dynamic form generation from schema
 - Platform team validation tools
 
 **Action Type Implementation**
@@ -173,27 +172,27 @@ Supports 8+ variable scopes:
 
 **Infrastructure Components**
 - GitHub repository integration with webhooks
-- Catalog caching (Redis)
-- Request state tracking (PostgreSQL)
-- Kubernetes deployment with health probes
+- Catalog caching (ElastiCache Redis)
+- Request state tracking (RDS PostgreSQL)
+- Lambda deployment with health checks
 
 **Reliability & Performance**
 - Circuit breaker architecture for external calls
 - Comprehensive retry logic with exponential backoff
-- Connection pooling for PostgreSQL
-- Distributed Redis caching
+- RDS Proxy for PostgreSQL connections
+- ElastiCache Redis clustering
 
 **Monitoring & Observability**
-- Prometheus metrics export
+- CloudWatch metrics and custom metrics
 - Structured JSON logging with correlation IDs
-- Performance monitoring and alerting
-- Business intelligence dashboard
+- X-Ray distributed tracing
+- CloudWatch dashboards and alarms
 
 **Security & Compliance**
 - AWS IAM authentication with SigV4 signing
 - CloudTrail audit logging
-- Secret management via HashiCorp Vault
-- Container security hardening
+- AWS Secrets Manager for secret storage
+- Lambda security best practices
 
 ### Database Schema
 
@@ -230,27 +229,31 @@ CREATE TABLE request_actions (
 **Environment Variables**
 ```bash
 DATABASE_URL=postgresql://user:pass@host:5432/pao
-REDIS_URL=redis://host:6379
+REDIS_CLUSTER_ENDPOINT=xxx.cache.amazonaws.com:6379
 GITHUB_WEBHOOK_SECRET=xxx
 JIRA_API_TOKEN=xxx
-VAULT_ADDR=https://vault.company.com
+AWS_SECRETS_MANAGER_REGION=us-east-1
 ```
 
-**Helm Values**
+**Lambda Configuration**
 ```yaml
-image:
-  repository: platform/orchestrator
-  tag: v2.1.0
-
-replicas: 3
-
-resources:
-  requests:
-    memory: 512Mi
-    cpu: 250m
-  limits:
-    memory: 1Gi
-    cpu: 500m
+functions:
+  api:
+    runtime: go1.x
+    memory: 512
+    timeout: 30
+    environment:
+      DATABASE_URL: ${ssm:/pao/database-url}
+      REDIS_CLUSTER_ENDPOINT: ${ssm:/pao/redis-endpoint}
+  
+  webhook_processor:
+    runtime: go1.x
+    memory: 256
+    timeout: 60
+    events:
+      - eventBridge:
+          pattern:
+            source: ["github.webhook"]
 ```
 
 ## Performance & Success Metrics
@@ -260,7 +263,7 @@ resources:
 - **Request Submission**: <2s for request processing (P99)
 - **System Availability**: 99.9% uptime with zero-downtime deployments
 - **Throughput**: Support 1000+ concurrent requests
-- **Status Polling**: <50ms response with Redis caching
+- **Status Polling**: <50ms response with ElastiCache
 
 ### Business Impact Metrics
 - **Provisioning Time**: Reduce from multi-week to <4 hours (90%+ improvement)
@@ -276,87 +279,88 @@ resources:
 
 ## Deployment Configuration
 
-### Kubernetes Deployment
+### Lambda Deployment (Likely Path)
 
 ```yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: platform-orchestrator
-  namespace: platform-automation
-spec:
-  replicas: 3
-  strategy:
-    type: RollingUpdate
-    rollingUpdate:
-      maxSurge: 1
-      maxUnavailable: 0
-  selector:
-    matchLabels:
-      app: platform-orchestrator
-  template:
-    spec:
-      serviceAccountName: platform-orchestrator
-      securityContext:
-        runAsNonRoot: true
-        runAsUser: 1000
-      containers:
-      - name: orchestrator
-        image: platform/orchestrator:v2.1.0
-        ports:
-        - containerPort: 8080
-          name: http
-        env:
-        - name: DATABASE_URL
-          valueFrom:
-            secretKeyRef:
-              name: orchestrator-secrets
-              key: database-url
-        - name: REDIS_URL
-          valueFrom:
-            secretKeyRef:
-              name: orchestrator-secrets
-              key: redis-url
-        resources:
-          requests:
-            memory: 512Mi
-            cpu: 250m
-          limits:
-            memory: 1Gi
-            cpu: 500m
-        livenessProbe:
-          httpGet:
-            path: /health
-            port: 8080
-          initialDelaySeconds: 30
-        readinessProbe:
-          httpGet:
-            path: /health/ready
-            port: 8080
-          initialDelaySeconds: 15
+service: platform-orchestrator
+frameworkVersion: '3'
+
+provider:
+  name: aws
+  runtime: go1.x
+  region: us-east-1
+  environment:
+    DATABASE_URL: ${ssm:/pao/database-url}
+    REDIS_CLUSTER_ENDPOINT: ${ssm:/pao/redis-endpoint}
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - rds:DescribeDBInstances
+        - elasticache:DescribeReplicationGroups
+        - secretsmanager:GetSecretValue
+      Resource: "*"
+
+functions:
+  api:
+    handler: bin/api
+    events:
+      - httpApi:
+          path: /api/v1/{proxy+}
+          method: ANY
+    environment:
+      FUNCTION_TYPE: api
+    reservedConcurrency: 100
+    
+  webhook-processor:
+    handler: bin/webhook
+    events:
+      - eventBridge:
+          pattern:
+            source: ["github.webhook"]
+            detail-type: ["Repository Event"]
+    environment:
+      FUNCTION_TYPE: webhook
+    
+  request-processor:
+    handler: bin/processor
+    events:
+      - sqs:
+          arn: !GetAtt RequestQueue.Arn
+          batchSize: 10
+    environment:
+      FUNCTION_TYPE: processor
+    timeout: 300
+
+resources:
+  Resources:
+    RequestQueue:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: pao-request-queue
+        VisibilityTimeoutSeconds: 360
 ```
 
 ### Security Configuration
 
-- **Network Security**: TLS 1.3 encryption, network policies
-- **Container Security**: Non-root containers, read-only filesystems
-- **Secret Management**: HashiCorp Vault integration
+- **Network Security**: TLS 1.3 encryption, VPC endpoints
+- **Function Security**: Least privilege IAM roles, resource-based policies
+- **Secret Management**: AWS Secrets Manager integration
 - **Authentication**: AWS IAM with SigV4 signing
 - **Audit Logging**: CloudTrail integration
 
 ### Monitoring Setup
 
-- **Metrics**: Prometheus metrics export on `:8081/metrics`
-- **Logging**: Structured JSON logs with correlation IDs
-- **Health Checks**: `/health` and `/health/ready` endpoints
-- **Alerting**: Grafana dashboards with automated alerts
+- **Metrics**: CloudWatch custom metrics and AWS Lambda insights
+- **Logging**: CloudWatch Logs with structured JSON and correlation IDs
+- **Health Checks**: Lambda function health monitoring via CloudWatch
+- **Alerting**: CloudWatch alarms with SNS notifications
 
 ### CI/CD Pipeline
 
 1. **Build**: Go binary compilation with security scanning
 2. **Test**: Unit tests, integration tests, security validation
-3. **Deploy**: Helm chart deployment with automated rollback
-4. **Monitor**: Post-deployment health verification
+3. **Deploy**: Serverless framework deployment with automated rollback
+4. **Monitor**: Post-deployment function health verification
 
 ---
 

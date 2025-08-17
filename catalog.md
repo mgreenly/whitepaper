@@ -12,7 +12,6 @@
 - [Templates and Variables](#templates-and-variables)
   - [Variable System](#variable-system)
   - [Functions](#functions)
-  - [Conditionals](#conditionals)
 
 ## Repository Structure
 
@@ -498,15 +497,3 @@ Built-in functions for data transformation:
 - `{{concat(str1, str2)}}` - String concatenation
 - `{{json(object)}}` - JSON encoding
 - `{{base64(string)}}` - Base64 encoding
-
-### Conditionals
-
-Conditional logic for dynamic behavior:
-
-```yaml
-{{#if fields.environment == "production"}}
-  priority: high
-{{else}}
-  priority: normal
-{{/if}}
-```
