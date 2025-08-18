@@ -9,6 +9,7 @@ This document contains no proprietary, confidential, or sensitive organizational
 - [Repository Structure](#repository-structure)
   - [CODEOWNERS Configuration](#codeowners-configuration)
 - [Naming Conventions](#naming-conventions)
+- [Schema Versioning](#schema-versioning)
 - [Schema Reference](#schema-reference)
   - [CatalogBundle - Composite Service](#catalogbundle---composite-service)
   - [CatalogItem - Individual Service](#catalogitem---individual-service)
@@ -145,6 +146,25 @@ The catalog enforces specific naming conventions to ensure consistency and compa
   - Note: Templates primarily instantiate existing modules rather than defining resources
 
 These conventions align with Go language standards and cloud-native tooling (Kubernetes, Helm, etc.) for optimal compatibility. Terraform identifiers require special handling to ensure valid HCL syntax.
+
+## Schema Versioning
+
+All catalog documents must declare their schema version using `apiVersion`. This ensures compatibility and enables safe schema evolution.
+
+**Current Version**: `catalog/v1`
+
+```yaml
+apiVersion: catalog/v1
+kind: CatalogItem
+```
+
+**Maturity Levels**:
+- `v1` - Stable, production-ready with backward compatibility
+- `v2alpha1` - Early development, features may change
+- `v2beta1` - Feature-complete, minor changes possible
+- `v2` - Next stable version
+
+**Version Support**: We support the current stable version plus one previous version during transitions. Deprecated versions include warnings and migration guidance.
 
 ## Schema Reference
 

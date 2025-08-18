@@ -856,6 +856,50 @@ type RequestState struct {
 }
 ```
 
+**Request State Definitions**:
+
+Each request progresses through clearly defined states that represent the current status of the fulfillment process:
+
+- `submitted`: Request received and stored, awaiting processing to begin
+- `in_progress`: Request is actively being processed (actions are executing)
+- `completed`: All actions succeeded, request fulfillment is finished
+- `failed`: One or more actions failed, request processing has stopped
+- `aborted`: Request was manually cancelled, no further processing will occur
+- `escalated`: Request failed and was escalated to manual support via JIRA ticket; further resolution occurs outside the orchestrator system
+
+**Request State Transition Rules**:
+
+The request lifecycle follows strict state transition rules to ensure data integrity and proper workflow management:
+
+**Valid State Transitions**:
+- `submitted` → `in_progress` (when processing starts)
+- `in_progress` → `completed` (when all actions succeed)  
+- `in_progress` → `failed` (when any action fails)
+- `failed` → `in_progress` (via retry operation)
+- `failed` → `aborted` (via abort operation)
+- `failed` → `escalated` (via escalate operation)
+
+**Terminal States**: `completed`, `aborted`, `escalated`
+- No further transitions allowed once reached
+- Requests in terminal states are immutable within the orchestrator
+- **Note**: `escalated` requests lose tracking of final resolution state as work continues in external JIRA system
+
+**Retry-Eligible States**: `failed`
+- Only failed requests can be retried
+- Retry resets to `in_progress` and resumes from failed action
+
+**State Transition Validation**:
+- All transitions must be explicitly validated before database updates
+- Invalid transitions return HTTP 400 with error details
+- State changes trigger audit log entries with correlation IDs
+- Concurrent state modification protection via database constraints
+
+**Q3 Scope Limitations**:
+- `validating` and `queued` states reserved for Q4 background processing
+- Q3 uses synchronous processing: `submitted` → `in_progress` → terminal state
+
+**Future Consideration**: The loss of final state tracking for `escalated` requests may need to be addressed in future versions through JIRA webhook integration or periodic status polling.
+
 **Audit Logging Implementation**:
 - Correlation ID tracking across all system components
 - Structured JSON logging with standardized fields
@@ -1600,15 +1644,15 @@ workers:
 
 ## SQL Schema
 
-### Complete Database Schema
+### Q3/Q4 Database Schema
 
-**Core Tables**
+**Core Tables Required for Q3 Foundation Epic**
 
 ```sql
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- Requests table - Core request tracking
+-- Q3: Requests table - Core request tracking for synchronous JIRA processing
 CREATE TABLE requests (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     catalog_item_id VARCHAR(255) NOT NULL,
@@ -1616,15 +1660,16 @@ CREATE TABLE requests (
     user_id VARCHAR(255) NOT NULL,
     user_email VARCHAR(255) NOT NULL,
     user_teams TEXT[] NOT NULL DEFAULT '{}',
+    -- Q3: Limited status set for synchronous processing
     status VARCHAR(50) NOT NULL CHECK (status IN (
-        'submitted', 'validating', 'queued', 'in_progress', 
-        'completed', 'failed', 'aborted', 'escalated'
+        'submitted', 'in_progress', 'completed', 'failed', 'aborted', 'escalated'
+        -- Q4: Add 'validating', 'queued' for background processing
     )),
-    request_data JSONB NOT NULL,
-    current_action_index INTEGER NOT NULL DEFAULT 0,
-    error_context JSONB,
-    correlation_id UUID NOT NULL DEFAULT uuid_generate_v4(),
-    escalation_ticket_id VARCHAR(100),
+    request_data JSONB NOT NULL, -- User form input fields
+    current_action_index INTEGER NOT NULL DEFAULT 0, -- Q3: Sequential action tracking
+    error_context JSONB, -- Q3: Manual failure resolution context
+    correlation_id UUID NOT NULL DEFAULT uuid_generate_v4(), -- Q3: Required for audit trail
+    escalation_ticket_id VARCHAR(100), -- Q3: JIRA ticket for manual escalation
     escalation_timestamp TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -1636,22 +1681,25 @@ CREATE TABLE requests (
     )
 );
 
--- Request actions table - Individual action execution tracking
+-- Q3: Request actions table - Individual action execution tracking
 CREATE TABLE request_actions (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     request_id UUID NOT NULL REFERENCES requests(id) ON DELETE CASCADE,
-    action_index INTEGER NOT NULL,
+    action_index INTEGER NOT NULL, -- Q3: Sequential processing order
+    -- Q3: Only 'jira-ticket' needed; Q4: Add 'rest-api', 'terraform', 'github-workflow'
     action_type VARCHAR(100) NOT NULL CHECK (action_type IN (
-        'jira-ticket', 'rest-api', 'terraform', 'github-workflow'
+        'jira-ticket'
+        -- Q4: Expand to: 'jira-ticket', 'rest-api', 'terraform', 'github-workflow'
     )),
-    action_config JSONB NOT NULL,
+    action_config JSONB NOT NULL, -- Template and variable configuration
     status VARCHAR(50) NOT NULL CHECK (status IN (
-        'pending', 'in_progress', 'completed', 'failed', 'retrying'
+        'pending', 'in_progress', 'completed', 'failed'
+        -- Q4: Add 'retrying' for background worker retry logic
     )),
-    output JSONB,
-    error_details JSONB,
-    retry_count INTEGER NOT NULL DEFAULT 0,
-    external_reference VARCHAR(255), -- JIRA ticket key, GitHub run ID, etc.
+    output JSONB, -- Q4: Action outputs for variable chaining
+    error_details JSONB, -- Q3: Failure context for manual resolution
+    retry_count INTEGER NOT NULL DEFAULT 0, -- Q4: Background worker retry tracking
+    external_reference VARCHAR(255), -- Q3: JIRA ticket key; Q4: GitHub run ID, etc.
     started_at TIMESTAMP WITH TIME ZONE,
     completed_at TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -1659,87 +1707,77 @@ CREATE TABLE request_actions (
     UNIQUE(request_id, action_index)
 );
 
--- Catalog items cache table - Cached catalog definitions
+-- Q3: Catalog items cache table - GitHub repository cache
 CREATE TABLE catalog_items (
-    id VARCHAR(255) PRIMARY KEY,
+    id VARCHAR(255) PRIMARY KEY, -- catalog-item-id from YAML
     name VARCHAR(255) NOT NULL,
     description TEXT NOT NULL,
     version VARCHAR(50) NOT NULL,
-    category VARCHAR(100) NOT NULL,
+    category VARCHAR(100) NOT NULL, -- compute, databases, security, etc.
     owner_team VARCHAR(255) NOT NULL,
     owner_contact VARCHAR(255) NOT NULL,
-    definition JSONB NOT NULL,
-    file_path VARCHAR(500) NOT NULL,
-    git_sha VARCHAR(40) NOT NULL,
+    definition JSONB NOT NULL, -- Complete catalog item YAML as JSON
+    file_path VARCHAR(500) NOT NULL, -- GitHub repository file path
+    git_sha VARCHAR(40) NOT NULL, -- Q3: GitHub webhook synchronization
     is_active BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- Audit log table - Complete audit trail
+-- Q3: Audit log table - Complete audit trail with correlation ID tracking
 CREATE TABLE audit_logs (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    correlation_id UUID NOT NULL,
+    correlation_id UUID NOT NULL, -- Q3: Required for request tracing
     request_id UUID REFERENCES requests(id) ON DELETE SET NULL,
     action_id UUID REFERENCES request_actions(id) ON DELETE SET NULL,
-    event_type VARCHAR(100) NOT NULL,
+    event_type VARCHAR(100) NOT NULL, -- request_created, status_changed, etc.
     event_data JSONB NOT NULL,
     user_id VARCHAR(255),
     user_email VARCHAR(255),
-    source_system VARCHAR(100) NOT NULL,
+    source_system VARCHAR(100) NOT NULL, -- orchestrator_service, devctl, etc.
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- User sessions table - Track user authentication sessions
-CREATE TABLE user_sessions (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id VARCHAR(255) NOT NULL,
-    user_email VARCHAR(255) NOT NULL,
-    user_teams TEXT[] NOT NULL DEFAULT '{}',
-    session_token_hash VARCHAR(256) NOT NULL,
-    expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    last_accessed_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
+-- Note: No user sessions table - System is stateless with AWS SigV4 authentication
+-- User identity and teams extracted from AWS IAM/SSO on each request
 ```
 
 ### Indexes for Performance
 
-```sql
--- Primary query patterns for requests
-CREATE INDEX idx_requests_user_id ON requests(user_id);
-CREATE INDEX idx_requests_status ON requests(status);
-CREATE INDEX idx_requests_catalog_item ON requests(catalog_item_id);
-CREATE INDEX idx_requests_created_at ON requests(created_at DESC);
-CREATE INDEX idx_requests_correlation_id ON requests(correlation_id);
-CREATE INDEX idx_requests_status_created ON requests(status, created_at DESC);
+**Q3 Foundation Epic - Essential Indexes**
 
--- User team filtering support
+```sql
+-- Q3: Core request query patterns for synchronous processing
+CREATE INDEX idx_requests_user_id ON requests(user_id); -- User's request list
+CREATE INDEX idx_requests_status ON requests(status); -- Status filtering
+CREATE INDEX idx_requests_catalog_item ON requests(catalog_item_id); -- Service filtering
+CREATE INDEX idx_requests_created_at ON requests(created_at DESC); -- Chronological listing
+CREATE INDEX idx_requests_correlation_id ON requests(correlation_id); -- Q3: Audit trail lookup
+CREATE INDEX idx_requests_status_created ON requests(status, created_at DESC); -- Combined filtering
+
+-- Q3: User team-based access control
 CREATE INDEX idx_requests_user_teams ON requests USING GIN(user_teams);
 
--- Request actions lookup patterns
-CREATE INDEX idx_actions_request_id ON request_actions(request_id);
-CREATE INDEX idx_actions_status ON request_actions(status);
-CREATE INDEX idx_actions_type_status ON request_actions(action_type, status);
-CREATE INDEX idx_actions_external_ref ON request_actions(external_reference) WHERE external_reference IS NOT NULL;
+-- Q3: Sequential action processing lookup patterns
+CREATE INDEX idx_actions_request_id ON request_actions(request_id); -- Actions per request
+CREATE INDEX idx_actions_status ON request_actions(status); -- Failed action queries
+CREATE INDEX idx_actions_external_ref ON request_actions(external_reference) WHERE external_reference IS NOT NULL; -- JIRA ticket lookup
 
--- Catalog items lookup patterns
-CREATE INDEX idx_catalog_category ON catalog_items(category);
-CREATE INDEX idx_catalog_owner_team ON catalog_items(owner_team);
-CREATE INDEX idx_catalog_active ON catalog_items(is_active) WHERE is_active = true;
-CREATE INDEX idx_catalog_git_sha ON catalog_items(git_sha);
+-- Q3: Catalog browsing and GitHub synchronization
+CREATE INDEX idx_catalog_category ON catalog_items(category); -- Browse by category
+CREATE INDEX idx_catalog_owner_team ON catalog_items(owner_team); -- Team ownership
+CREATE INDEX idx_catalog_active ON catalog_items(is_active) WHERE is_active = true; -- Active items only
+CREATE INDEX idx_catalog_git_sha ON catalog_items(git_sha); -- Q3: GitHub webhook sync
 
--- Audit log query patterns
-CREATE INDEX idx_audit_correlation_id ON audit_logs(correlation_id);
-CREATE INDEX idx_audit_request_id ON audit_logs(request_id) WHERE request_id IS NOT NULL;
-CREATE INDEX idx_audit_event_type ON audit_logs(event_type);
-CREATE INDEX idx_audit_created_at ON audit_logs(created_at DESC);
-CREATE INDEX idx_audit_user_id ON audit_logs(user_id) WHERE user_id IS NOT NULL;
+-- Q3: Audit trail with correlation ID tracking
+CREATE INDEX idx_audit_correlation_id ON audit_logs(correlation_id); -- End-to-end tracing
+CREATE INDEX idx_audit_request_id ON audit_logs(request_id) WHERE request_id IS NOT NULL; -- Request history
+CREATE INDEX idx_audit_event_type ON audit_logs(event_type); -- Event filtering
+CREATE INDEX idx_audit_created_at ON audit_logs(created_at DESC); -- Chronological audit
 
--- Session management
-CREATE INDEX idx_sessions_token_hash ON user_sessions(session_token_hash);
-CREATE INDEX idx_sessions_user_id ON user_sessions(user_id);
-CREATE INDEX idx_sessions_expires_at ON user_sessions(expires_at);
+-- Q4: Production indexes (not needed for Q3)
+-- CREATE INDEX idx_actions_type_status ON request_actions(action_type, status); -- Multi-action type queries
+-- CREATE INDEX idx_audit_user_id ON audit_logs(user_id) WHERE user_id IS NOT NULL; -- User activity tracking
 ```
 
 ### Triggers for Automated Updates

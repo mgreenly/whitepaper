@@ -10,7 +10,7 @@ This document contains no proprietary, confidential, or sensitive organizational
 - [Q4 2025: Production Epic](#q4-2025-production-epic)
 - [Future Work Beyond Q4 2025](#future-work-beyond-q4-2025)
 
-*Last Updated: 2025-08-18 03:09:12 +0000 (UTC)*
+*Last Updated: 2025-08-18 03:12:43 +0000 (UTC)*
 
 ## Q3 2025: Foundation Epic 🚧 CURRENT (Aug-Oct)
 
@@ -36,8 +36,8 @@ This document contains no proprietary, confidential, or sensitive organizational
 **Catalog Repository Files to Create**:
 - `.github/CODEOWNERS`
 - `.github/workflows/validate-catalog.yml`
-- `schema/catalog-item-v2.json`
-- `schema/catalog-bundle-v2.json`
+- `schema/catalog-item.json`
+- `schema/catalog-bundle.json`
 - `schema/common-types.json`
 - `scripts/validate-catalog.sh`
 - `scripts/validate-all.sh`
@@ -170,10 +170,6 @@ This document contains no proprietary, confidential, or sensitive organizational
 - **Self-Managed Setup**: AWS Parameter Store configuration for secret storage paths (JIRA tokens, GitHub tokens)
 - **JIRA Configuration**: Project PLATFORM with issue types (Task, Story, Bug), custom fields for correlation ID
 - **GitHub Repository**: platform-catalog repository with webhook endpoint configuration
-
-**Risk Planning**:
-- Identify top 5 risks and mitigation strategies
-- Create dependency tracking and escalation procedures
 
 **1. Foundation Setup**
 - **Catalog Work**: Create GitHub repository structure with CODEOWNERS and basic validation. Implement JSON schemas for CatalogItem and CatalogBundle with validation rules. Set up GitHub repository with branch protection and webhook configuration.
