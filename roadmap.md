@@ -263,9 +263,11 @@ This document contains no proprietary, confidential, or sensitive organizational
 
 **External Dependencies**:
 - **Database Team Request**: PostgreSQL Aurora cluster (Multi-AZ, 50GB storage, db.t3.medium) - **2 week lead time required**
-- **Self-Managed Setup**: AWS Parameter Store configuration for secret storage paths (JIRA tokens, GitHub tokens)
 - **JIRA Configuration**: Project PLATFORM with issue types (Task, Story, Bug), custom fields for correlation ID
 - **GitHub Repository**: platform-catalog repository with webhook endpoint configuration
+
+**Internal Infrastructure Setup**:
+- **AWS Parameter Store Terraform**: Create Parameter Store paths for secret storage (JIRA tokens, GitHub tokens)
 
 **1. Foundation Setup**
 - **Catalog Work**: Create GitHub repository structure with CODEOWNERS and basic validation. Implement JSON schemas for CatalogItem and CatalogBundle with validation rules. Set up GitHub repository with branch protection and webhook configuration.

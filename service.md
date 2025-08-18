@@ -915,117 +915,82 @@ func (j *JIRAStatusMapping) MapToRequestStatus(jiraStatus string) RequestStatus 
 
 ### Templating Engine Architecture Recommendations
 
-**Executive Summary**: The current Mustache-based templating system provides a solid foundation but requires architectural enhancements for enterprise security, performance, and developer experience. Key recommendations focus on compilation caching, security validation framework, and performance monitoring architecture.
+**Executive Summary**: The current Mustache-based templating system requires architectural enhancements focused on core template processing concerns: variable resolution, function execution, template syntax support, and output generation.
 
-**Architectural Assessment of Current State**:
-- Templates parsed on every request causing performance overhead
-- Limited security validation creates potential attack vectors
-- Basic variable substitution without advanced transformation capabilities
-- No performance monitoring or debugging tools for platform teams
-- Static function library without extensibility framework
+**Core Templating Engine Concerns**:
+- Variable scope resolution and context management
+- Template function library and execution model
+- Template syntax parsing and validation
+- Output rendering and transformation pipeline
+- Template metadata and dependency tracking
 
-**Recommendation 1: Template Compilation and Caching Architecture**
+**Recommendation 1: Enhanced Variable Resolution Architecture**
 
-**Pattern**: Lazy Loading Cache with Pre-compilation Strategy
+**Pattern**: Hierarchical Scope Resolution with Context Isolation
 
-**Architecture Components**:
-- **Template Compiler**: Transforms raw templates into optimized executable form
-- **Compilation Cache**: In-memory LRU cache storing compiled templates with metadata
-- **Cache Manager**: Handles cache invalidation, eviction policies, and performance metrics
-- **Dependency Tracker**: Monitors template dependencies for intelligent cache invalidation
+**Variable Context Architecture**:
+- **Scope Hierarchy**: Structured variable namespace with clear precedence rules
+- **Context Isolation**: Prevent variable leakage between template executions
+- **Dynamic Scoping**: Support runtime scope injection for different action types
+- **Null Handling**: Consistent behavior for undefined variables across all scopes
 
-**Design Approach**:
-- Generate deterministic cache keys from template content hash and metadata fingerprint
-- Store compilation metadata including dependencies, creation time, and usage statistics
-- Implement cache warming strategy for frequently used templates
-- Support manual and automatic cache refresh triggered by catalog updates
-- Provide cache performance metrics for monitoring compilation efficiency
+**Variable Scope Design**:
+- **fields**: User input from form submission with type-safe access
+- **metadata**: Catalog item properties with structured access patterns
+- **request**: Request context including user identity and correlation data
+- **system**: System-generated values with controlled generation timing
+- **environment**: Configuration values with environment-specific resolution
+- **outputs**: Action chain results with dependency-aware access
 
-**Recommendation 2: Multi-Layer Security Validation Architecture**
+**Recommendation 2: Template Function Library Architecture**
 
-**Pattern**: Defense in Depth Security Framework
+**Pattern**: Modular Function Registry with Type-Safe Execution
 
-**Validation Layers**:
-- **Syntax Validator**: Ensures template syntax correctness and structural integrity
-- **Content Security Scanner**: Detects malicious patterns and potential injection attacks
-- **Resource Limiter**: Enforces size, complexity, and execution time constraints
-- **Permission Validator**: Verifies function access rights based on user context and template type
-- **Output Sanitizer**: Applies security transformations to template output
+**Function Library Design**:
+- **Core Functions**: Essential transformations (upper, lower, concat, replace)
+- **Data Functions**: Format conversions (json, base64, timestamp, uuid)
+- **Validation Functions**: Input validation and constraint checking
+- **Conditional Functions**: Logic operations (default, coalesce, conditional)
+- **Custom Functions**: Domain-specific transformations for platform needs
 
-**Security Controls**:
-- Template size limits prevent denial-of-service through large template attacks
-- Pattern blacklisting blocks dangerous content like script injection attempts
-- Nesting depth limits prevent recursive template bomb attacks
-- Variable reference counting prevents excessive computation complexity
-- Function whitelisting restricts available operations by template context
+**Function Execution Model**:
+- **Parameter Validation**: Type checking and constraint enforcement before execution
+- **Error Handling**: Consistent error propagation with context preservation
+- **Return Type Management**: Predictable output types for template composition
+- **Function Composition**: Support for nested function calls with proper precedence
 
-**Recommendation 3: Extensible Function Registry Architecture**
+**Recommendation 3: Template Syntax and Parsing Architecture**
 
-**Pattern**: Plugin-based Function Extension System
+**Pattern**: Extensible Syntax Parser with Validation Pipeline
 
-**Registry Components**:
-- **Function Registry**: Central catalog of available template functions
-- **Security Policy Engine**: Manages function access control and execution constraints
-- **Function Validator**: Validates function parameters and execution context
-- **Performance Monitor**: Tracks function execution metrics and resource usage
+**Template Syntax Support**:
+- **Variable References**: Standard {{scope.key}} syntax with nested object access
+- **Function Calls**: {{function(args)}} syntax with parameter passing
+- **Conditional Blocks**: {{#if condition}}...{{/if}} for dynamic content
+- **Iteration Blocks**: {{#each array}}...{{/each}} for list processing
+- **Comments**: {{! comment}} for template documentation
 
-**Function Categories**:
-- **Data Transformation**: JSON serialization, base64 encoding, hash generation
-- **String Manipulation**: Case conversion, truncation, regex replacement, URL encoding
-- **Security Operations**: Encryption, signing, validation with key management integration
-- **System Integration**: Timestamp generation, UUID creation, random value generation
-- **Conditional Logic**: Default value handling, null coalescing, conditional rendering
+**Parsing Architecture**:
+- **Lexical Analysis**: Token identification and classification
+- **Syntax Validation**: Structure verification and error reporting
+- **Dependency Extraction**: Variable and function reference identification
+- **AST Generation**: Abstract syntax tree for optimized execution
 
-**Recommendation 4: Comprehensive Performance Monitoring Architecture**
+**Recommendation 4: Template Output Generation Architecture**
 
-**Pattern**: Metrics-Driven Performance Optimization
+**Pattern**: Streaming Renderer with Transformation Pipeline
 
-**Monitoring Dimensions**:
-- **Compilation Performance**: Template parsing time, cache hit rates, compilation frequency
-- **Rendering Performance**: Template execution time, memory consumption, variable resolution count
-- **Function Performance**: Individual function execution metrics, parameter validation overhead
-- **Cache Effectiveness**: Hit ratios, eviction rates, memory utilization patterns
-- **Error Analytics**: Failure rates, error categorization, performance impact analysis
+**Output Generation Pipeline**:
+- **Template Rendering**: Convert template AST to output string
+- **Content Transformation**: Apply post-processing transformations
+- **Encoding Management**: Handle character encoding and escaping
+- **Size Management**: Control output size and truncation behavior
 
-**Alerting Strategy**:
-- Performance threshold monitoring for slow template identification
-- Resource utilization alerts for memory and CPU consumption spikes
-- Error rate monitoring with categorized failure analysis
-- Cache performance degradation detection and optimization recommendations
-
-**Recommendation 5: Developer Experience Enhancement Architecture**
-
-**Pattern**: Rich Debugging and Development Support System
-
-**Development Tools**:
-- **Template Validator**: Real-time syntax and semantic validation during development
-- **Variable Resolution Tracer**: Step-by-step variable lookup and scope resolution visualization
-- **Function Call Analyzer**: Parameter validation and execution flow debugging
-- **Performance Profiler**: Template execution breakdown with optimization suggestions
-- **Test Harness**: Dry-run capability with sample data for development validation
-
-**Error Reporting Enhancement**:
-- Contextual error messages with line numbers and character positions
-- Suggested fixes for common template authoring mistakes
-- Variable scope availability reporting for undefined reference errors
-- Function parameter mismatch diagnosis with expected signature information
-
-**Recommendation 6: Configuration Management Architecture**
-
-**Pattern**: Environment-Aware Configuration System
-
-**Configuration Domains**:
-- **Performance Configuration**: Cache sizes, timeout values, concurrency limits
-- **Security Configuration**: Size limits, pattern blacklists, function restrictions
-- **Feature Configuration**: Debug mode toggles, metrics collection settings, tracing levels
-- **Environment Configuration**: Development vs production behavior differences
-- **Template Type Configuration**: Specific rules and restrictions per template context
-
-**Configuration Management**:
-- Hot-reload capability without service restart for operational flexibility
-- Environment-specific configuration inheritance with override capabilities
-- Configuration validation to prevent invalid settings deployment
-- Audit logging for configuration changes with rollback capabilities
+**Rendering Strategy**:
+- **Incremental Rendering**: Process template sections independently
+- **Error Recovery**: Continue rendering when non-critical errors occur
+- **Output Buffering**: Efficient memory management for large templates
+- **Content Validation**: Verify output meets expected format requirements
 
 **Implementation Priority and Impact Assessment**:
 
