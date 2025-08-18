@@ -29,7 +29,7 @@ The Platform Automation Orchestrator (PAO) is a cloud-native REST service that t
 
 **Business Problem**: Multi-week provisioning delays due to fragmented JIRA workflows across platform teams  
 **Solution**: Central orchestration service with automated fulfillment that falls back to manual JIRA when needed  
-**Value**: 90%+ reduction in provisioning time (weeks to hours)
+**Value**: Significant reduction in provisioning time
 
 For strategic context see [whitepaper.md](whitepaper.md). For catalog design see [catalog.md](catalog.md).
 
@@ -456,7 +456,7 @@ ticket:
 ```
 
 **Status Polling**:
-- Periodic polling every 5 minutes for ticket status changes
+- Regular polling for ticket status changes
 - Status mapping: `Open → In Progress`, `Done → Completed`, `Won't Do → Failed`
 - JIRA comment posting for request updates and error context
 
@@ -790,23 +790,23 @@ functions:
 ## Performance & Success Metrics
 
 ### Performance Targets
-- **API Response Time**: <200ms for catalog operations (P95)
-- **Request Submission**: <2s for request processing (P99)
-- **System Availability**: 99.9% uptime with zero-downtime deployments
-- **Throughput**: Support 1000+ concurrent requests
-- **Status Polling**: <50ms response with ElastiCache
+- **API Response Time**: Fast response for catalog operations
+- **Request Submission**: Efficient request processing
+- **System Availability**: High uptime with zero-downtime deployments
+- **Throughput**: Support high concurrent request volumes
+- **Status Monitoring**: Efficient response with ElastiCache
 
 ### Business Impact Metrics
-- **Provisioning Time**: Reduce from multi-week to <4 hours (90%+ improvement)
-- **Platform Adoption**: 100% of platform teams onboarded with ≥1 service
-- **Developer Satisfaction**: >4.5/5 rating on self-service experience
-- **Automation Rate**: 80%+ of services automated within 12 months
+- **Provisioning Time**: Significant reduction from multi-week delays
+- **Platform Adoption**: High platform team adoption with multiple services
+- **Developer Satisfaction**: High rating on self-service experience
+- **Automation Rate**: High percentage of services automated
 
 ### Operational Excellence
-- **Error Rate**: <5% failure rate for automated actions
-- **Security Compliance**: Zero security incidents with full audit trail
-- **MTTR**: <30 minutes for incident resolution
-- **Support Efficiency**: <24 hour resolution for platform team issues
+- **Error Rate**: Low failure rate for automated actions
+- **Security Compliance**: Strong security posture with full audit trail
+- **MTTR**: Fast incident resolution
+- **Support Efficiency**: Timely resolution for platform team issues
 
 ## Deployment Configuration
 
@@ -893,5 +893,5 @@ resources:
 ---
 
 **Implementation Focus**: Core service capabilities with clear progression to enterprise features  
-**Success Criteria**: 90% reduction in provisioning time while maintaining platform team autonomy  
-**Strategic Value**: Transform developer experience from weeks-long delays to hours-long automation
+**Success Criteria**: Significant reduction in provisioning time while maintaining platform team autonomy  
+**Strategic Value**: Transform developer experience from lengthy delays to efficient automation

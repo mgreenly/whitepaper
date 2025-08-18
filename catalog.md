@@ -790,14 +790,6 @@ jobs:
 - Schema changes trigger additional architecture review
 - Breaking changes require major version bump
 
-**Continuous Validation:**
-
-A nightly job validates the entire catalog to catch any drift or corruption:
-```bash
-# Runs at 2 AM UTC daily
-0 2 * * * ./scripts/validate-all.sh --report-to-slack
-```
-
 This comprehensive validation system ensures catalog integrity while allowing teams to work independently within their domains.
 
 ## Platform Team Onboarding
@@ -841,7 +833,6 @@ Before a platform team can contribute to the catalog, they must:
 
 ### Support Resources
 - Slack: #platform-catalog-help
-- Office hours: Tuesdays 2-3pm with DevX team
 - Documentation: Internal wiki catalog guide
 - Examples: Review existing services in `/catalog/`
 
@@ -858,7 +849,6 @@ Before a platform team can contribute to the catalog, they must:
 - Require 2 approvals (domain team + architecture team)
 - Must include migration guide
 - Version number must increment major version
-- 30-day deprecation notice for removed fields
 
 ### Service Naming Standards
 
@@ -886,13 +876,6 @@ Platform team reviewers should verify:
 - [ ] Default values are sensible
 - [ ] Field validation patterns are tested
 
-### Deprecation Process
-
-1. Mark service/field as deprecated in metadata
-2. Add deprecation notice with migration guide
-3. Notify affected teams via email and Slack
-4. Wait minimum 30 days
-5. Remove in next major version
 
 ## Implementation Guidance
 
