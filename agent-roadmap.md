@@ -14,6 +14,8 @@ We should plan around our quarterly schedule.
   * Q3 is August, Septmember, October
   * Q4 is November, December, January
 
+**Time Zone Note**: We operate in CST/CDT (Central Standard Time/Central Daylight Time). When checking dates and times, consider CST/CDT offset from UTC.
+
 
 The output should be a series of concise 1-2 sentence actions, broken down into sprints, broken down into quarters.
 

@@ -76,14 +76,205 @@ POST   /api/v1/preview/form                      # Preview form generation
 POST   /api/v1/test/variables                    # Test variable substitution
 ```
 
+**System Integration**
+```http
+POST   /api/v1/webhooks/github                   # GitHub webhook handler
+```
+
+**Total API Endpoints**: 20 endpoints as specified in Q3 roadmap requirements
+- Core User Journey: 12 endpoints
+- System Health: 4 endpoints  
+- Platform Team Tools: 3 endpoints
+- System Integration: 1 endpoint
+
+**Missing Critical Implementation Details for Q3**:
+
+1. **Complete API Endpoint Verification**: All 20 endpoints listed above must be implemented with full request/response schemas, error handling, and validation
+
+2. **JIRA Real-time Status Integration**: Unlike typical polling systems, the orchestrator queries JIRA status in real-time for each API request
+
+3. **GitHub Webhook Processing**: Robust webhook handling for catalog updates with signature verification and asynchronous processing
+
+4. **Comprehensive Variable Substitution**: 6+ variable scopes with pre-execution validation and detailed error reporting
+
+5. **Background Request Processing**: SQS-based queue system with Lambda handlers for sequential action execution
+
+6. **Authentication Implementation**: Complete AWS SigV4 signing with team-based authorization and session management
+
+7. **Configuration Management**: Full environment variable specification with validation and secure secret handling
+
+8. **Database Schema**: Complete PostgreSQL schema with indexes, triggers, and migration support
+
+9. **Error Context Preservation**: Detailed failure state preservation for manual escalation with cleanup instructions
+
+10. **Cache Strategy**: Multi-tier Redis caching with invalidation patterns and performance optimization
+
+### Detailed API Specifications
+
+**Core API Request/Response Schemas**:
+
+#### POST /api/v1/requests - Submit Service Request
+**Request**:
+```json
+{
+  "catalogItemId": "database-postgresql-standard",
+  "fields": {
+    "instanceName": "myapp-db",
+    "instanceClass": "db.t3.medium",
+    "storageSize": 100
+  },
+  "metadata": {
+    "correlationId": "optional-uuid",
+    "tags": ["production", "critical"]
+  }
+}
+```
+
+**Response**:
+```json
+{
+  "id": "req-123e4567-e89b-12d3-a456-426614174000",
+  "catalogItemId": "database-postgresql-standard",
+  "status": "submitted",
+  "correlationId": "corr-123e4567-e89b-12d3-a456-426614174000",
+  "createdAt": "2025-08-18T10:30:00Z",
+  "estimatedCompletionTime": "2025-08-18T11:00:00Z"
+}
+```
+
+#### GET /api/v1/requests/{request_id}/status - Request Status
+**Response**:
+```json
+{
+  "id": "req-123e4567-e89b-12d3-a456-426614174000",
+  "status": "in_progress",
+  "currentAction": {
+    "index": 1,
+    "type": "jira-ticket",
+    "status": "in_progress",
+    "startedAt": "2025-08-18T10:35:00Z",
+    "externalReference": "PLATFORM-12345"
+  },
+  "progress": {
+    "completedActions": 1,
+    "totalActions": 3,
+    "percentComplete": 33
+  },
+  "updatedAt": "2025-08-18T10:35:00Z"
+}
+```
+
+#### Error Response Format
+**Standard Error Response**:
+```json
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Field validation failed",
+    "details": {
+      "field": "instanceName",
+      "constraint": "pattern",
+      "received": "Invalid-Name-!",
+      "expected": "^[a-z][a-z0-9-]{2,28}[a-z0-9]$"
+    },
+    "correlationId": "corr-123e4567-e89b-12d3-a456-426614174000",
+    "timestamp": "2025-08-18T10:30:00Z"
+  }
+}
+```
+
+**Error Codes**:
+- `VALIDATION_ERROR`: Request validation failed
+- `CATALOG_ITEM_NOT_FOUND`: Referenced catalog item doesn't exist
+- `UNAUTHORIZED`: Authentication/authorization failed
+- `RATE_LIMIT_EXCEEDED`: Too many requests
+- `INTERNAL_ERROR`: Service internal error
+- `EXTERNAL_SERVICE_ERROR`: External service (JIRA, GitHub) error
+- `REQUEST_NOT_FOUND`: Requested resource not found
+- `ACTION_FAILED`: Action execution failed
+- `INVALID_STATE_TRANSITION`: Invalid request state change
+
 
 ### Authentication & Authorization
 
-**Implementation**
-- AWS IAM authentication with SigV4 request signing
-- Team-based access isolation
-- CloudTrail audit logging
-- Enterprise compliance frameworks
+**AWS IAM Authentication Implementation**:
+```go
+type AuthenticationConfig struct {
+    AWSRegion           string `env:"AWS_REGION" default:"us-east-1"`
+    RequireSignedRequests bool  `default:"true"`
+    AllowedPrincipals   []string `env:"ALLOWED_PRINCIPALS"`
+    SessionDuration     time.Duration `default:"1h"`
+}
+
+type SigV4Validator struct {
+    Region    string
+    Service   string
+    Validator *v4.Verifier
+}
+
+func (s *SigV4Validator) ValidateRequest(req *http.Request) (*AuthContext, error) {
+    // 1. Extract AWS credentials from Authorization header
+    authHeader := req.Header.Get("Authorization")
+    if !strings.HasPrefix(authHeader, "AWS4-HMAC-SHA256") {
+        return nil, errors.New("invalid authorization header")
+    }
+    
+    // 2. Verify signature using AWS SigV4
+    if err := s.Validator.Verify(req); err != nil {
+        return nil, fmt.Errorf("signature verification failed: %w", err)
+    }
+    
+    // 3. Extract user context from AWS identity
+    identity, err := s.getCallerIdentity(req)
+    if err != nil {
+        return nil, fmt.Errorf("failed to get caller identity: %w", err)
+    }
+    
+    return &AuthContext{
+        UserID:    identity.UserID,
+        Email:     identity.Email,
+        Teams:     identity.Teams,
+        ARN:       identity.ARN,
+        SessionID: uuid.New().String(),
+    }, nil
+}
+```
+
+**Team-Based Access Control**:
+- Users are associated with teams through AWS IAM groups or OIDC claims
+- Catalog items specify allowed teams in metadata
+- Request submission validated against user's team membership
+- Cross-team request access controlled by catalog item configuration
+
+**Authorization Enforcement**:
+```go
+type AuthorizationChecker struct {
+    CatalogService CatalogService
+}
+
+func (a *AuthorizationChecker) CanRequestService(userTeams []string, catalogItemID string) (bool, error) {
+    item, err := a.CatalogService.GetItem(catalogItemID)
+    if err != nil {
+        return false, err
+    }
+    
+    // Check if any user team is in allowed teams
+    allowedTeams := item.Metadata.Access.AllowedTeams
+    if len(allowedTeams) == 0 {
+        return true, nil // No restrictions
+    }
+    
+    for _, userTeam := range userTeams {
+        for _, allowedTeam := range allowedTeams {
+            if userTeam == allowedTeam {
+                return true, nil
+            }
+        }
+    }
+    
+    return false, nil
+}
+```
 
 ### Pagination
 
@@ -138,6 +329,16 @@ All list endpoints that return multiple items use cursor-based pagination with t
 4. **Cache Invalidation**: Remove stale entries from Redis and update PostgreSQL
 5. **Notification**: Send status updates via notification channels
 
+**Catalog Synchronization**:
+
+The orchestrator service stays synchronized with the catalog repository through GitHub webhooks:
+
+- **Push Events**: When changes are merged to the main branch, GitHub sends a webhook to the PAO service
+- **Webhook Endpoint**: The service exposes `/api/v1/webhooks/github` to receive catalog update notifications
+- **Validation**: The service validates incoming catalog changes against the schema before accepting them
+- **Cache Invalidation**: Successfully validated changes trigger cache refresh in the service
+- **Fallback**: Manual catalog refresh available via `/api/v1/catalog/refresh` endpoint if needed
+
 **Catalog File Processing**:
 ```go
 type CatalogProcessor struct {
@@ -186,6 +387,66 @@ func (cp *CatalogProcessor) ProcessCatalogUpdate(event *github.PushEvent) error 
 - Invalid files excluded from catalog without breaking entire update
 - Error notifications sent to catalog repository via GitHub Status API
 - Detailed error reports available via `/api/v1/catalog/validation-errors`
+
+**GitHub Webhook Implementation**:
+```go
+type GitHubWebhookHandler struct {
+    Secret           string
+    CatalogProcessor *CatalogProcessor
+    Logger           Logger
+}
+
+func (gwh *GitHubWebhookHandler) HandlePushEvent(w http.ResponseWriter, r *http.Request) {
+    // 1. Verify webhook signature
+    payload, err := gwh.validateWebhookSignature(r)
+    if err != nil {
+        http.Error(w, "Invalid signature", http.StatusUnauthorized)
+        return
+    }
+    
+    // 2. Parse push event
+    var pushEvent github.PushEvent
+    if err := json.Unmarshal(payload, &pushEvent); err != nil {
+        http.Error(w, "Invalid payload", http.StatusBadRequest)
+        return
+    }
+    
+    // 3. Filter for catalog changes only
+    catalogFiles := gwh.filterCatalogFiles(pushEvent.Commits)
+    if len(catalogFiles) == 0 {
+        w.WriteHeader(http.StatusNoContent)
+        return
+    }
+    
+    // 4. Process catalog updates asynchronously
+    go func() {
+        ctx := context.Background()
+        if err := gwh.CatalogProcessor.ProcessFiles(ctx, catalogFiles); err != nil {
+            gwh.Logger.Error("failed to process catalog files", "error", err)
+        }
+    }()
+    
+    w.WriteHeader(http.StatusAccepted)
+}
+
+func (gwh *GitHubWebhookHandler) filterCatalogFiles(commits []github.Commit) []string {
+    var catalogFiles []string
+    seen := make(map[string]bool)
+    
+    for _, commit := range commits {
+        for _, file := range append(commit.Added, append(commit.Modified, commit.Removed...)...) {
+            if strings.HasPrefix(file, "catalog/") && strings.HasSuffix(file, ".yaml") {
+                if !seen[file] {
+                    catalogFiles = append(catalogFiles, file)
+                    seen[file] = true
+                }
+            }
+        }
+    }
+    
+    return catalogFiles
+}
+```
 
 **Request Orchestration System**
 - Request lifecycle: Submitted → Validation → Queued → In Progress → Completed/Failed
@@ -260,6 +521,79 @@ type RequestState struct {
 4. **State Persistence**: Each action result stored in database
 5. **Error Handling**: Failed actions trigger manual intervention workflow
 6. **Status Updates**: Status updates via polling
+
+**Request Processing Pipeline Implementation**:
+```go
+type RequestProcessor struct {
+    Database     DatabaseService
+    ActionRunner ActionRunner
+    SQSClient    SQSService
+    Logger       Logger
+}
+
+func (rp *RequestProcessor) ProcessRequest(ctx context.Context, requestID string) error {
+    // 1. Load request from database
+    request, err := rp.Database.GetRequest(requestID)
+    if err != nil {
+        return fmt.Errorf("failed to load request: %w", err)
+    }
+    
+    // 2. Update status to in_progress
+    if err := rp.updateRequestStatus(request.ID, StatusInProgress); err != nil {
+        return fmt.Errorf("failed to update status: %w", err)
+    }
+    
+    // 3. Execute actions sequentially
+    for i, action := range request.Actions {
+        if request.CurrentAction > i {
+            continue // Skip already completed actions
+        }
+        
+        rp.Logger.Info("executing action", "requestId", request.ID, "actionIndex", i)
+        
+        // Execute single action
+        result, err := rp.ActionRunner.Execute(ctx, action)
+        if err != nil {
+            // Store error context and stop processing
+            rp.storeErrorContext(request.ID, i, err, result)
+            rp.updateRequestStatus(request.ID, StatusFailed)
+            return fmt.Errorf("action %d failed: %w", i, err)
+        }
+        
+        // Store successful result
+        if err := rp.storeActionResult(request.ID, i, result); err != nil {
+            return fmt.Errorf("failed to store action result: %w", err)
+        }
+        
+        // Update current action index
+        request.CurrentAction = i + 1
+        if err := rp.Database.UpdateRequest(request); err != nil {
+            return fmt.Errorf("failed to update request progress: %w", err)
+        }
+    }
+    
+    // 4. Mark request as completed
+    if err := rp.updateRequestStatus(request.ID, StatusCompleted); err != nil {
+        return fmt.Errorf("failed to mark request completed: %w", err)
+    }
+    
+    rp.Logger.Info("request completed successfully", "requestId", request.ID)
+    return nil
+}
+```
+
+**SQS Message Format**:
+```json
+{
+  "requestId": "req-123e4567-e89b-12d3-a456-426614174000",
+  "catalogItemId": "database-postgresql-standard",
+  "priority": "normal",
+  "correlationId": "corr-123e4567-e89b-12d3-a456-426614174000",
+  "timestamp": "2025-08-18T10:30:00Z",
+  "retryCount": 0,
+  "maxRetries": 3
+}
+```
 
 **Multi-Action Fulfillment Engine**
 - 4+ action types: JIRA, REST API, Terraform, GitHub workflows
@@ -457,10 +791,41 @@ ticket:
     {{/each}}
 ```
 
-**Status Polling**:
-- Regular polling for ticket status changes
-- Status mapping: `Open → In Progress`, `Done → Completed`, `Won't Do → Failed`
-- JIRA comment posting for request updates and error context
+**JIRA Status Handling**:
+- The orchestrator does not track or store JIRA ticket status
+- When a status request is made via API or CLI, the service queries JIRA in real-time
+- Each status check makes a fresh API call to JIRA to get current ticket state
+- Platform teams update ticket status in JIRA as work progresses
+- No polling or caching of JIRA status occurs
+
+**JIRA Status Mapping**:
+```go
+type JIRAStatusMapping struct {
+    Open        []string `default:"[\"Open\", \"To Do\", \"Backlog\"]"`
+    InProgress  []string `default:"[\"In Progress\", \"In Review\", \"Testing\"]"`
+    Completed   []string `default:"[\"Done\", \"Closed\", \"Resolved\"]"`
+    Failed      []string `default:"[\"Won't Do\", \"Cancelled\", \"Rejected\"]"`
+}
+
+func (j *JIRAStatusMapping) MapToRequestStatus(jiraStatus string) RequestStatus {
+    for _, status := range j.InProgress {
+        if status == jiraStatus {
+            return StatusInProgress
+        }
+    }
+    for _, status := range j.Completed {
+        if status == jiraStatus {
+            return StatusCompleted
+        }
+    }
+    for _, status := range j.Failed {
+        if status == jiraStatus {
+            return StatusFailed
+        }
+    }
+    return StatusSubmitted // Default for unmapped statuses
+}
+```
 
 ### Variable System
 
@@ -497,6 +862,114 @@ The variable substitution system supports 6+ core scopes with template processin
 - Type checking prevents invalid transformations
 - Circular dependency detection for output chaining
 - Detailed error messages specify invalid variable paths
+
+**Variable Substitution Engine Implementation**:
+```go
+type VariableResolver struct {
+    RequestData  map[string]interface{}
+    Metadata     CatalogItemMetadata
+    SystemVars   map[string]interface{}
+    Environment  map[string]string
+    ActionOutputs map[string]map[string]interface{}
+}
+
+func (vr *VariableResolver) ResolveTemplate(template string) (string, error) {
+    // 1. Parse template for variable references
+    variables := vr.extractVariables(template)
+    
+    // 2. Validate all variables can be resolved
+    for _, variable := range variables {
+        if _, err := vr.resolveVariable(variable); err != nil {
+            return "", fmt.Errorf("cannot resolve variable %s: %w", variable, err)
+        }
+    }
+    
+    // 3. Apply template engine (Mustache)
+    tmpl, err := mustache.ParseString(template)
+    if err != nil {
+        return "", fmt.Errorf("invalid template syntax: %w", err)
+    }
+    
+    // 4. Build context map
+    context := map[string]interface{}{
+        "fields":      vr.RequestData,
+        "metadata":    vr.Metadata,
+        "system":      vr.SystemVars,
+        "environment": vr.Environment,
+        "outputs":     vr.ActionOutputs,
+        "request": map[string]interface{}{
+            "id":            vr.RequestData["_requestId"],
+            "correlationId": vr.RequestData["_correlationId"],
+            "user":          vr.RequestData["_user"],
+            "timestamp":     vr.RequestData["_timestamp"],
+        },
+    }
+    
+    // 5. Render template
+    result, err := tmpl.Render(context)
+    if err != nil {
+        return "", fmt.Errorf("template rendering failed: %w", err)
+    }
+    
+    return result, nil
+}
+
+func (vr *VariableResolver) extractVariables(template string) []string {
+    // Extract {{scope.key}} patterns
+    re := regexp.MustCompile(`\{\{([^}]+)\}\}`)
+    matches := re.FindAllStringSubmatch(template, -1)
+    
+    var variables []string
+    for _, match := range matches {
+        if len(match) > 1 {
+            variables = append(variables, match[1])
+        }
+    }
+    
+    return variables
+}
+
+func (vr *VariableResolver) resolveVariable(variable string) (interface{}, error) {
+    parts := strings.Split(variable, ".")
+    if len(parts) < 2 {
+        return nil, fmt.Errorf("invalid variable format: %s", variable)
+    }
+    
+    scope := parts[0]
+    path := parts[1:]
+    
+    switch scope {
+    case "fields":
+        return vr.resolveFromMap(vr.RequestData, path)
+    case "metadata":
+        return vr.resolveFromStruct(vr.Metadata, path)
+    case "system":
+        return vr.resolveFromMap(vr.SystemVars, path)
+    case "environment":
+        if len(path) == 1 {
+            value, exists := vr.Environment[path[0]]
+            if !exists {
+                return nil, fmt.Errorf("environment variable %s not found", path[0])
+            }
+            return value, nil
+        }
+        return nil, fmt.Errorf("invalid environment variable path: %s", variable)
+    case "outputs":
+        if len(path) < 2 {
+            return nil, fmt.Errorf("outputs require actionId.field format")
+        }
+        actionId := path[0]
+        fieldPath := path[1:]
+        actionOutputs, exists := vr.ActionOutputs[actionId]
+        if !exists {
+            return nil, fmt.Errorf("no outputs for action %s", actionId)
+        }
+        return vr.resolveFromMap(actionOutputs, fieldPath)
+    default:
+        return nil, fmt.Errorf("unknown variable scope: %s", scope)
+    }
+}
+```
 
 ### Manual Failure Resolution
 
@@ -759,15 +1232,111 @@ alerting:
 
 ### Configuration Requirements
 
-**Environment Variables**
+**Complete Environment Variables**:
 ```bash
+# Database Configuration
 DATABASE_URL=postgresql://user:pass@host:5432/pao
-REDIS_CLUSTER_ENDPOINT=xxx.cache.amazonaws.com:6379
-JIRA_API_TOKEN=xxx
-AWS_SECRETS_MANAGER_REGION=us-east-1
 RDS_PROXY_ENDPOINT=pao-rds-proxy.cluster-xxxxx.us-east-1.rds.amazonaws.com
+DB_MAX_OPEN_CONNS=25
+DB_MAX_IDLE_CONNS=10
+DB_CONN_MAX_LIFETIME=5m
+
+# Redis Cache Configuration
+REDIS_CLUSTER_ENDPOINT=xxx.cache.amazonaws.com:6379
+REDIS_PASSWORD=xxx
+REDIS_TLS_ENABLED=true
+
+# JIRA Integration
+JIRA_BASE_URL=https://company.atlassian.net
+JIRA_USERNAME=platform-automation
+JIRA_API_TOKEN=xxx
+JIRA_DEFAULT_PROJECT=PLATFORM
+
+# GitHub Integration
 CATALOG_GITHUB_REPO=company/platform-catalog
+CATALOG_GITHUB_TOKEN=xxx
+CATALOG_GITHUB_BRANCH=main
+CATALOG_POLL_INTERVAL=5m
+GITHUB_WEBHOOK_SECRET=xxx
+
+# AWS Configuration
+AWS_REGION=us-east-1
+AWS_SECRETS_MANAGER_REGION=us-east-1
+SQS_QUEUE_URL=https://sqs.us-east-1.amazonaws.com/123456789/pao-request-queue
+SQS_DLQ_URL=https://sqs.us-east-1.amazonaws.com/123456789/pao-request-dlq
+
+# Service Configuration
 CORRELATION_ID_HEADER=X-Correlation-ID
+API_TIMEOUT=30s
+REQUEST_TIMEOUT=5m
+MAX_REQUEST_SIZE=1MB
+RATE_LIMIT_REQUESTS_PER_MINUTE=60
+
+# Monitoring and Logging
+LOG_LEVEL=info
+LOG_FORMAT=json
+METRICS_ENABLED=true
+TRACING_ENABLED=true
+TRACING_SAMPLE_RATE=0.1
+```
+
+**Configuration Validation**:
+```go
+type ServiceConfig struct {
+    Database struct {
+        URL             string        `env:"DATABASE_URL" validate:"required"`
+        MaxOpenConns    int           `env:"DB_MAX_OPEN_CONNS" default:"25"`
+        MaxIdleConns    int           `env:"DB_MAX_IDLE_CONNS" default:"10"`
+        ConnMaxLifetime time.Duration `env:"DB_CONN_MAX_LIFETIME" default:"5m"`
+    }
+    
+    Redis struct {
+        Endpoint string `env:"REDIS_CLUSTER_ENDPOINT" validate:"required"`
+        Password string `env:"REDIS_PASSWORD"`
+        TLSEnabled bool `env:"REDIS_TLS_ENABLED" default:"true"`
+    }
+    
+    JIRA struct {
+        BaseURL      string `env:"JIRA_BASE_URL" validate:"required,url"`
+        Username     string `env:"JIRA_USERNAME" validate:"required"`
+        APIToken     string `env:"JIRA_API_TOKEN" validate:"required"`
+        DefaultProject string `env:"JIRA_DEFAULT_PROJECT" default:"PLATFORM"`
+    }
+    
+    GitHub struct {
+        Repository    string        `env:"CATALOG_GITHUB_REPO" validate:"required"`
+        Token         string        `env:"CATALOG_GITHUB_TOKEN" validate:"required"`
+        Branch        string        `env:"CATALOG_GITHUB_BRANCH" default:"main"`
+        PollInterval  time.Duration `env:"CATALOG_POLL_INTERVAL" default:"5m"`
+        WebhookSecret string        `env:"GITHUB_WEBHOOK_SECRET" validate:"required"`
+    }
+    
+    AWS struct {
+        Region    string `env:"AWS_REGION" validate:"required"`
+        SQSQueue  string `env:"SQS_QUEUE_URL" validate:"required"`
+        SQSDLQ    string `env:"SQS_DLQ_URL" validate:"required"`
+    }
+    
+    Service struct {
+        APITimeout     time.Duration `env:"API_TIMEOUT" default:"30s"`
+        RequestTimeout time.Duration `env:"REQUEST_TIMEOUT" default:"5m"`
+        MaxRequestSize int64         `env:"MAX_REQUEST_SIZE" default:"1048576"` // 1MB
+        RateLimit      int           `env:"RATE_LIMIT_REQUESTS_PER_MINUTE" default:"60"`
+    }
+}
+
+func LoadConfig() (*ServiceConfig, error) {
+    var config ServiceConfig
+    if err := env.Parse(&config); err != nil {
+        return nil, fmt.Errorf("failed to parse config: %w", err)
+    }
+    
+    if err := validator.New().Struct(&config); err != nil {
+        return nil, fmt.Errorf("config validation failed: %w", err)
+    }
+    
+    return &config, nil
+}
 ```
 
 **Lambda Configuration**
