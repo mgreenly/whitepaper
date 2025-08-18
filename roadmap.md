@@ -38,8 +38,8 @@ This document contains no proprietary, confidential, or sensitive organizational
 
 **External Dependencies**:
 - **Database Team Request**: PostgreSQL Aurora cluster for PAO service data storage (Multi-AZ, 50GB storage, db.t3.medium) - **2 week lead time required**
-- **JIRA Configuration**: Project PLATFORM with issue types (Task, Story, Bug), custom fields for correlation ID
-- **GitHub Repository**: platform-catalog repository with webhook endpoint configuration
+- **JIRA Access**: API credentials for Database Team (DBA project) and Compute Team (COMPUTE project) JIRA projects
+- **GitHub Repository**: platform-automation repository with webhook endpoint configuration
 
 **Internal Infrastructure Setup**:
 - **AWS Parameter Store Terraform**: Create Parameter Store paths for secret storage (JIRA tokens, GitHub tokens)
@@ -49,7 +49,7 @@ This document contains no proprietary, confidential, or sensitive organizational
 - **Catalog Work**: Set up GitHub Actions workflow (`.github/workflows/validate-catalog.yml`) with branch protection
 - **Service Work**: Set up PostgreSQL database schema (requests, request_actions tables)
 - **Service Work**: Implement core REST API framework with Phase 1 health endpoints (/api/v1/health, /api/v1/health/ready, /api/v1/version)
-- **Service Work**: Configure JIRA integration with API tokens, project setup, and required issue types
+- **Service Work**: Configure JIRA integration with API tokens for DBA and COMPUTE projects
 - **DevCtl Work**: Initialize Go CLI project with AWS SigV4 authentication
 - **DevCtl Work**: Implement Phase 1 commands (devctl health check, devctl health ready, devctl version)
 - **Documentation Work**: Add platform team onboarding process and catalog contribution workflow sections to existing repository files (no new documentation files)
