@@ -60,25 +60,25 @@ The Platform Automation Orchestrator catalog repository (`platform-automation`) 
 
 ```
 platform-automation/
-├── catalog/                    # Service definitions by category
-│   ├── {category}/            # compute, databases, etc.
-│   │   └── {service}.yaml     # Your service definition
-├── schema/                     # JSON Schema specifications
-│   ├── catalog-item.json      # CatalogItem schema
-│   ├── catalog-bundle.json    # CatalogBundle schema
-│   └── common-types.json      # Shared type definitions
-├── templates/                  # Starter templates for new services
-├── scripts/                    # Validation and testing tools
-│   ├── validate-catalog.sh   # Main validation script
-│   ├── validate-all.sh       # Batch validation
-│   └── test-template.sh      # Template testing
-├── tests/                      # Test fixtures and examples
-│   ├── valid/                 # Valid examples
-│   └── invalid/               # Invalid examples with expected errors
+├── catalog/                     # Service definitions by category
+│   ├── {category}/              # compute, databases, etc.
+│   │   └── {service}.yaml       # Your service definition
+├── schema/                      # JSON Schema specifications
+│   ├── catalog-item.json        # CatalogItem schema
+│   ├── catalog-bundle.json      # CatalogBundle schema
+│   └── common-types.json        # Shared type definitions
+├── templates/                   # Starter templates for new services
+├── scripts/                     # Validation and testing tools
+│   ├── validate-catalog.sh      # Main validation script
+│   ├── validate-all.sh          # Batch validation
+│   └── test-template.sh         # Template testing
+├── tests/                       # Test fixtures and examples
+│   ├── valid/                   # Valid examples
+│   └── invalid/                 # Invalid examples with expected errors
 └── .github/
-    ├── workflows/             # CI/CD pipelines
+    ├── workflows/               # CI/CD pipelines
     │   └── validate-catalog.yml # PR validation workflow
-    └── CODEOWNERS             # Team ownership mapping
+    └── CODEOWNERS               # Team ownership mapping
 ```
 
 ### CODEOWNERS Configuration
