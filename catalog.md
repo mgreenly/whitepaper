@@ -149,12 +149,12 @@ These conventions align with Go language standards and cloud-native tooling (Kub
 
 ## Schema Versioning
 
-All catalog documents must declare their schema version using `apiVersion`. This ensures compatibility and enables safe schema evolution.
+All catalog documents must declare their schema version using `version`. This ensures compatibility and enables safe schema evolution.
 
 **Current Version**: `catalog/v1`
 
 ```yaml
-apiVersion: catalog/v1
+version: catalog/v1
 kind: CatalogItem
 ```
 
@@ -185,6 +185,7 @@ In Q3, bundles create multiple JIRA tickets (one per component) and establish JI
 3. Returns a bundle request with links to all created tickets
 
 ```yaml
+version: catalog/v1
 kind: CatalogBundle
 
 metadata:
@@ -262,6 +263,7 @@ fulfillment:
 ### CatalogItem - Individual Service
 
 ```yaml
+version: catalog/v1
 kind: CatalogItem
 
 metadata:
@@ -479,6 +481,7 @@ This section provides comprehensive examples demonstrating the catalog schema in
 ### Complete Bundle Example
 
 ```yaml
+version: catalog/v1
 kind: CatalogBundle
 
 metadata:
@@ -567,6 +570,7 @@ fulfillment:
 ### EKS Container Application
 
 ```yaml
+version: catalog/v1
 kind: CatalogItem
 
 metadata:
@@ -622,6 +626,7 @@ fulfillment:
 ### PostgreSQL Database
 
 ```yaml
+version: catalog/v1
 kind: CatalogItem
 
 metadata:
@@ -681,6 +686,7 @@ fulfillment:
 ### AWS Parameter Store
 
 ```yaml
+version: catalog/v1
 kind: CatalogItem
 
 metadata:
