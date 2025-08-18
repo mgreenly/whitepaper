@@ -4,14 +4,14 @@
 
 This document contains no proprietary, confidential, or sensitive organizational information and represents generalized industry practices and publicly available methodologies. The content was created with the assistance of agentic AI systems, with human oversight and review applied throughout the process. Users should verify all technical recommendations and adapt them to their specific requirements and constraints.
 
-*Last Updated: August 18, 2025*
-
 ## Table of Contents
 
 - [Q3 2025: Foundation Epic](#q3-2025-foundation-epic)
 - [Q4 2025: Production Epic](#q4-2025-production-epic)
 - [Q1 2026: Scale Epic](#q1-2026-scale-epic)
 - [Q2 2026: Enterprise Epic](#q2-2026-enterprise-epic)
+
+*Last Updated: August 18, 2025*
 
 ## Q3 2025: Foundation Epic 🚧 CURRENT (Aug-Oct)
 
@@ -167,9 +167,20 @@ This document contains no proprietary, confidential, or sensitive organizational
 
 **Sprint 1 (Aug 18-29): Foundation Setup**
 - **Catalog Team (2 people)**: Create GitHub repository structure with CODEOWNERS and basic validation. Implement JSON schemas for CatalogItem and CatalogBundle with validation rules. Set up GitHub repository with branch protection and webhook configuration.
-- **Service Team (3 people)**: Request PostgreSQL database from database team. Set up Redis caching infrastructure. Implement core REST API framework with health endpoints and metrics. Configure JIRA project setup with required issue types and custom fields.
+- **Service Team (3 people)**: Provision PostgreSQL Aurora cluster with IAM authentication and required schema. Set up ElastiCache Redis cluster with TLS. Implement core REST API framework with health endpoints and metrics. Configure JIRA integration with API tokens, project setup, and required issue types.
 - **DevCtl Team (2 people)**: Initialize Go CLI project with AWS SigV4 authentication. Implement global options and basic command structure.
 - **Platform Team (1 person)**: Define governance model and platform team contribution workflows.
+
+**External Dependencies (Sprint 1)**:
+- **AWS Infrastructure**: PostgreSQL Aurora cluster (Multi-AZ, 50GB storage, db.t3.medium)
+- **Redis Infrastructure**: ElastiCache Redis cluster (3 nodes, cache.t3.micro)
+- **JIRA Configuration**: Project PLATFORM with issue types (Task, Story, Bug), custom fields for correlation ID
+- **GitHub Repository**: platform-catalog repository with webhook endpoint configuration
+- **AWS Parameter Store**: Secret storage paths for JIRA tokens, GitHub tokens, and Redis passwords
+
+**Risk Planning (1 day)**:
+- Identify top 5 risks and mitigation strategies
+- Create dependency tracking and escalation procedures
 
 **Sprint 2 (Sep 2-13): Core Functionality**
 - **Catalog Team (2 people)**: Complete 3 test catalog items (EKS app, PostgreSQL, parameter store) with JIRA action templates. Implement CI/CD pipeline with automated validation.
@@ -191,7 +202,7 @@ This document contains no proprietary, confidential, or sensitive organizational
 
 **Sprint 5 (Oct 14-25): Testing & Deployment**
 - **All Teams**: End-to-end testing of complete workflow. Deploy to staging environment and conduct load testing.
-- **Service Team**: Performance optimization and monitoring setup. AWS Lambda deployment configuration.
+- **Service Team**: Performance optimization and monitoring setup. EKS container deployment configuration.
 - **DevCtl Team**: Release preparation and installation documentation. CLI distribution setup.
 - **Catalog Team**: Final validation rule refinements and documentation updates.
 
@@ -218,8 +229,8 @@ This document contains no proprietary, confidential, or sensitive organizational
 
 ### Service Work
 - Terraform action type with infrastructure provisioning capabilities
-- Production AWS deployment with RDS, Redis, monitoring, alerting
-- SQS background processing implementation (Q4: transition from synchronous to asynchronous)
+- Production EKS deployment with Aurora PostgreSQL, Redis, monitoring, alerting
+- Background worker pool implementation (Q4: transition from synchronous to asynchronous)
 - Fulfillment mode switching (seamless manual ↔ automated switching)
 - Performance optimization supporting 100+ concurrent requests
 
@@ -261,13 +272,13 @@ This document contains no proprietary, confidential, or sensitive organizational
 
 **Sprint 1 (Nov 4-15): Terraform Integration Foundation**
 - **Catalog Team (2 people)**: Enhance schema to support Terraform action types with repository mapping. Create Terraform action templates and validation rules.
-- **Service Team (3 people)**: Implement SQS background processing architecture (transition from synchronous to asynchronous). Implement Terraform action execution framework with state management. Build REST API action type with authentication and retry logic.
+- **Service Team (3 people)**: Implement background worker pool architecture (transition from synchronous to asynchronous). Implement Terraform action execution framework with state management. Build REST API action type with authentication and retry logic.
 - **DevCtl Team (2 people)**: Add retry, abort, and escalate commands. Implement Terraform-specific status tracking and log parsing.
 - **Platform Team (1 person)**: Design fulfillment mode switching strategy and create migration documentation.
 
 **Sprint 2 (Nov 18-29): Production Infrastructure**
 - **Catalog Team (2 people)**: Create 5+ production-ready catalog items with both manual and automated actions. Implement complex variable templating with secrets scope.
-- **Service Team (3 people)**: Deploy production AWS infrastructure with RDS, Redis clustering, monitoring, and alerting. Implement fulfillment mode switching logic.
+- **Service Team (3 people)**: Deploy production EKS infrastructure with Aurora PostgreSQL, Redis clustering, monitoring, and alerting. Implement fulfillment mode switching logic.
 - **DevCtl Team (2 people)**: Build Terraform operation commands (plan, apply, destroy). Add batch operations and export functionality.
 - **Platform Team (1 person)**: Test automated provisioning workflows and provide platform team training materials.
 
