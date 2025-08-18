@@ -23,3 +23,14 @@ It is document driven.  The @repo.md file explains the catalog that drives the o
 ## Actions
 
   * After reading this file wait for instructions.
+
+## Scope Clarification
+
+**IMPORTANT**: This document is exclusively concerned with the Platform Automation Orchestrator service itself. It does not cover:
+
+- External infrastructure (Kubernetes, databases, monitoring systems)
+- Deployment pipelines or CI/CD processes  
+- Supporting services or dependencies
+- Infrastructure configuration or management
+
+Focus only on the service's internal architecture, APIs, data models, business logic, and direct service-to-service integrations.

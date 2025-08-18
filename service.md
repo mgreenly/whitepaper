@@ -97,7 +97,7 @@ POST   /api/v1/webhooks/github                   # GitHub webhook handler
 
 4. **Comprehensive Variable Substitution**: 6+ variable scopes with pre-execution validation and detailed error reporting
 
-5. **Background Request Processing**: SQS-based queue system with Lambda handlers for sequential action execution
+5. **Background Request Processing**: In-process queue system with background workers for sequential action execution
 
 6. **Authentication Implementation**: Complete AWS SigV4 signing with team-based authorization and session management
 
@@ -310,7 +310,7 @@ All list endpoints that return multiple items use cursor-based pagination with t
 2. **Smart Fulfillment**: Automated actions with manual fallback - uses automation when available, falls back to manual JIRA when needed. No automatic error recovery; failures require human intervention
 3. **Document-Driven Convergence**: Platform teams collaborate through central document store
 4. **Progressive Enhancement**: Teams evolve from manual to automated at their own pace
-5. **Serverless-First**: Likely AWS Lambda deployment with event-driven architecture
+5. **Container-First**: EKS deployment with persistent services and horizontal scaling
 
 ### Service Components
 
@@ -456,7 +456,7 @@ func (gwh *GitHubWebhookHandler) filterCatalogFiles(commits []github.Commit) []s
 
 ### Request Processing Architecture
 
-**Q3 Synchronous Processing (No Queue Required)**:
+**Q3 Synchronous Processing (In-Process Handlers)**:
 ```go
 func (rp *RequestProcessor) ProcessJIRARequest(ctx context.Context, request *ServiceRequest) (*ProcessingResult, error) {
     // 1. Validate request synchronously
@@ -485,20 +485,23 @@ func (rp *RequestProcessor) ProcessJIRARequest(ctx context.Context, request *Ser
 }
 ```
 
-**Q4 SQS Queue Integration (Future Enhancement)**:
+**Q4 Background Worker Integration (Future Enhancement)**:
 ```yaml
-requestQueue:
-  name: "pao-request-queue"
-  visibilityTimeout: 300  # 5 minutes
-  messageRetentionPeriod: 1209600  # 14 days
-  maxReceiveCount: 3
-  deadLetterQueue: "pao-request-dlq"
+backgroundWorkers:
+  workerPool: 10  # Concurrent workers
+  queueSize: 1000  # In-memory queue capacity
+  processingTimeout: 300  # 5 minutes
+  retryDelay: 30  # 30 seconds
   
-processingLambda:
-  handler: "request-processor"
-  timeout: 300  # 5 minutes
-  batchSize: 10
-  concurrency: 50
+containerConfig:
+  replicas: 2-6  # Horizontal pod autoscaling
+  resources:
+    requests:
+      cpu: 1000m
+      memory: 2Gi
+    limits:
+      cpu: 2000m
+      memory: 4Gi
 ```
 
 **Request Validation Pipeline**:
@@ -551,12 +554,12 @@ type RequestState struct {
 5. **Status Queries**: Real-time JIRA status queries when requested
 
 **Q4 Background Processing Architecture (Future)**:
-1. **Request Queuing**: SQS queue for long-running operations (Terraform, etc.)
-2. **Lambda Processing**: Background Lambda processes queue messages
+1. **Request Queuing**: In-memory queue for long-running operations (Terraform, etc.)
+2. **Worker Pool Processing**: Background goroutines process queued requests
 3. **Action Execution**: Sequential execution of catalog-defined actions
 4. **State Persistence**: Each action result stored in database
 5. **Error Handling**: Failed actions trigger manual intervention workflow
-6. **Status Updates**: Status updates via polling
+6. **Status Updates**: Real-time status updates via WebSocket connections
 
 **Volume Expectations**:
 - **Very Low Volume Service**: Designed for internal platform teams, not end users
@@ -638,7 +641,7 @@ func (rp *RequestProcessor) ProcessRequest(ctx context.Context, requestID string
 }
 ```
 
-**Q4 SQS Message Format (Future)**:
+**Q4 Background Worker Message Format (Future)**:
 ```json
 {
   "requestId": "req-123e4567-e89b-12d3-a456-426614174000",
@@ -647,17 +650,19 @@ func (rp *RequestProcessor) ProcessRequest(ctx context.Context, requestID string
   "correlationId": "corr-123e4567-e89b-12d3-a456-426614174000",
   "timestamp": "2025-08-18T10:30:00Z",
   "retryCount": 0,
-  "maxRetries": 3
+  "maxRetries": 3,
+  "workerAssignment": "worker-pool-1"
 }
 ```
 
 **Multi-Action Fulfillment Engine**
 - 4+ action types: JIRA, REST API, Terraform, GitHub workflows
-- Sequential execution with dependency management
-- Retry logic with exponential backoff
+- Sequential execution with dependency management in background workers
+- Retry logic with exponential backoff handled by worker pool
 - No automatic error recovery; failures stop execution and require manual intervention
 - Failed requests provide detailed failure context for human decision-making
 - Operators can retry failed actions, abort the request, or escalate to manual support
+- Persistent worker processes maintain connection pools and state
 
 ### Technology Stack
 
@@ -678,11 +683,11 @@ func (rp *RequestProcessor) ProcessRequest(ctx context.Context, requestID string
 - Terraform Cloud API
 - HashiCorp Vault (secrets)
 
-**Deployment (Likely Path)**
-- AWS Lambda functions
-- API Gateway for REST endpoints
-- CloudFormation/CDK for infrastructure
-- CloudWatch for monitoring and logging
+**Deployment Architecture**
+- EKS container pods with horizontal autoscaling
+- Application Load Balancer for REST endpoints
+- Helm charts for infrastructure deployment
+- CloudWatch and Prometheus for monitoring and logging
 
 ### Schema Integration
 
@@ -1108,17 +1113,16 @@ config:
 - GitHub workflow dispatch
 - Terraform configuration management
 
-**Infrastructure Components**
+**External Integrations**
 - GitHub repository integration with polling
-- Catalog caching (ElastiCache Redis)
-- Request state tracking (RDS PostgreSQL)
-- Lambda deployment with health checks
+- JIRA REST API integration  
+- Redis caching layer
+- PostgreSQL database for state tracking
 
 **Reliability & Performance**
-- Circuit breaker architecture for external calls
-- Comprehensive retry logic with exponential backoff (limited retries, no infinite loops)
-- RDS Proxy for PostgreSQL connections
-- ElastiCache Redis clustering
+- Circuit breaker architecture for external API calls
+- Retry logic with exponential backoff (limited retries, no infinite loops)
+- Connection pooling for database and Redis
 - **Error Handling**: All failures require manual intervention; no automatic recovery mechanisms
 
 ## Architectural Recommendation
@@ -1263,16 +1267,15 @@ For an enterprise organization with 1,700 developers performing 250,000 applicat
 For an enterprise platform supporting 1,700 developers, the recommendation prioritizes long-term operational excellence over short-term cost optimization, recognizing that platform services are critical infrastructure requiring reliability and performance.
 
 **Monitoring & Observability**
-- CloudWatch metrics and custom metrics
+- Health check endpoints (`/api/v1/health`, `/api/v1/health/ready`)
+- Metrics endpoint (`/api/v1/metrics`)
 - Structured JSON logging with correlation IDs
-- X-Ray distributed tracing
-- CloudWatch dashboards and alarms
 
 **Security & Compliance**
 - AWS IAM authentication with SigV4 signing
-- CloudTrail audit logging
-- AWS Secrets Manager for secret storage
-- Lambda security best practices
+- Audit logging with correlation IDs
+- AWS Parameter Store for secret configuration
+- Request validation and sanitization
 
 ### Database Schema
 
@@ -1312,17 +1315,18 @@ CREATE TABLE request_actions (
 **Database Connection Pooling and Optimization**:
 ```go
 type DatabaseConfig struct {
-    MaxOpenConns    int           `default:"25"`
-    MaxIdleConns    int           `default:"10"`
-    ConnMaxLifetime time.Duration `default:"5m"`
-    ConnMaxIdleTime time.Duration `default:"1m"`
+    MaxOpenConns    int           `default:"50"`    // Higher for persistent containers
+    MaxIdleConns    int           `default:"20"`    // More idle connections
+    ConnMaxLifetime time.Duration `default:"1h"`    // Longer lifetime
+    ConnMaxIdleTime time.Duration `default:"10m"`   // Longer idle time
 }
 
-// RDS Proxy configuration for Lambda environments
-type RDSProxyConfig struct {
-    ProxyEndpoint string `env:"RDS_PROXY_ENDPOINT"`
+// Direct database connection for EKS containers
+type EKSDataConfig struct {
+    DatabaseURL   string `env:"DATABASE_URL"`
     IAMAuth       bool   `default:"true"`
     Region        string `env:"AWS_REGION"`
+    SSLMode       string `default:"require"`
 }
 ```
 
@@ -1348,32 +1352,25 @@ clusterConfig:
   backupSchedule: "0 2 * * *"  # Daily at 2 AM
 ```
 
-**Lambda Function Organization and Event Routing**:
+**Service Process Organization**:
 ```yaml
-functions:
-  api-handler:
+serviceComponents:
+  api-server:
     purpose: "Handle all REST API endpoints"
     routes: "/api/v1/*"
-    timeout: 30
-    memory: 512
+    port: 8080
     
   catalog-processor:
-    purpose: "Process GitHub repository polling for catalog updates"
-    events: ["schedule.rate(5 minutes)"]
-    timeout: 120
-    memory: 256
+    purpose: "Background goroutine for GitHub repository polling"
+    schedule: "Every 5 minutes"
     
   request-processor:
-    purpose: "Execute background request processing"
-    events: ["sqs.request-queue"]
-    timeout: 300
-    memory: 1024
+    purpose: "Background worker pool for request processing"
+    workers: 10
     
   status-updater:
-    purpose: "Handle external system status updates"
-    events: ["schedule.rate(5 minutes)"]
-    timeout: 60
-    memory: 256
+    purpose: "Background goroutine for external system status updates"
+    schedule: "Every 5 minutes"
 ```
 
 **Error Context Preservation for Manual Escalation**:
@@ -1397,9 +1394,9 @@ type CleanupInstruction struct {
 }
 ```
 
-**Performance Monitoring and Metrics Collection**:
+**Service Metrics Collection**:
 ```yaml
-customMetrics:
+serviceMetrics:
   - name: "pao_requests_total"
     type: "counter"
     labels: ["status", "catalog_item", "user_team"]
@@ -1416,15 +1413,6 @@ customMetrics:
   - name: "pao_action_failure_rate"
     type: "gauge"
     labels: ["action_type", "failure_reason"]
-
-alerting:
-  - metric: "pao_request_failure_rate"
-    threshold: 0.05  # 5%
-    window: "5m"
-    
-  - metric: "pao_api_response_time_p95"
-    threshold: 2.0   # 2 seconds
-    window: "1m"
 ```
 
 ### Configuration Requirements
@@ -1432,35 +1420,45 @@ alerting:
 **Complete Environment Variables**:
 ```bash
 # Database Configuration
-DATABASE_URL=postgresql://user:pass@host:5432/pao
-RDS_PROXY_ENDPOINT=pao-rds-proxy.cluster-xxxxx.us-east-1.rds.amazonaws.com
-DB_MAX_OPEN_CONNS=25
-DB_MAX_IDLE_CONNS=10
-DB_CONN_MAX_LIFETIME=5m
+DATABASE_HOST=pao-aurora-cluster.cluster-xxx.us-east-1.rds.amazonaws.com
+DATABASE_PORT=5432
+DATABASE_NAME=pao
+DATABASE_USER=pao_service
+DB_MAX_OPEN_CONNS=50
+DB_MAX_IDLE_CONNS=20
+DB_CONN_MAX_LIFETIME=1h
+DB_CONN_MAX_IDLE_TIME=10m
 
 # Redis Cache Configuration
 REDIS_CLUSTER_ENDPOINT=xxx.cache.amazonaws.com:6379
-REDIS_PASSWORD=xxx
 REDIS_TLS_ENABLED=true
+REDIS_PASSWORD_PATH=/pao/redis/password
 
 # JIRA Integration
 JIRA_BASE_URL=https://company.atlassian.net
 JIRA_USERNAME=platform-automation
-JIRA_API_TOKEN=xxx
 JIRA_DEFAULT_PROJECT=PLATFORM
 
 # GitHub Integration
 CATALOG_GITHUB_REPO=company/platform-catalog
-CATALOG_GITHUB_TOKEN=xxx
 CATALOG_GITHUB_BRANCH=main
 CATALOG_POLL_INTERVAL=5m
-GITHUB_WEBHOOK_SECRET=xxx
+
+# AWS Parameter Store Paths for Secrets
+JIRA_API_TOKEN_PATH=/pao/jira/api-token
+GITHUB_TOKEN_PATH=/pao/github/token
+GITHUB_WEBHOOK_SECRET_PATH=/pao/github/webhook-secret
+REDIS_PASSWORD_PATH=/pao/redis/password
 
 # AWS Configuration
 AWS_REGION=us-east-1
 AWS_SECRETS_MANAGER_REGION=us-east-1
-SQS_QUEUE_URL=https://sqs.us-east-1.amazonaws.com/123456789/pao-request-queue
-SQS_DLQ_URL=https://sqs.us-east-1.amazonaws.com/123456789/pao-request-dlq
+
+# EKS Configuration
+KUBERNETES_NAMESPACE=platform-orchestrator
+SERVICE_ACCOUNT_NAME=platform-orchestrator
+WORKER_POOL_SIZE=10
+MAX_CONCURRENT_REQUESTS=100
 
 # Service Configuration
 CORRELATION_ID_HEADER=X-Correlation-ID
@@ -1481,37 +1479,50 @@ TRACING_SAMPLE_RATE=0.1
 ```go
 type ServiceConfig struct {
     Database struct {
-        URL             string        `env:"DATABASE_URL" validate:"required"`
-        MaxOpenConns    int           `env:"DB_MAX_OPEN_CONNS" default:"25"`
-        MaxIdleConns    int           `env:"DB_MAX_IDLE_CONNS" default:"10"`
-        ConnMaxLifetime time.Duration `env:"DB_CONN_MAX_LIFETIME" default:"5m"`
+        Host            string        `env:"DATABASE_HOST" validate:"required"`
+        Port            int           `env:"DATABASE_PORT" default:"5432"`
+        Name            string        `env:"DATABASE_NAME" validate:"required"`
+        User            string        `env:"DATABASE_USER" validate:"required"`
+        UseIAMAuth      bool          `default:"true"`
+        MaxOpenConns    int           `env:"DB_MAX_OPEN_CONNS" default:"50"`
+        MaxIdleConns    int           `env:"DB_MAX_IDLE_CONNS" default:"20"`
+        ConnMaxLifetime time.Duration `env:"DB_CONN_MAX_LIFETIME" default:"1h"`
     }
     
     Redis struct {
-        Endpoint string `env:"REDIS_CLUSTER_ENDPOINT" validate:"required"`
-        Password string `env:"REDIS_PASSWORD"`
-        TLSEnabled bool `env:"REDIS_TLS_ENABLED" default:"true"`
+        Endpoint     string `env:"REDIS_CLUSTER_ENDPOINT" validate:"required"`
+        PasswordPath string `env:"REDIS_PASSWORD_PATH"`
+        TLSEnabled   bool   `env:"REDIS_TLS_ENABLED" default:"true"`
     }
     
     JIRA struct {
-        BaseURL      string `env:"JIRA_BASE_URL" validate:"required,url"`
-        Username     string `env:"JIRA_USERNAME" validate:"required"`
-        APIToken     string `env:"JIRA_API_TOKEN" validate:"required"`
-        DefaultProject string `env:"JIRA_DEFAULT_PROJECT" default:"PLATFORM"`
+        BaseURL         string `env:"JIRA_BASE_URL" validate:"required,url"`
+        Username        string `env:"JIRA_USERNAME" validate:"required"`
+        APITokenPath    string `env:"JIRA_API_TOKEN_PATH" validate:"required"`
+        DefaultProject  string `env:"JIRA_DEFAULT_PROJECT" default:"PLATFORM"`
     }
     
     GitHub struct {
-        Repository    string        `env:"CATALOG_GITHUB_REPO" validate:"required"`
-        Token         string        `env:"CATALOG_GITHUB_TOKEN" validate:"required"`
-        Branch        string        `env:"CATALOG_GITHUB_BRANCH" default:"main"`
-        PollInterval  time.Duration `env:"CATALOG_POLL_INTERVAL" default:"5m"`
-        WebhookSecret string        `env:"GITHUB_WEBHOOK_SECRET" validate:"required"`
+        Repository        string        `env:"CATALOG_GITHUB_REPO" validate:"required"`
+        TokenPath         string        `env:"GITHUB_TOKEN_PATH" validate:"required"`
+        Branch            string        `env:"CATALOG_GITHUB_BRANCH" default:"main"`
+        PollInterval      time.Duration `env:"CATALOG_POLL_INTERVAL" default:"5m"`
+        WebhookSecretPath string        `env:"GITHUB_WEBHOOK_SECRET_PATH" validate:"required"`
+    }
+    
+    ParameterStore struct {
+        Region string `env:"AWS_REGION" validate:"required"`
     }
     
     AWS struct {
         Region    string `env:"AWS_REGION" validate:"required"`
-        SQSQueue  string `env:"SQS_QUEUE_URL" validate:"required"`
-        SQSDLQ    string `env:"SQS_DLQ_URL" validate:"required"`
+    }
+    
+    EKS struct {
+        Namespace           string `env:"KUBERNETES_NAMESPACE" default:"platform-orchestrator"`
+        ServiceAccount      string `env:"SERVICE_ACCOUNT_NAME" default:"platform-orchestrator"`
+        WorkerPoolSize      int    `env:"WORKER_POOL_SIZE" default:"10"`
+        MaxConcurrentReqs   int    `env:"MAX_CONCURRENT_REQUESTS" default:"100"`
     }
     
     Service struct {
@@ -1532,27 +1543,96 @@ func LoadConfig() (*ServiceConfig, error) {
         return nil, fmt.Errorf("config validation failed: %w", err)
     }
     
+    // Load secrets from AWS Parameter Store
+    if err := loadParameterStoreSecrets(&config); err != nil {
+        return nil, fmt.Errorf("failed to load secrets: %w", err)
+    }
+    
     return &config, nil
+}
+
+func loadParameterStoreSecrets(config *ServiceConfig) error {
+    sess := session.Must(session.NewSession())
+    svc := ssm.New(sess, aws.NewConfig().WithRegion(config.ParameterStore.Region))
+    
+    // Load JIRA API token
+    if config.JIRA.APITokenPath != "" {
+        token, err := getParameter(svc, config.JIRA.APITokenPath)
+        if err != nil {
+            return fmt.Errorf("failed to load JIRA token: %w", err)
+        }
+        config.JIRA.APIToken = token
+    }
+    
+    // Load GitHub token
+    if config.GitHub.TokenPath != "" {
+        token, err := getParameter(svc, config.GitHub.TokenPath)
+        if err != nil {
+            return fmt.Errorf("failed to load GitHub token: %w", err)
+        }
+        config.GitHub.Token = token
+    }
+    
+    // Load GitHub webhook secret
+    if config.GitHub.WebhookSecretPath != "" {
+        secret, err := getParameter(svc, config.GitHub.WebhookSecretPath)
+        if err != nil {
+            return fmt.Errorf("failed to load webhook secret: %w", err)
+        }
+        config.GitHub.WebhookSecret = secret
+    }
+    
+    // Load Redis password
+    if config.Redis.PasswordPath != "" {
+        password, err := getParameter(svc, config.Redis.PasswordPath)
+        if err != nil {
+            return fmt.Errorf("failed to load Redis password: %w", err)
+        }
+        config.Redis.Password = password
+    }
+    
+    return nil
+}
+
+func getParameter(svc *ssm.SSM, path string) (string, error) {
+    input := &ssm.GetParameterInput{
+        Name:           aws.String(path),
+        WithDecryption: aws.Bool(true),
+    }
+    
+    result, err := svc.GetParameter(input)
+    if err != nil {
+        return "", err
+    }
+    
+    return aws.StringValue(result.Parameter.Value), nil
 }
 ```
 
-**Lambda Configuration**
+**Service Configuration**
 ```yaml
-functions:
-  api:
-    runtime: go1.x
-    memory: 512
-    timeout: 30
-    environment:
-      DATABASE_URL: ${ssm:/pao/database-url}
-      REDIS_CLUSTER_ENDPOINT: ${ssm:/pao/redis-endpoint}
+service:
+  port: 8080
+  environment:
+    DATABASE_HOST: ${env:DATABASE_HOST}
+    DATABASE_NAME: ${env:DATABASE_NAME}
+    DATABASE_USER: ${env:DATABASE_USER}
+    REDIS_CLUSTER_ENDPOINT: ${env:REDIS_CLUSTER_ENDPOINT}
+    JIRA_BASE_URL: ${env:JIRA_BASE_URL}
+    CATALOG_GITHUB_REPO: ${env:CATALOG_GITHUB_REPO}
+    # Secrets loaded from AWS Parameter Store
+    JIRA_API_TOKEN_PATH: ${env:JIRA_API_TOKEN_PATH}
+    GITHUB_TOKEN_PATH: ${env:GITHUB_TOKEN_PATH}
+    GITHUB_WEBHOOK_SECRET_PATH: ${env:GITHUB_WEBHOOK_SECRET_PATH}
+    REDIS_PASSWORD_PATH: ${env:REDIS_PASSWORD_PATH}
   
+workers:
   catalog_processor:
-    runtime: go1.x
-    memory: 256
-    timeout: 60
-    events:
-      - schedule: rate(5 minutes)
+    interval: "5m"
+  request_processor:
+    pool_size: 10
+  status_updater:
+    interval: "5m"
 ```
 
 ## Performance & Success Metrics
@@ -1577,95 +1657,35 @@ functions:
 - **MTTR**: Fast incident resolution
 - **Support Efficiency**: Timely resolution for platform team issues
 
-## Deployment Configuration
+## Service Configuration
 
-### Lambda Deployment Configuration
+### Container Configuration
 
-**Q3 Deployment (Synchronous Processing)**:
-```yaml
-service: platform-orchestrator
-frameworkVersion: '3'
-
-provider:
-  name: aws
-  runtime: go1.x
-  region: us-east-1
-  environment:
-    DATABASE_URL: ${ssm:/pao/database-url}
-    REDIS_CLUSTER_ENDPOINT: ${ssm:/pao/redis-endpoint}
-  iamRoleStatements:
-    - Effect: Allow
-      Action:
-        - rds:DescribeDBInstances
-        - elasticache:DescribeReplicationGroups
-        - secretsmanager:GetSecretValue
-      Resource: "*"
-
-functions:
-  api:
-    handler: bin/api
-    events:
-      - httpApi:
-          path: /api/v1/{proxy+}
-          method: ANY
-    environment:
-      FUNCTION_TYPE: api
-    timeout: 30  # Synchronous processing
-    reservedConcurrency: 10  # Low volume service
-    
-  catalog-processor:
-    handler: bin/catalog
-    events:
-      - schedule: rate(5 minutes)
-    environment:
-      FUNCTION_TYPE: catalog
-    timeout: 60
-```
-
-**Q4 Deployment (With Background Processing)**:
-```yaml
-# Additional function for Q4
-functions:
-  request-processor:
-    handler: bin/processor
-    events:
-      - sqs:
-          arn: !GetAtt RequestQueue.Arn
-          batchSize: 10
-    environment:
-      FUNCTION_TYPE: processor
-    timeout: 300
-
-resources:
-  Resources:
-    RequestQueue:
-      Type: AWS::SQS::Queue
-      Properties:
-        QueueName: pao-request-queue
-        VisibilityTimeoutSeconds: 360
-```
+**Service Container Requirements**:
+- HTTP server listening on port 8080
+- Health check endpoints: `/api/v1/health` and `/api/v1/health/ready`
+- Environment variable configuration support
+- Graceful shutdown handling
+- Resource requirements: 1-2 CPU cores, 2-4GB RAM
 
 ### Security Configuration
 
-- **Network Security**: TLS 1.3 encryption, VPC endpoints
-- **Function Security**: Least privilege IAM roles, resource-based policies
-- **Secret Management**: AWS Secrets Manager integration
-- **Authentication**: AWS IAM with SigV4 signing
-- **Audit Logging**: CloudTrail integration
+- **Authentication**: AWS IAM with SigV4 request signing
+- **Secret Management**: AWS Parameter Store for sensitive configuration
+- **Database Access**: Aurora PostgreSQL with IAM authentication
+- **External APIs**: JIRA and GitHub API authentication via tokens from Parameter Store
 
-### Monitoring Setup
+### Service Health Monitoring
 
-- **Metrics**: CloudWatch custom metrics and AWS Lambda insights
-- **Logging**: CloudWatch Logs with structured JSON and correlation IDs
-- **Health Checks**: Lambda function health monitoring via CloudWatch
-- **Alerting**: CloudWatch alarms with SNS notifications
+- **Health Endpoints**: `/api/v1/health` and `/api/v1/health/ready` for container orchestration
+- **Metrics**: Prometheus-format metrics at `/api/v1/metrics` endpoint
+- **Logging**: Structured JSON logs with correlation ID tracking
 
-### CI/CD Pipeline
+### Build and Deployment
 
-1. **Build**: Go binary compilation with security scanning
-2. **Test**: Unit tests, integration tests, security validation
-3. **Deploy**: Serverless framework deployment with automated rollback
-4. **Monitor**: Post-deployment function health verification
+- **Build Requirements**: Go binary compilation with container image packaging
+- **Deployment**: Standard containerized deployment process
+- **Configuration**: Environment variable and Parameter Store integration
 
 ## SQL Schema
 
@@ -1894,17 +1914,16 @@ VALUES ('001_initial_schema', 'Initial database schema creation', 'sha256_checks
 **Connection Pooling Configuration**
 
 ```go
-// Lambda-optimized connection pool settings
+// EKS-optimized connection pool settings
 type DatabaseConfig struct {
-    // Connection pool settings for Lambda
-    MaxOpenConns    int           `default:"10"`    // Lower for Lambda
-    MaxIdleConns    int           `default:"2"`     // Minimal idle connections
-    ConnMaxLifetime time.Duration `default:"5m"`    // Shorter lifetime
-    ConnMaxIdleTime time.Duration `default:"30s"`   // Quick idle timeout
+    // Connection pool settings for persistent containers
+    MaxOpenConns    int           `default:"50"`    // Higher for containers
+    MaxIdleConns    int           `default:"20"`    // More idle connections
+    ConnMaxLifetime time.Duration `default:"1h"`    // Longer lifetime
+    ConnMaxIdleTime time.Duration `default:"10m"`   // Longer idle timeout
     
-    // RDS Proxy settings (recommended for Lambda)
-    UseRDSProxy     bool   `default:"true"`
-    ProxyEndpoint   string `env:"RDS_PROXY_ENDPOINT"`
+    // Direct database connection (no proxy needed)
+    DatabaseURL     string `env:"DATABASE_URL"`
     IAMAuth         bool   `default:"true"`
     
     // SSL configuration
@@ -1916,7 +1935,7 @@ type DatabaseConfig struct {
     PrepareTimeout  time.Duration `default:"5s"`
 }
 
-// Connection pool optimization for Lambda
+// Connection pool optimization for EKS containers
 func ConfigureDatabasePool(db *sql.DB, config DatabaseConfig) {
     db.SetMaxOpenConns(config.MaxOpenConns)
     db.SetMaxIdleConns(config.MaxIdleConns)

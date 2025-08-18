@@ -93,7 +93,7 @@ This document contains no proprietary, confidential, or sensitive organizational
 1. **Core Infrastructure Setup**
    - PostgreSQL database schema (requests, request_actions tables)
    - Redis caching layer integration
-   - AWS Lambda deployment framework
+   - EKS container deployment framework
    - Environment configuration and secrets management
 
 2. **Catalog Management Implementation** 
@@ -166,8 +166,8 @@ This document contains no proprietary, confidential, or sensitive organizational
 ### Sprint Planning (Team Size: 6-8 people)
 
 **Sprint 1 (Aug 18-29): Foundation Setup**
-- **Catalog Team (2 people)**: Create GitHub repository structure with CODEOWNERS and basic validation. Implement JSON schemas for CatalogItem and CatalogBundle with validation rules.
-- **Service Team (3 people)**: Set up PostgreSQL database schema and Redis caching infrastructure. Implement core REST API framework with health endpoints and metrics.
+- **Catalog Team (2 people)**: Create GitHub repository structure with CODEOWNERS and basic validation. Implement JSON schemas for CatalogItem and CatalogBundle with validation rules. Set up GitHub repository with branch protection and webhook configuration.
+- **Service Team (3 people)**: Request PostgreSQL database from database team. Set up Redis caching infrastructure. Implement core REST API framework with health endpoints and metrics. Configure JIRA project setup with required issue types and custom fields.
 - **DevCtl Team (2 people)**: Initialize Go CLI project with AWS SigV4 authentication. Implement global options and basic command structure.
 - **Platform Team (1 person)**: Define governance model and platform team contribution workflows.
 
