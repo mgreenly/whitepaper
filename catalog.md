@@ -160,8 +160,8 @@ kind: CatalogItem
 
 **Maturity Levels**:
 - `v1` - Stable, production-ready with backward compatibility
-- `v2alpha1` - Early development, features may change
-- `v2beta1` - Feature-complete, minor changes possible
+- `v2pre1` - Development version, features may change
+- `v2pre2` - Later development version, closer to stable
 - `v2` - Next stable version
 
 **Version Support**: We support the current stable version plus one previous version during transitions. Deprecated versions include warnings and migration guidance.
