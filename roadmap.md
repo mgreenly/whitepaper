@@ -7,10 +7,10 @@ This document contains no proprietary, confidential, or sensitive organizational
 ## Table of Contents
 
 - [Q3 2025: Foundation Epic](#q3-2025-foundation-epic)
-  - [Work Summary](#work-summary)
+  - [Success Metrics & Work Summary](#success-metrics--work-summary)
   - [Ordered Work Series](#ordered-work-series)
 - [Q4 2025: Production Epic](#q4-2025-production-epic)
-  - [Work Summary](#work-summary-1)
+  - [Success Metrics & Work Summary](#success-metrics--work-summary-1)
   - [Ordered Work Series](#ordered-work-series-1)
 - [Future Work Beyond Q4 2025](#future-work-beyond-q4-2025)
 - [Proposals](#proposals)
@@ -28,138 +28,11 @@ This document contains no proprietary, confidential, or sensitive organizational
 
 **Note**: Q3 uses synchronous request processing only. SQS background processing will be introduced in Q4 for production scalability.
 
-**Success Metrics**:
-- Schema specification complete with validation coverage
-- Core REST API deployed with JIRA action type
-- Test catalog items working: EKS app, PostgreSQL database, parameter store for secrets (all JIRA fulfillment)
-- Developers can submit requests and Platform Teams receive properly formatted JIRA tickets
+**Success Metrics & Work Summary**:
+- **Catalog**: GitHub repository with schemas, validation scripts, and 3 test YAML catalog items (EKS, PostgreSQL, Parameter Store) defining JIRA ticket templates
+- **Service**: Core REST API with 19 endpoints, JIRA integration for ticket creation, PostgreSQL database, with all test catalog items working
+- **DevCtl**: CLI with AWS SigV4 authentication covering all service endpoints, enabling developers to request services and receive JIRA tickets
 
-**Work Summary**:
-- **Catalog**: Create GitHub repository with schemas, validation scripts, and 3 test YAML catalog items (EKS, PostgreSQL, Parameter Store) that define JIRA ticket templates.
-- **Service**: Build core REST API with 19 endpoints, catalog ingestion from GitHub, JIRA integration for ticket creation, and PostgreSQL database for request tracking.
-- **DevCtl**: Develop CLI with AWS SigV4 authentication covering all service endpoints (health, catalog browsing, request submission/management, validation tools) in 6 phases.
-
-**Required API Endpoints (19 total)**:
-
-*Core User Journey (12 endpoints)*:
-- `/api/v1/catalog` - Browse available services
-- `/api/v1/catalog/items/{item_id}` - Service details
-- `/api/v1/catalog/items/{item_id}/schema` - Dynamic form schema
-- `/api/v1/validate/request` - Validate user input before submission
-- `/api/v1/requests` - Submit/list service requests
-- `/api/v1/requests/{request_id}` - Request details
-- `/api/v1/requests/{request_id}/status` - Current status
-- `/api/v1/requests/{request_id}/logs` - Execution logs
-- `/api/v1/requests/{request_id}/retry` - Retry failed action
-- `/api/v1/requests/{request_id}/abort` - Abort failed request
-- `/api/v1/requests/{request_id}/escalate` - Escalate to manual support
-- `/api/v1/requests/{request_id}/escalation` - Escalation details
-- `/api/v1/catalog/refresh` - Force catalog refresh
-
-*System Health (3 endpoints)*:
-- `/api/v1/health` - Service health status
-- `/api/v1/health/ready` - Readiness probe
-- `/api/v1/version` - Service version info
-
-*Platform Team Tools (3 endpoints)*:
-- `/api/v1/validate/catalog-item` - Validate service definition
-- `/api/v1/preview/form` - Preview form generation
-- `/api/v1/test/variables` - Test variable substitution
-
-*System Integration (1 endpoint)*:
-- `/api/v1/webhooks/github` - GitHub webhook handler
-
-**Service API Implementation Order** (Enabling DevCtl Lock-Step Development):
-
-**Phase 1: Foundation APIs**
-- `/api/v1/health` - Service health status
-- `/api/v1/health/ready` - Readiness probe  
-- `/api/v1/version` - Service version info
-
-*Dependencies*: Basic Go HTTP server, database connection
-*DevCtl Enablement*: `devctl health check`, `devctl health ready`, `devctl version`
-
-**Phase 2: Catalog Read APIs**
-- `/api/v1/catalog` - Browse available services
-- `/api/v1/catalog/items/{item_id}` - Service details
-- `/api/v1/catalog/items/{item_id}/schema` - Dynamic form schema
-- `/api/v1/catalog/refresh` - Force catalog refresh
-
-*Dependencies*: GitHub integration, catalog parsing, schema validation, in-memory caching
-*DevCtl Enablement*: `devctl catalog list`, `devctl catalog get`, `devctl catalog refresh`
-
-**Phase 3: Validation & Testing APIs**
-- `/api/v1/validate/catalog-item` - Validate service definition
-- `/api/v1/validate/request` - Validate user input before submission
-- `/api/v1/preview/form` - Preview form generation
-- `/api/v1/test/variables` - Test variable substitution
-
-*Dependencies*: Complete variable substitution engine, form generation logic
-*DevCtl Enablement*: `devctl validate catalog-item`, `devctl preview form`, `devctl test variables`
-
-**Phase 4: Request Submission APIs**
-- `/api/v1/requests` (POST) - Submit service request
-- `/api/v1/requests` (GET) - List user requests
-- `/api/v1/requests/{request_id}` - Request details
-
-*Dependencies*: JIRA integration, request lifecycle engine, audit logging
-*DevCtl Enablement*: `devctl request submit`, `devctl request list`, `devctl request get`
-
-**Phase 5: Request Management APIs**
-- `/api/v1/requests/{request_id}/status` - Current status
-- `/api/v1/requests/{request_id}/logs` - Execution logs
-- `/api/v1/requests/{request_id}/retry` - Retry failed action
-- `/api/v1/requests/{request_id}/abort` - Abort failed request
-
-*Dependencies*: Status tracking, JIRA status polling, error handling framework
-*DevCtl Enablement*: `devctl request status`, `devctl request logs`, plus retry/abort commands
-
-**Phase 6: Advanced Operations**
-- `/api/v1/requests/{request_id}/escalate` - Escalate to manual support
-- `/api/v1/requests/{request_id}/escalation` - Escalation details
-- `/api/v1/webhooks/github` - GitHub webhook handler
-
-*Dependencies*: Manual escalation workflow, webhook processing
-*DevCtl Enablement*: Complete CLI feature set with escalation support
-
-**Service Implementation Tasks by Phase**:
-
-**Phase 1: Core Infrastructure Setup**
-- PostgreSQL database schema (requests, request_actions tables)
-- Basic HTTP server with health endpoints
-- Environment configuration and secrets management
-
-**Phase 2: Catalog Management Implementation** 
-- GitHub integration for catalog repository access
-- Catalog item parsing and validation
-- Schema-to-form generation logic
-- In-memory caching layer integration
-
-**Phase 3: Variable Substitution & Validation**
-- Variable substitution engine (6+ scopes: fields, metadata, request, system, environment, outputs)
-- Template processing and validation
-- Form preview generation
-- Catalog item validation framework
-
-**Phase 4: Request Lifecycle Engine**
-- Request submission and validation pipeline
-- JIRA API integration with authentication
-- Basic JIRA ticket creation and tracking
-- Audit logging and correlation IDs
-
-**Phase 5: Status & Error Management**
-- Status tracking and state management
-- JIRA status polling integration
-- Retry logic with exponential backoff
-- Error context preservation
-
-**Phase 6: Advanced Workflows**
-- Manual escalation workflow
-- GitHub webhook processing for catalog updates
-- Circuit breaker implementation for external calls
-- Complete error handling and recovery
-
-**DevCtl Lock-Step Development Note**: DevCtl development follows Service API phases with 1-week lag to enable testing and validation. See DevCtl Phase 1-6 implementation details referenced in work items below.
 
 ### Ordered Work Series
 
@@ -174,29 +47,30 @@ This document contains no proprietary, confidential, or sensitive organizational
 - **Catalog Work**: Create GitHub repository structure with `.github/CODEOWNERS`, `.gitignore`, and `README.md`
 - **Catalog Work**: Implement JSON schemas (`schema/catalog-item.json`, `schema/catalog-bundle.json`, `schema/common-types.json`)
 - **Catalog Work**: Set up GitHub Actions workflow (`.github/workflows/validate-catalog.yml`) with branch protection
-- **Service Work**: Set up in-memory caching infrastructure
-- **Service Work**: Implement core REST API framework with health endpoints
+- **Service Work**: Set up PostgreSQL database schema (requests, request_actions tables)
+- **Service Work**: Implement core REST API framework with Phase 1 health endpoints (/api/v1/health, /api/v1/health/ready, /api/v1/version)
 - **Service Work**: Configure JIRA integration with API tokens, project setup, and required issue types
 - **DevCtl Work**: Initialize Go CLI project with AWS SigV4 authentication
-- **DevCtl Work**: Implement DevCtl Phase 1 foundation commands as specified in lock-step development section
+- **DevCtl Work**: Implement Phase 1 commands (devctl health check, devctl health ready, devctl version)
 - **Documentation Work**: Add platform team onboarding process and catalog contribution workflow sections to existing repository files (no new documentation files)
 - **Catalog Work**: Create 3 test catalog YAML files (`catalog/compute/eks-application.yaml`, `catalog/databases/postgresql-standard.yaml`, `catalog/security/parameterstore-standard.yaml`)
 - **Catalog Work**: Create initial templates (`templates/catalog-item-template.yaml`, `templates/jira-action-template.yaml`)
-- **Service Work**: Build catalog ingestion from GitHub with validation
-- **Service Work**: Implement request submission pipeline with JSONB storage and correlation ID tracking
-- **DevCtl Work**: Implement DevCtl Phase 2 and begin Phase 4 commands as specified in lock-step development section
+- **Service Work**: Implement Phase 2 catalog APIs (/api/v1/catalog, /api/v1/catalog/items/{item_id}, /api/v1/catalog/items/{item_id}/schema, /api/v1/catalog/refresh) with GitHub integration and in-memory caching
+- **Service Work**: Implement Phase 3 validation APIs (/api/v1/validate/catalog-item, /api/v1/validate/request, /api/v1/preview/form, /api/v1/test/variables) with variable substitution engine (6+ scopes)
+- **Service Work**: Implement Phase 4 request submission APIs (/api/v1/requests POST/GET, /api/v1/requests/{request_id}) with JIRA ticket creation and audit logging
+- **DevCtl Work**: Implement Phase 2 catalog commands (devctl catalog list/get/refresh) and Phase 3 validation commands (devctl validate catalog-item, devctl preview form, devctl test variables)
+- **DevCtl Work**: Implement Phase 4 request commands (devctl request submit/list/get)
 - **Catalog Work**: Implement validation scripts (`scripts/validate-catalog.sh`, `scripts/validate-all.sh`, `scripts/test-template.sh`, `scripts/validate-changed.sh`)
 - **Catalog Work**: Create test fixtures (`tests/valid/example-catalog-item.yaml`, `tests/invalid/missing-required-fields.yaml`, `tests/invalid/invalid-naming-conventions.yaml`)
-- **Service Work**: Implement JIRA action framework with variable substitution (6+ scopes)
-- **Service Work**: Build status tracking and external reference management
-- **DevCtl Work**: Complete DevCtl Phase 4 and Phase 5 commands as specified in lock-step development section
+- **Service Work**: Implement Phase 5 request management APIs (/api/v1/requests/{request_id}/status, /api/v1/requests/{request_id}/logs, /api/v1/requests/{request_id}/retry, /api/v1/requests/{request_id}/abort) with JIRA status polling
+- **DevCtl Work**: Implement Phase 5 commands (devctl request status/logs with --watch/--follow options, devctl request retry/abort)
 - **Testing Work**: Test end-to-end workflows and provide feedback for improvements
 - **Catalog Work**: Implement integration test script (`scripts/integration-test.sh`)
 - **Catalog Work**: Finalize templates and add governance sections to existing files
 - **Catalog Work**: Complete integration testing with service endpoints
-- **Service Work**: Implement error handling, retry logic, and manual escalation workflows
-- **Service Work**: Complete API endpoint coverage with proper error responses
-- **DevCtl Work**: Complete DevCtl Phase 6 with all advanced options and error handling as specified in lock-step development section
+- **Service Work**: Implement Phase 6 advanced APIs (/api/v1/requests/{request_id}/escalate, /api/v1/requests/{request_id}/escalation, /api/v1/webhooks/github) with manual escalation and GitHub webhook processing
+- **Service Work**: Implement error handling, retry logic with exponential backoff, and circuit breaker patterns
+- **DevCtl Work**: Implement Phase 6 commands (devctl request escalate) with advanced error handling and user-friendly messages
 - **Testing Work**: Conduct user acceptance testing and gather feedback from early platform team adopters
 - **Integration Work**: End-to-end testing of complete workflow with performance validation
 - **Service Work**: Performance optimization and service observability implementation
@@ -211,17 +85,10 @@ This document contains no proprietary, confidential, or sensitive organizational
 
 **Value Delivered**: Developers can request services and receive automated provisioning (Terraform, REST API) while platform teams maintain manual fallback
 
-**Success Metrics**:
-- Production AWS deployment with monitoring, alerting, and high availability
-- Test catalog items enhanced with automated actions (Terraform, REST API)
-- Fulfillment mode switching operational (manual ↔ automated)
-- Automated provisioning working for EKS app, PostgreSQL, parameter store
-- 5+ platform teams can define services with automated and manual fulfillment options
-
-**Work Summary**:
-- **Catalog**: Enhance schemas for Terraform actions, create 10+ production catalog items with automated fulfillment, develop platform team migration tools.
-- **Service**: Implement background workers, Terraform execution framework, REST API actions, fulfillment mode switching, and production hardening for 100+ concurrent requests.
-- **DevCtl**: Add retry/abort/escalate commands, Terraform operations, batch processing, export capabilities, and production-ready CLI distribution.
+**Success Metrics & Work Summary**:
+- **Catalog**: Enhanced schemas for Terraform actions, 10+ production catalog items with automated fulfillment, platform team migration tools
+- **Service**: Background workers, Terraform/REST API execution, fulfillment mode switching (manual ↔ automated), production hardening for 100+ concurrent requests
+- **DevCtl**: Retry/abort/escalate commands, Terraform operations, batch processing, enabling 5+ platform teams to use automated provisioning
 
 ### Ordered Work Series
 
