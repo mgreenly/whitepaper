@@ -1,5 +1,9 @@
 # Platform Automation Orchestrator - Catalog Repository
 
+## Disclaimer
+
+This document contains no proprietary, confidential, or sensitive organizational information and represents generalized industry practices and publicly available methodologies. The content was created with the assistance of agentic AI systems, with human oversight and review applied throughout the process. Users should verify all technical recommendations and adapt them to their specific requirements and constraints.
+
 ## Table of Contents
 
 - [Repository Structure](#repository-structure)
@@ -129,6 +133,12 @@ These conventions align with Go language standards and cloud-native tooling (Kub
 
 A CatalogBundle combines multiple CatalogItems into a single deployable solution. It orchestrates the provisioning of multiple services with proper dependency management and variable passing between components.
 
+**Q3 Bundle Behavior:**
+In Q3, bundles create multiple JIRA tickets (one per component) and establish JIRA linking relationships based on the `dependsOn` configuration. The orchestrator:
+1. Creates all component JIRA tickets using each CatalogItem's template
+2. Adds JIRA issue links of type "blocks/is blocked by" based on dependencies
+3. Returns a bundle request with links to all created tickets
+
 ```yaml
 kind: CatalogBundle
 
@@ -149,18 +159,18 @@ components:
       # Override default field values from the referenced CatalogItem
       instanceClass: "{{fields.dbSize}}"
       storageSize: "{{fields.dbStorage}}"
-    outputs:
-      # Declare which outputs from this component are available
+    outputs:  # Q4: Outputs for automated provisioning
       - connectionString
       - host
       - port
   
   - id: secrets
     catalogItem: security-parameterstore-standard
+    dependsOn: [database]  # JIRA ticket will be linked as "blocked by" database ticket
     config:
       secretName: "{{fields.appName}}-secrets"
       secrets:
-        # Reference outputs from previous components
+        # Q4: Will reference outputs; Q3: Manual instructions in JIRA
         - key: dbConnectionString
           value: "{{components.database.outputs.connectionString}}"
     outputs:
@@ -168,7 +178,7 @@ components:
   
   - id: application
     catalogItem: compute-eks-containerapp
-    dependsOn: [database, secrets]  # Creates JIRA blocking links
+    dependsOn: [database, secrets]  # Creates JIRA blocking links to both
     config:
       appName: "{{fields.appName}}"
       containerImage: "{{fields.containerImage}}"
@@ -198,7 +208,10 @@ presentation:
 
 fulfillment:
   orchestration:
-    mode: sequential  # or parallel where dependencies allow
+    mode: sequential  # Components are processed in order
+    jiraLinking:
+      linkType: blocks  # JIRA link type for dependencies
+      parentTicket: false  # Q3: No parent epic; Q4: Optional epic creation
 ```
 
 ### CatalogItem - Individual Service
@@ -296,6 +309,20 @@ fields:
 **Current Implementation**: The Q3 2025 Foundation Epic supports JIRA and REST API action types. Additional action types (Terraform, GitHub Workflows, Webhooks) are planned for future releases.
 
 ### 1. JIRA Ticket
+
+**Required Fields:**
+- `project`: JIRA project key (e.g., PLATFORM, DBA, COMPUTE)
+- `issueType`: Valid issue type for the project (e.g., Task, Story, Bug)
+- `summaryTemplate`: Template for ticket summary (max 255 characters)
+
+**Optional Fields:**
+- `descriptionTemplate`: Detailed ticket description with variable substitution
+- `priority`: Ticket priority (Critical, High, Medium, Low) - defaults to Medium
+- `labels`: Array of labels to apply to the ticket
+- `components`: JIRA components to assign
+- `epicKey`: Epic to link this ticket to
+- `customFields`: Map of custom field IDs to values
+
 ```yaml
 type: jira-ticket
 config:
@@ -306,12 +333,28 @@ config:
       Requesting: {{fields.name}}
       Type: {{metadata.name}}
       User: {{request.user.email}}
+      Request ID: {{request.id}}
+      
+      Configuration:
+      {{#each fields}}
+      - {{@key}}: {{this}}
+      {{/each}}
     issueType: Task
     priority: "{{fields.priority}}"
     labels:
       - platform-automation
       - "{{metadata.category}}"
+    customFields:
+      customfield_10001: "{{fields.costCenter}}"
+      customfield_10002: "{{fields.environment}}"
 ```
+
+**Variable Substitution in JIRA:**
+- String variables are inserted as-is
+- Arrays are formatted as comma-separated lists
+- Objects are formatted as JSON in code blocks
+- Null/undefined variables are replaced with empty strings
+- JIRA markup characters are automatically escaped
 
 ### 2. REST API
 ```yaml
@@ -648,6 +691,7 @@ The catalog repository includes a comprehensive validation system to ensure all 
    - `validate-catalog.sh` - Main validation script
    - `validate-single.sh` - Validates individual YAML files
    - `validate-all.sh` - Batch validation for entire directories
+   - `validate-changed.sh` - Validates only changed files in PR
 
 3. **Test Fixtures** (`/tests/` directory)
    - Valid examples that should pass validation
@@ -757,6 +801,101 @@ A nightly job validates the entire catalog to catch any drift or corruption:
 
 This comprehensive validation system ensures catalog integrity while allowing teams to work independently within their domains.
 
+## Platform Team Onboarding
+
+### Prerequisites
+Before a platform team can contribute to the catalog, they must:
+
+1. **JIRA Project Setup**
+   - Have a dedicated JIRA project or shared project with appropriate permissions
+   - Define standard issue types (Task, Story, Bug) 
+   - Configure any custom fields needed for their services
+   - Set up webhook to PAO service for status updates
+
+2. **GitHub Access**
+   - Request addition to appropriate GitHub team
+   - Team lead submits PR to add team to CODEOWNERS for their category folder
+   - Complete catalog training (self-paced documentation review)
+
+### Onboarding Process
+
+1. **Initial Setup** (Day 1)
+   - Platform team lead contacts DevX team
+   - DevX team provides starter kit with templates
+   - Team added to GitHub and CODEOWNERS
+
+2. **First Service Definition** (Days 2-3)
+   - Copy template from `/templates/catalog-item-template.yaml`
+   - Modify for team's first service (typically simplest offering)
+   - Run local validation: `./scripts/validate-single.sh my-service.yaml`
+   - Submit PR for review
+
+3. **Review Process**
+   - DevX team reviews for schema compliance
+   - Architecture team reviews if new patterns introduced
+   - Must pass automated validation
+   - Merge upon approval
+
+4. **Iteration and Expansion** (Ongoing)
+   - Add more services incrementally
+   - Evolve from simple to complex offerings
+   - Q3: JIRA-only; Q4: Add automation
+
+### Support Resources
+- Slack: #platform-catalog-help
+- Office hours: Tuesdays 2-3pm with DevX team
+- Documentation: Internal wiki catalog guide
+- Examples: Review existing services in `/catalog/`
+
+## Governance Process
+
+### Pull Request Requirements
+
+**All Changes:**
+- Must pass automated validation via GitHub Actions
+- Must have CODEOWNERS approval
+- Must include test coverage for new patterns
+
+**Breaking Changes:**
+- Require 2 approvals (domain team + architecture team)
+- Must include migration guide
+- Version number must increment major version
+- 30-day deprecation notice for removed fields
+
+### Service Naming Standards
+
+**CatalogItem IDs:** `{category}-{service}-{variant}`
+- category: Must match folder name (compute, databases, etc.)
+- service: Descriptive service name (postgresql, eks, s3)
+- variant: Differentiator (standard, enterprise, dev)
+- Example: `database-postgresql-enterprise`
+
+**Display Names:**
+- Use title case
+- Be descriptive but concise
+- Include key differentiator
+- Example: "PostgreSQL Database - Enterprise"
+
+### Review Checklist
+
+Platform team reviewers should verify:
+- [ ] Schema validation passes
+- [ ] Naming conventions followed
+- [ ] JIRA project/issue types are valid
+- [ ] Variable substitution syntax is correct
+- [ ] Description is 50-500 characters
+- [ ] Required fields are marked appropriately
+- [ ] Default values are sensible
+- [ ] Field validation patterns are tested
+
+### Deprecation Process
+
+1. Mark service/field as deprecated in metadata
+2. Add deprecation notice with migration guide
+3. Notify affected teams via email and Slack
+4. Wait minimum 30 days
+5. Remove in next major version
+
 ## Implementation Guidance
 
 ### JSON Schema Files (`/schema/`)
@@ -766,11 +905,77 @@ This comprehensive validation system ensures catalog integrity while allowing te
 - `common-types.json`: Define enums for categories (compute, databases, security, etc.), field types (string, number, select, etc.), action types (jira-ticket, rest-api); patterns for IDs (kebab-case), variable syntax (`^\{\{[a-z]+\.[a-zA-Z]+\}\}$`)
 
 ### Ruby Validation Scripts (`/scripts/`)
+
+**Core Requirements:**
 - Use `json_schemer` gem for JSON Schema validation
-- Use `psych` for YAML parsing
-- Exit 0 on success, 1 on validation errors
+- Use `psych` for YAML parsing with safe loading
+- Exit codes: 0 (success), 1 (validation error), 2 (system error)
 - Output format: `filename:line:column: error message`
-- `validate-changed.sh`: Use `git diff --name-only BASE_SHA` to find changed files
+
+**validate-single.sh Implementation:**
+```ruby
+#!/usr/bin/env ruby
+require 'json_schemer'
+require 'psych'
+require 'pathname'
+
+file_path = ARGV[0]
+begin
+  content = Psych.safe_load_file(file_path)
+  kind = content['kind']
+  schema_file = "schema/catalog-#{kind.downcase}.json"
+  schema = JSON.parse(File.read(schema_file))
+  schemer = JSONSchemer.schema(schema)
+  
+  errors = schemer.validate(content).to_a
+  if errors.empty?
+    puts "✓ #{file_path}: Valid"
+    exit 0
+  else
+    errors.each do |error|
+      puts "✗ #{file_path}:#{error['data_pointer']}: #{error['error']}"
+    end
+    exit 1
+  end
+rescue => e
+  puts "✗ #{file_path}: #{e.message}"
+  exit 2
+end
+```
+
+**validate-changed.sh Implementation:**
+```bash
+#!/bin/bash
+BASE_SHA=${1:-HEAD~1}
+CHANGED_FILES=$(git diff --name-only $BASE_SHA -- 'catalog/**/*.yaml')
+
+if [ -z "$CHANGED_FILES" ]; then
+  echo "No catalog files changed"
+  exit 0
+fi
+
+ERRORS=0
+for file in $CHANGED_FILES; do
+  if [ -f "$file" ]; then
+    ./scripts/validate-single.sh "$file"
+    if [ $? -ne 0 ]; then
+      ERRORS=$((ERRORS + 1))
+    fi
+  fi
+done
+
+if [ $ERRORS -gt 0 ]; then
+  echo "Validation failed for $ERRORS file(s)"
+  exit 1
+fi
+```
+
+**Additional Validations:**
+- Bundle components must reference existing CatalogItems
+- Variable references must use valid scopes and syntax
+- JIRA project keys must be uppercase
+- Field IDs must be unique within a form group
+- Circular dependencies in bundles are prohibited
 
 ### Test Files (`/tests/`)
 - `valid/`: Include examples with all field types, both action types (jira-ticket, rest-api), cross-component references

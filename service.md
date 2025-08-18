@@ -1,3 +1,7 @@
+# Disclaimer
+
+This document contains no proprietary, confidential, or sensitive organizational information and represents generalized industry practices and publicly available methodologies. The content was created with the assistance of agentic AI systems, with human oversight and review applied throughout the process. Users should verify all technical recommendations and adapt them to their specific requirements and constraints.
+
 # Platform Automation Orchestrator Service
 
 ## Table of Contents
@@ -43,6 +47,7 @@ POST   /api/v1/catalog/refresh                   # Force catalog refresh
 
 **Request Lifecycle**
 ```http
+POST   /api/v1/validate/request                  # Validate user input before submission
 POST   /api/v1/requests                          # Submit service request
 GET    /api/v1/requests                          # List user requests
 GET    /api/v1/requests/{request_id}             # Request details
@@ -187,15 +192,92 @@ PAO implements the schema specification from [catalog.md](catalog.md):
 
 **Error Handling**: All action types use limited retry logic. When any action fails after retries, execution stops and the request status is marked as failed, requiring manual review and intervention.
 
+### JIRA Action Framework
+
+**Authentication Configuration**:
+```yaml
+jira:
+  instances:
+    platform:
+      baseUrl: "https://company.atlassian.net"
+      authentication:
+        type: "api_token"
+        username: "{{env.JIRA_PLATFORM_USERNAME}}"
+        token: "{{env.JIRA_PLATFORM_TOKEN}}"
+    dba:
+      baseUrl: "https://company.atlassian.net"
+      authentication:
+        type: "oauth2"
+        clientId: "{{env.JIRA_DBA_CLIENT_ID}}"
+        clientSecret: "{{env.JIRA_DBA_CLIENT_SECRET}}"
+```
+
+**Ticket Creation Workflow**:
+1. **Template Processing**: Variable substitution in summary, description, and custom fields
+2. **Instance Selection**: Route to appropriate JIRA instance based on catalog configuration
+3. **Ticket Creation**: POST to JIRA REST API with error handling and validation
+4. **Status Tracking**: Store ticket key and URL for future reference
+5. **Webhook Registration**: Optional webhook setup for status updates
+
+**Template Variable Processing**:
+```yaml
+ticket:
+  project: "{{metadata.owner.jiraProject | default('PLATFORM')}}"
+  issueType: "{{fields.priority | jiraIssueType}}"
+  summary: "{{fields.name}} - {{metadata.name}}"
+  description: |
+    **Service Request**: {{metadata.name}} ({{metadata.version}})
+    **Requested by**: {{request.user.email}}
+    **Request ID**: {{request.id}}
+    **Submitted**: {{request.timestamp}}
+    
+    **Configuration**:
+    {{#each fields}}
+    - {{@key}}: {{this}}
+    {{/each}}
+```
+
+**Status Polling & Webhook Handling**:
+- Periodic polling every 5 minutes for ticket status changes
+- Webhook endpoint `/api/v1/webhooks/jira` for real-time updates
+- Status mapping: `Open → In Progress`, `Done → Completed`, `Won't Do → Failed`
+- JIRA comment posting for request updates and error context
+
 ### Variable System
 
-Supports 8+ variable scopes:
-- `{{fields.field_id}}` - User form input
-- `{{metadata.id}}` - Service metadata
-- `{{request.id}}` - Request context
-- `{{system.date}}` - System variables
-- `{{env.VAR}}` - Environment variables
-- `{{output.action_id.field}}` - Previous action outputs
+The variable substitution system supports 6+ core scopes with template processing and transformation functions:
+
+**Core Variable Scopes**:
+- `{{fields.field_id}}` - User form input values from request submission
+- `{{metadata.id}}` - Service metadata from catalog definition (id, name, version, category, owner)
+- `{{request.id}}` - Request context (id, user.email, user.teams, timestamp, correlation_id)
+- `{{system.date}}` - System-generated variables (date, timestamp, uuid, hostname)
+- `{{environment.VAR}}` - Environment variables from orchestrator configuration
+- `{{outputs.action_id.field}}` - Previous action outputs for chaining
+
+**Template Processing Engine**:
+- Mustache-style template syntax: `{{scope.key}}`
+- Nested object access: `{{request.user.email}}`
+- Array indexing: `{{fields.environments[0]}}`
+- Conditional logic: `{{#if fields.enableSSL}}...{{/if}}`
+- Iteration: `{{#each fields.ports}}...{{/each}}`
+
+**Transformation Functions**:
+- `{{upper(fields.name)}}` - Uppercase conversion
+- `{{lower(metadata.category)}}` - Lowercase conversion
+- `{{concat(fields.prefix, "-", system.uuid)}}` - String concatenation
+- `{{replace(fields.name, " ", "-")}}` - String replacement
+- `{{json(fields.config)}}` - JSON encoding for API payloads
+- `{{base64(fields.secret)}}` - Base64 encoding
+- `{{uuid()}}` - Generate unique identifier
+- `{{timestamp()}}` - Current Unix timestamp
+
+**Variable Validation & Error Handling**:
+- Pre-execution validation ensures all variables can be resolved
+- Missing variable references cause request validation failure
+- Type checking prevents invalid transformations
+- Circular dependency detection for output chaining
+- Detailed error messages specify invalid variable paths
 
 ### Manual Failure Resolution
 
