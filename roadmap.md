@@ -19,6 +19,8 @@ This document contains no proprietary, confidential, or sensitive organizational
 
 **Value Delivered**: Platform teams define services in the catalog, users request services, and fulfillment occurs through JIRA actions
 
+**Note**: Q3 uses synchronous request processing only. SQS background processing will be introduced in Q4 for production scalability.
+
 **Success Metrics**:
 - Schema specification complete with validation coverage
 - Core REST API deployed with JIRA action type
@@ -103,7 +105,7 @@ This document contains no proprietary, confidential, or sensitive organizational
 3. **Request Lifecycle Engine**
    - Request submission and validation pipeline
    - Status tracking and state management
-   - Request queuing and processing architecture
+   - Synchronous request processing (Q3: no background queuing)
    - Audit logging and correlation IDs
 
 4. **JIRA Action Framework**
@@ -217,6 +219,7 @@ This document contains no proprietary, confidential, or sensitive organizational
 ### Service Work
 - Terraform action type with infrastructure provisioning capabilities
 - Production AWS deployment with RDS, Redis, monitoring, alerting
+- SQS background processing implementation (Q4: transition from synchronous to asynchronous)
 - Fulfillment mode switching (seamless manual ↔ automated switching)
 - Performance optimization supporting 100+ concurrent requests
 
@@ -258,7 +261,7 @@ This document contains no proprietary, confidential, or sensitive organizational
 
 **Sprint 1 (Nov 4-15): Terraform Integration Foundation**
 - **Catalog Team (2 people)**: Enhance schema to support Terraform action types with repository mapping. Create Terraform action templates and validation rules.
-- **Service Team (3 people)**: Implement Terraform action execution framework with state management. Build REST API action type with authentication and retry logic.
+- **Service Team (3 people)**: Implement SQS background processing architecture (transition from synchronous to asynchronous). Implement Terraform action execution framework with state management. Build REST API action type with authentication and retry logic.
 - **DevCtl Team (2 people)**: Add retry, abort, and escalate commands. Implement Terraform-specific status tracking and log parsing.
 - **Platform Team (1 person)**: Design fulfillment mode switching strategy and create migration documentation.
 
