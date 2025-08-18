@@ -45,28 +45,6 @@ This document contains no proprietary, confidential, or sensitive organizational
 - Document minimal platform team onboarding process
 - Document catalog contribution workflows
 
-**Catalog Repository Files to Create**:
-- `.github/CODEOWNERS`
-- `.github/workflows/validate-catalog.yml`
-- `schema/catalog-item.json`
-- `schema/catalog-bundle.json`
-- `schema/common-types.json`
-- `scripts/validate-catalog.sh`
-- `scripts/validate-all.sh`
-- `scripts/test-template.sh`
-- `scripts/validate-changed.sh`
-- `scripts/integration-test.sh`
-- `tests/valid/example-catalog-item.yaml`
-- `tests/invalid/missing-required-fields.yaml`
-- `tests/invalid/invalid-naming-conventions.yaml`
-- `templates/catalog-item-template.yaml`
-- `templates/jira-action-template.yaml`
-- `catalog/compute/eks-application.yaml`
-- `catalog/databases/postgresql-standard.yaml`
-- `catalog/security/parameterstore-standard.yaml`
-- `README.md`
-- `.gitignore`
-
 ### Service Work
 - Core REST API with catalog ingestion, request submission, status tracking
 - JIRA action execution framework with variable substitution
@@ -269,34 +247,37 @@ This document contains no proprietary, confidential, or sensitive organizational
 **Internal Infrastructure Setup**:
 - **AWS Parameter Store Terraform**: Create Parameter Store paths for secret storage (JIRA tokens, GitHub tokens)
 
-**1. Foundation Setup**
-- **Catalog Work**: Create GitHub repository structure with CODEOWNERS and basic validation. Implement JSON schemas for CatalogItem and CatalogBundle with validation rules. Set up GitHub repository with branch protection and webhook configuration.
-- **Service Work**: Set up in-memory caching infrastructure. Implement core REST API framework with health endpoints. Configure JIRA integration with API tokens, project setup, and required issue types.
-- **DevCtl Work**: Initialize Go CLI project with AWS SigV4 authentication. Implement DevCtl Phase 1 foundation commands as specified in lock-step development section.
-- **Documentation Work**: Add platform team onboarding process and catalog contribution workflow sections to existing repository files (no new documentation files).
-
-**2. Core Functionality**
-- **Catalog Work**: Create 3 test YAML catalog item documents (compute-eks-containerapp.yaml, database-postgresql-standard.yaml, security-parameterstore-standard.yaml) defining JIRA action templates. Implement automated validation workflows in GitHub Actions.
-- **Service Work**: Build catalog ingestion from GitHub with validation. Implement request submission pipeline with JSONB storage and correlation ID tracking.
-- **DevCtl Work**: Implement DevCtl Phase 2 and begin Phase 4 commands as specified in lock-step development section.
-
-**3. Action Framework**
-- **Catalog Work**: Enhance validation scripts with Ruby implementation. Create comprehensive test fixtures for valid/invalid examples.
-- **Service Work**: Implement JIRA action framework with variable substitution (6+ scopes). Build status tracking and external reference management.
-- **DevCtl Work**: Complete DevCtl Phase 4 and Phase 5 commands as specified in lock-step development section.
-- **Testing Work**: Test end-to-end workflows and provide feedback for improvements.
-
-**4. Integration & Polish**
-- **Catalog Work**: Finalize templates and add governance sections to existing files. Complete integration testing with service endpoints.
-- **Service Work**: Implement error handling, retry logic, and manual escalation workflows. Complete API endpoint coverage with proper error responses.
-- **DevCtl Work**: Complete DevCtl Phase 6 with all advanced options and error handling as specified in lock-step development section.
-- **Testing Work**: Conduct user acceptance testing and gather feedback from early platform team adopters.
-
-**5. Testing & Optimization**
-- **Integration Work**: End-to-end testing of complete workflow with performance validation.
-- **Service Work**: Performance optimization and service observability implementation.
-- **DevCtl Work**: Binary compilation, distribution setup, and installation instructions as part of DevCtl Phase 6 completion.
-- **Catalog Work**: Final validation rule refinements and catalog item polish.
+- **Catalog Work**: Create GitHub repository structure with `.github/CODEOWNERS`, `.gitignore`, and `README.md`
+- **Catalog Work**: Implement JSON schemas (`schema/catalog-item.json`, `schema/catalog-bundle.json`, `schema/common-types.json`)
+- **Catalog Work**: Set up GitHub Actions workflow (`.github/workflows/validate-catalog.yml`) with branch protection
+- **Service Work**: Set up in-memory caching infrastructure
+- **Service Work**: Implement core REST API framework with health endpoints
+- **Service Work**: Configure JIRA integration with API tokens, project setup, and required issue types
+- **DevCtl Work**: Initialize Go CLI project with AWS SigV4 authentication
+- **DevCtl Work**: Implement DevCtl Phase 1 foundation commands as specified in lock-step development section
+- **Documentation Work**: Add platform team onboarding process and catalog contribution workflow sections to existing repository files (no new documentation files)
+- **Catalog Work**: Create 3 test catalog YAML files (`catalog/compute/eks-application.yaml`, `catalog/databases/postgresql-standard.yaml`, `catalog/security/parameterstore-standard.yaml`)
+- **Catalog Work**: Create initial templates (`templates/catalog-item-template.yaml`, `templates/jira-action-template.yaml`)
+- **Service Work**: Build catalog ingestion from GitHub with validation
+- **Service Work**: Implement request submission pipeline with JSONB storage and correlation ID tracking
+- **DevCtl Work**: Implement DevCtl Phase 2 and begin Phase 4 commands as specified in lock-step development section
+- **Catalog Work**: Implement validation scripts (`scripts/validate-catalog.sh`, `scripts/validate-all.sh`, `scripts/test-template.sh`, `scripts/validate-changed.sh`)
+- **Catalog Work**: Create test fixtures (`tests/valid/example-catalog-item.yaml`, `tests/invalid/missing-required-fields.yaml`, `tests/invalid/invalid-naming-conventions.yaml`)
+- **Service Work**: Implement JIRA action framework with variable substitution (6+ scopes)
+- **Service Work**: Build status tracking and external reference management
+- **DevCtl Work**: Complete DevCtl Phase 4 and Phase 5 commands as specified in lock-step development section
+- **Testing Work**: Test end-to-end workflows and provide feedback for improvements
+- **Catalog Work**: Implement integration test script (`scripts/integration-test.sh`)
+- **Catalog Work**: Finalize templates and add governance sections to existing files
+- **Catalog Work**: Complete integration testing with service endpoints
+- **Service Work**: Implement error handling, retry logic, and manual escalation workflows
+- **Service Work**: Complete API endpoint coverage with proper error responses
+- **DevCtl Work**: Complete DevCtl Phase 6 with all advanced options and error handling as specified in lock-step development section
+- **Testing Work**: Conduct user acceptance testing and gather feedback from early platform team adopters
+- **Integration Work**: End-to-end testing of complete workflow with performance validation
+- **Service Work**: Performance optimization and service observability implementation
+- **DevCtl Work**: Binary compilation, distribution setup, and installation instructions as part of DevCtl Phase 6 completion
+- **Catalog Work**: Final validation rule refinements and catalog item polish
 
 ---
 
@@ -313,84 +294,42 @@ This document contains no proprietary, confidential, or sensitive organizational
 - Automated provisioning working for EKS app, PostgreSQL, parameter store
 - 5+ platform teams can define services with automated and manual fulfillment options
 
-### Catalog Work
-- Enhanced schema supporting Terraform action types with repository mapping
-- 10+ production-ready catalog items for compute, database, storage, networking
-- Platform team migration tools and training materials
-- Complex variable templating patterns with secrets and outputs scope
-
-### Service Work
-- Terraform action type with infrastructure provisioning capabilities
-- Production EKS deployment with Aurora PostgreSQL, caching layer, monitoring, alerting
-- Background worker pool implementation (Q4: transition from synchronous to asynchronous)
-- Fulfillment mode switching (seamless manual ↔ automated switching)
-- Performance optimization supporting 100+ concurrent requests
-
-### DevCtl Work
-**Lock-Step Development**: DevCtl must deliver CLI support for ALL Q4 Service enhancements simultaneously
-
-**Enhanced Subcommands and Options for Q4**:
-
-1. **Extended Request Operations**:
-   - `request retry <request-id>` - Retry failed actions with options (--action, --force)
-   - `request abort <request-id>` - Abort failed requests with confirmation
-   - `request escalate <request-id>` - Escalate to manual support with context
-   - Enhanced `request logs` with Terraform-specific log parsing and filtering
-
-2. **Terraform Action Support**:
-   - Enhanced `request status` with Terraform plan/apply progress tracking
-   - `request terraform <request-id>` - Terraform-specific operations (--plan, --apply, --destroy)
-   - Infrastructure state viewing and validation commands
-
-3. **Batch Operations and Automation**:
-   - `request batch submit` - Bulk request submission with options (--config-dir, --parallel)
-   - `request export` - Export request data for CI/CD integration (--format, --filter)
-   - Pipeline-friendly output formats and exit codes
-
-4. **Enhanced Platform Team Tools**:
-   - `validate terraform <file>` - Terraform action validation
-   - `test automation <file>` - End-to-end automation testing
-   - `debug request <request-id>` - Advanced troubleshooting and diagnostics
-
-5. **Production Operations**:
-   - Enhanced error handling with recovery suggestions
-   - Performance monitoring commands with detailed diagnostics
-   - Advanced authentication with role assumption and cross-account support
-   - Comprehensive logging and audit trail capabilities
-
-**Epic Success Criteria**: Production platform with automated provisioning significantly reducing service delivery time and 5+ platform teams onboarded. All automated fulfillment capabilities are manageable and monitorable via DevCtl.
-
 ### Ordered Work Series
 
-**1. Terraform Integration Foundation**
-- **Catalog Work**: Enhance schema to support Terraform action types with repository mapping. Create Terraform action templates and validation rules.
-- **Service Work**: Implement background worker pool architecture (transition from synchronous to asynchronous). Implement Terraform action execution framework with state management. Build REST API action type with authentication and retry logic.
-- **DevCtl Work**: Add retry, abort, and escalate commands. Implement Terraform-specific status tracking and log parsing.
-- **Documentation Work**: Design fulfillment mode switching strategy and create migration documentation.
-
-**2. Production Infrastructure**
-- **Catalog Work**: Create 5+ production-ready catalog items with both manual and automated actions. Implement complex variable templating with secrets scope.
-- **Service Work**: Deploy production EKS infrastructure with Aurora PostgreSQL, caching layer, monitoring, and alerting. Implement fulfillment mode switching logic.
-- **DevCtl Work**: Build Terraform operation commands (plan, apply, destroy). Add batch operations and export functionality.
-- **Testing Work**: Test automated provisioning workflows and provide platform team training materials.
-
-**3. Performance & Automation**
-- **Catalog Work**: Complete 10+ catalog items across all categories. Implement platform team migration tools and training workflows.
-- **Service Work**: Performance optimization for 100+ concurrent requests. Implement advanced error handling and recovery suggestions.
-- **DevCtl Work**: Add automation testing tools and advanced debugging commands. Implement performance monitoring and detailed diagnostics.
-- **Integration Work**: Onboard first 3 platform teams and gather feedback for improvements.
-
-**4. Production Hardening**
-- **Service Work**: Production deployment hardening, security review, and compliance validation. Advanced authentication with role assumption.
-- **DevCtl Work**: Production CLI release with comprehensive logging and audit capabilities. Cross-account authentication support.
-- **Catalog Work**: Final catalog validation and governance process refinement.
-- **Testing Work**: Complete user acceptance testing with 5+ platform teams.
-
-**5. Launch & Optimization**
-- **Integration Work**: Production launch preparation and monitoring setup. Performance tuning and final optimizations.
-- **Service Work**: Production deployment and real-time monitoring setup.
-- **DevCtl Work**: CLI distribution and user documentation finalization.
-- **Catalog Work**: Platform team onboarding automation and success metric tracking.
+- **Catalog Work**: Enhance schema to support Terraform action types with repository mapping
+- **Catalog Work**: Create Terraform action templates and validation rules
+- **Service Work**: Implement background worker pool architecture (transition from synchronous to asynchronous)
+- **Service Work**: Implement Terraform action execution framework with state management
+- **Service Work**: Build REST API action type with authentication and retry logic
+- **DevCtl Work**: Add retry, abort, and escalate commands as specified in roadmap gaps
+- **DevCtl Work**: Implement Terraform-specific status tracking and log parsing
+- **Documentation Work**: Add fulfillment mode switching strategy to existing service documentation
+- **Catalog Work**: Create 5+ production-ready catalog YAML files with both manual and automated actions
+- **Catalog Work**: Implement complex variable templating with secrets scope
+- **Service Work**: Configure production infrastructure with Aurora PostgreSQL and caching layer
+- **Service Work**: Implement service observability and alerting
+- **Service Work**: Implement fulfillment mode switching logic
+- **DevCtl Work**: Build Terraform operation commands (plan, apply, destroy)
+- **DevCtl Work**: Add batch operations and export functionality
+- **Testing Work**: Test automated provisioning workflows and create platform team training materials
+- **Catalog Work**: Complete 10+ catalog YAML files across all categories
+- **Catalog Work**: Implement platform team migration tools and training workflows
+- **Service Work**: Performance optimization for 100+ concurrent requests
+- **Service Work**: Implement advanced error handling and recovery suggestions
+- **DevCtl Work**: Add automation testing tools and advanced debugging commands
+- **DevCtl Work**: Implement performance monitoring and detailed diagnostics
+- **Integration Work**: Onboard first 3 platform teams and gather feedback for improvements
+- **Service Work**: Production hardening, security review, and compliance validation
+- **Service Work**: Advanced authentication with role assumption
+- **DevCtl Work**: Production CLI release with comprehensive logging and audit capabilities
+- **DevCtl Work**: Cross-account authentication support
+- **Catalog Work**: Final catalog validation and governance process refinement
+- **Testing Work**: Complete user acceptance testing with 5+ platform teams
+- **Integration Work**: Production launch preparation and monitoring setup
+- **Integration Work**: Performance tuning and final optimizations
+- **Service Work**: Production readiness and real-time monitoring setup
+- **DevCtl Work**: CLI distribution and finalize installation instructions
+- **Catalog Work**: Platform team onboarding automation and success metric tracking
 
 ---
 
