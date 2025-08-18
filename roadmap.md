@@ -262,7 +262,7 @@ This document contains no proprietary, confidential, or sensitive organizational
 ### Ordered Work Series
 
 **External Dependencies**:
-- **Database Team Request**: PostgreSQL Aurora cluster (Multi-AZ, 50GB storage, db.t3.medium) - **2 week lead time required**
+- **Database Team Request**: PostgreSQL Aurora cluster for PAO service data storage (Multi-AZ, 50GB storage, db.t3.medium) - **2 week lead time required**
 - **JIRA Configuration**: Project PLATFORM with issue types (Task, Story, Bug), custom fields for correlation ID
 - **GitHub Repository**: platform-catalog repository with webhook endpoint configuration
 
@@ -271,12 +271,12 @@ This document contains no proprietary, confidential, or sensitive organizational
 
 **1. Foundation Setup**
 - **Catalog Work**: Create GitHub repository structure with CODEOWNERS and basic validation. Implement JSON schemas for CatalogItem and CatalogBundle with validation rules. Set up GitHub repository with branch protection and webhook configuration.
-- **Service Work**: Provision PostgreSQL Aurora cluster with IAM authentication and required schema. Set up in-memory caching infrastructure. Implement core REST API framework with health endpoints. Configure JIRA integration with API tokens, project setup, and required issue types.
+- **Service Work**: Set up in-memory caching infrastructure. Implement core REST API framework with health endpoints. Configure JIRA integration with API tokens, project setup, and required issue types.
 - **DevCtl Work**: Initialize Go CLI project with AWS SigV4 authentication. Implement global options and basic command structure.
-- **Documentation Work**: Document minimal platform team onboarding process and catalog contribution workflows.
+- **Documentation Work**: Add platform team onboarding process and catalog contribution workflow sections to existing repository files (no new documentation files).
 
 **2. Core Functionality**
-- **Catalog Work**: Complete 3 test catalog items (EKS app, PostgreSQL, parameter store) with JIRA action templates. Implement CI/CD pipeline with automated validation.
+- **Catalog Work**: Create 3 test YAML catalog item documents (compute-eks-containerapp.yaml, database-postgresql-standard.yaml, security-parameterstore-standard.yaml) defining JIRA action templates. Implement automated validation workflows in GitHub Actions.
 - **Service Work**: Build catalog ingestion from GitHub with validation. Implement request submission pipeline with JSONB storage and correlation ID tracking.
 - **DevCtl Work**: Implement `catalog list/get/refresh` commands with pagination. Build request submission commands with config file support.
 
@@ -287,16 +287,16 @@ This document contains no proprietary, confidential, or sensitive organizational
 - **Testing Work**: Test end-to-end workflows and provide feedback for improvements.
 
 **4. Integration & Polish**
-- **Catalog Work**: Finalize templates and governance documentation. Complete integration testing with service endpoints.
+- **Catalog Work**: Finalize templates and add governance sections to existing files. Complete integration testing with service endpoints.
 - **Service Work**: Implement error handling, retry logic, and manual escalation workflows. Complete API endpoint coverage with proper error responses.
 - **DevCtl Work**: Add advanced options (watch, follow-logs, filtering). Implement comprehensive error handling and user-friendly messages.
 - **Testing Work**: Conduct user acceptance testing and gather feedback from early platform team adopters.
 
-**5. Testing & Deployment**
-- **Integration Work**: End-to-end testing of complete workflow. Deploy to staging environment and conduct load testing.
-- **Service Work**: Performance optimization and monitoring setup.
-- **DevCtl Work**: Release preparation and installation documentation. CLI distribution setup.
-- **Catalog Work**: Final validation rule refinements and documentation updates.
+**5. Testing & Optimization**
+- **Integration Work**: End-to-end testing of complete workflow with performance validation.
+- **Service Work**: Performance optimization and service observability implementation.
+- **DevCtl Work**: Binary compilation and distribution preparation. Add installation instructions to DevCtl README.
+- **Catalog Work**: Final validation rule refinements and catalog item polish.
 
 ---
 

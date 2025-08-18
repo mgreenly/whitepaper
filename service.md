@@ -915,82 +915,108 @@ func (j *JIRAStatusMapping) MapToRequestStatus(jiraStatus string) RequestStatus 
 
 ### Templating Engine Architecture Recommendations
 
-**Executive Summary**: The current Mustache-based templating system requires architectural enhancements focused on core template processing concerns: variable resolution, function execution, template syntax support, and output generation.
+**Executive Summary**: The templating system should use Go template format with a three-scope variable resolution architecture: User scope (namespaced form responses), System scope (platform values), and Fulfillment scope (action execution results).
 
-**Core Templating Engine Concerns**:
-- Variable scope resolution and context management
-- Template function library and execution model
-- Template syntax parsing and validation
-- Output rendering and transformation pipeline
-- Template metadata and dependency tracking
+**Template Format Decision**: Go Template Engine
 
-**Recommendation 1: Enhanced Variable Resolution Architecture**
+**Rationale for Go Templates**:
+- Native Go template package provides robust parsing and execution
+- Built-in support for functions, conditionals, and iteration
+- Type-safe variable access with compile-time validation
+- Familiar syntax for Go-based development teams
+- Extensible function registry architecture
 
-**Pattern**: Hierarchical Scope Resolution with Context Isolation
+**Recommendation 1: Three-Scope Variable Resolution Architecture**
 
-**Variable Context Architecture**:
-- **Scope Hierarchy**: Structured variable namespace with clear precedence rules
-- **Context Isolation**: Prevent variable leakage between template executions
-- **Dynamic Scoping**: Support runtime scope injection for different action types
-- **Null Handling**: Consistent behavior for undefined variables across all scopes
+**Pattern**: Scoped Context Resolution with Namespace Isolation
 
-**Variable Scope Design**:
-- **fields**: User input from form submission with type-safe access
-- **metadata**: Catalog item properties with structured access patterns
-- **request**: Request context including user identity and correlation data
-- **system**: System-generated values with controlled generation timing
-- **environment**: Configuration values with environment-specific resolution
-- **outputs**: Action chain results with dependency-aware access
+**User Scope Architecture**:
+- **Purpose**: Contains form field responses from catalog item requests
+- **Namespace Strategy**: Prevent key collisions between form groups through qualified naming
+- **Access Pattern**: `{{.User.GroupID_FieldID}}` to ensure unique field identification
+- **Example**: `{{.User.database_instanceName}}` vs `{{.User.application_instanceName}}`
+- **Key Generation**: Concatenate group ID and field ID with underscore separator
 
-**Recommendation 2: Template Function Library Architecture**
+**System Scope Architecture**:
+- **Purpose**: Platform-provided values available to all templates
+- **Access Pattern**: `{{.System.PropertyName}}`
+- **System Values**: 
+  - `{{.System.Timestamp}}` - Current execution time
+  - `{{.System.RequestID}}` - Unique request identifier
+  - `{{.System.UserEmail}}` - Requesting user identity
+  - `{{.System.CorrelationID}}` - Audit trail correlation
+  - `{{.System.UUID}}` - Generated unique identifier
 
-**Pattern**: Modular Function Registry with Type-Safe Execution
+**Fulfillment Scope Architecture**:
+- **Purpose**: Results from completed actions in the execution chain
+- **Namespace Strategy**: Flat namespace where subsequent actions can overwrite previous values
+- **Access Pattern**: `{{.Fulfillment.KeyName}}`
+- **Update Behavior**: Each action execution adds/overwrites keys in this scope
+- **Example**: Action 1 sets `{{.Fulfillment.DatabaseHost}}`, Action 2 can overwrite or reference it
 
-**Function Library Design**:
-- **Core Functions**: Essential transformations (upper, lower, concat, replace)
-- **Data Functions**: Format conversions (json, base64, timestamp, uuid)
-- **Validation Functions**: Input validation and constraint checking
-- **Conditional Functions**: Logic operations (default, coalesce, conditional)
-- **Custom Functions**: Domain-specific transformations for platform needs
+**Recommendation 2: Go Template Function Library Architecture**
+
+**Pattern**: Custom Function Registry with Go Template Integration
+
+**Function Registration Strategy**:
+- Leverage Go template's built-in FuncMap mechanism
+- Register custom functions specific to platform automation needs
+- Maintain function naming consistency across all template contexts
+
+**Core Function Categories**:
+- **String Functions**: `upper`, `lower`, `title`, `trim`, `replace`
+- **Encoding Functions**: `base64encode`, `base64decode`, `jsonencode`, `urlencode`
+- **Generation Functions**: `uuid`, `timestamp`, `random`
+- **Validation Functions**: `required`, `matches`, `length`
+- **Platform Functions**: `slugify`, `sanitize`, `hash`
 
 **Function Execution Model**:
-- **Parameter Validation**: Type checking and constraint enforcement before execution
-- **Error Handling**: Consistent error propagation with context preservation
-- **Return Type Management**: Predictable output types for template composition
-- **Function Composition**: Support for nested function calls with proper precedence
+- Type-safe parameter validation before function execution
+- Consistent error handling with template execution context
+- Predictable return types for reliable template composition
 
-**Recommendation 3: Template Syntax and Parsing Architecture**
+**Recommendation 3: Go Template Syntax and Context Architecture**
 
-**Pattern**: Extensible Syntax Parser with Validation Pipeline
+**Pattern**: Structured Context with Type-Safe Access
+
+**Template Context Structure**:
+- Root context contains three main scope objects
+- Each scope provides typed access to its variable namespace
+- Template execution receives complete context for all variable resolution
+
+**Variable Access Patterns**:
+- **User Variables**: `{{.User.groupID_fieldID}}` with collision-safe naming
+- **System Variables**: `{{.System.PropertyName}}` with consistent system values
+- **Fulfillment Variables**: `{{.Fulfillment.KeyName}}` with flat namespace access
 
 **Template Syntax Support**:
-- **Variable References**: Standard {{scope.key}} syntax with nested object access
-- **Function Calls**: {{function(args)}} syntax with parameter passing
-- **Conditional Blocks**: {{#if condition}}...{{/if}} for dynamic content
-- **Iteration Blocks**: {{#each array}}...{{/each}} for list processing
-- **Comments**: {{! comment}} for template documentation
+- **Variables**: `{{.Scope.Key}}` for direct value access
+- **Functions**: `{{functionName .Variable}}` for transformations
+- **Conditionals**: `{{if .User.enable_ssl}}...{{end}}` for dynamic content
+- **Iteration**: `{{range .User.port_list}}...{{end}}` for array processing
+- **Pipelines**: `{{.User.app_name | upper | slugify}}` for function chaining
 
-**Parsing Architecture**:
-- **Lexical Analysis**: Token identification and classification
-- **Syntax Validation**: Structure verification and error reporting
-- **Dependency Extraction**: Variable and function reference identification
-- **AST Generation**: Abstract syntax tree for optimized execution
+**Recommendation 4: Template Execution and Context Management Architecture**
 
-**Recommendation 4: Template Output Generation Architecture**
+**Pattern**: Immutable Context with Controlled Updates
 
-**Pattern**: Streaming Renderer with Transformation Pipeline
+**Context Construction**:
+- Build complete context object before template execution
+- User scope populated from form submission with namespace-safe keys
+- System scope populated with current execution context values
+- Fulfillment scope populated from previous action results
 
-**Output Generation Pipeline**:
-- **Template Rendering**: Convert template AST to output string
-- **Content Transformation**: Apply post-processing transformations
-- **Encoding Management**: Handle character encoding and escaping
-- **Size Management**: Control output size and truncation behavior
+**Context Update Strategy**:
+- User scope remains immutable throughout request execution
+- System scope remains immutable throughout request execution  
+- Fulfillment scope updated after each action completion
+- New template executions receive updated fulfillment context
 
-**Rendering Strategy**:
-- **Incremental Rendering**: Process template sections independently
-- **Error Recovery**: Continue rendering when non-critical errors occur
-- **Output Buffering**: Efficient memory management for large templates
-- **Content Validation**: Verify output meets expected format requirements
+**Template Execution Flow**:
+- Parse and validate template syntax during catalog ingestion
+- Construct execution context from current request state
+- Execute template with complete three-scope context
+- Return rendered output for action execution
 
 **Implementation Priority and Impact Assessment**:
 
