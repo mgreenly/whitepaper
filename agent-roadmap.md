@@ -33,6 +33,21 @@ Use the `date` cli tool to get today's date.
   * You have been permission to modify roadmap.md
   * You have been permission to modify agent-roadmap.md
 
+## Critical Development Principle: DevCtl Lock-Step Development
+
+**IMPORTANT**: DevCtl must move in lock-step with all Service and Catalog development. This means:
+
+- **Q3 Requirement**: Every Service API endpoint and Catalog feature developed in Q3 must have corresponding DevCtl commands available for testing and verification
+- **Q4 Requirement**: All Q4 Service enhancements (Terraform actions, automated fulfillment, production features) must have DevCtl support delivered simultaneously
+- **No Feature Lag**: DevCtl cannot lag behind Service development - both teams must coordinate to ensure feature parity at all milestones
+- **Testing Dependency**: Service features cannot be considered complete until they are testable via DevCtl
+
+This lock-step approach ensures that:
+1. Platform teams can immediately test and validate new catalog items
+2. Developers have CLI access to all platform capabilities
+3. CI/CD pipelines can leverage DevCtl for automation
+4. No functionality is stranded without tooling support
+
 ## Actions
 
   * After reading this file wait for instructions.

@@ -306,7 +306,7 @@ fields:
 
 ## Action Types
 
-**Current Implementation**: The Q3 2025 Foundation Epic supports JIRA and REST API action types. Additional action types (Terraform, GitHub Workflows, Webhooks) are planned for future releases.
+**Current Implementation**: The Q3 2025 Foundation Epic supports JIRA and REST API action types. Additional action types (Terraform, GitHub Workflows) are planned for future releases.
 
 ### 1. JIRA Ticket
 
@@ -384,7 +384,6 @@ config:
 The following action types are planned for Q4 2025 and beyond:
 - **Terraform**: Infrastructure provisioning via `.tf` template generation
 - **GitHub Workflow**: Trigger GitHub Actions for complex automation
-- **Webhook**: Generic webhook invocation for external system integration
 - **AWS Lambda**: Direct Lambda function invocation
 - **CloudFormation**: AWS stack provisioning
 
@@ -810,7 +809,6 @@ Before a platform team can contribute to the catalog, they must:
    - Have a dedicated JIRA project or shared project with appropriate permissions
    - Define standard issue types (Task, Story, Bug) 
    - Configure any custom fields needed for their services
-   - Set up webhook to PAO service for status updates
 
 2. **GitHub Access**
    - Request addition to appropriate GitHub team

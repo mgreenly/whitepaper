@@ -74,12 +74,6 @@ POST   /api/v1/preview/form                      # Preview form generation
 POST   /api/v1/test/variables                    # Test variable substitution
 ```
 
-**Integration Webhooks**
-```http
-POST   /api/v1/webhooks/github                   # GitHub events
-POST   /api/v1/webhooks/jira                     # JIRA status updates
-POST   /api/v1/webhooks/terraform                # Terraform notifications
-```
 
 ### Authentication & Authorization
 
@@ -128,21 +122,19 @@ All list endpoints that return multiple items use cursor-based pagination with t
 ### Service Components
 
 **Catalog Management Engine**
-- GitHub repository integration with webhook processing
+- GitHub repository integration with polling
 - Schema validation and error reporting
 - Multi-tier caching (Redis + PostgreSQL)
 - CODEOWNERS enforcement for governance
 
 ### GitHub Catalog Integration
 
-**Webhook Processing Pipeline**:
-1. **Event Reception**: GitHub webhook received at `/api/v1/webhooks/github`
-2. **Security Validation**: HMAC signature verification using shared secret
-3. **Event Filtering**: Process only `push` events to `main` branch affecting `/catalog/` directory
-4. **Change Detection**: Identify added, modified, or deleted catalog files
-5. **Validation Pipeline**: Schema validation for all changed files
-6. **Cache Invalidation**: Remove stale entries from Redis and update PostgreSQL
-7. **Notification**: Send status updates via webhook or notification channels
+**Catalog Update Processing**:
+1. **Periodic Polling**: Regular polling of GitHub repository for changes
+2. **Change Detection**: Identify added, modified, or deleted catalog files
+3. **Validation Pipeline**: Schema validation for all changed files
+4. **Cache Invalidation**: Remove stale entries from Redis and update PostgreSQL
+5. **Notification**: Send status updates via notification channels
 
 **Catalog File Processing**:
 ```go
@@ -265,10 +257,10 @@ type RequestState struct {
 3. **Action Execution**: Sequential execution of catalog-defined actions
 4. **State Persistence**: Each action result stored in database
 5. **Error Handling**: Failed actions trigger manual intervention workflow
-6. **Status Updates**: Real-time status updates via WebSocket or polling
+6. **Status Updates**: Status updates via polling
 
 **Multi-Action Fulfillment Engine**
-- 5+ action types: JIRA, REST API, Terraform, GitHub workflows, webhooks
+- 4+ action types: JIRA, REST API, Terraform, GitHub workflows
 - Sequential execution with dependency management
 - Retry logic with exponential backoff
 - No automatic error recovery; failures stop execution and require manual intervention
@@ -289,7 +281,7 @@ type RequestState struct {
 - JSONB support for flexible state storage
 
 **External Integrations**
-- GitHub/GitLab webhooks
+- GitHub/GitLab APIs
 - JIRA REST API
 - Terraform Cloud API
 - HashiCorp Vault (secrets)
@@ -415,7 +407,6 @@ fields:
 2. **REST API Integration**: HTTP calls with OAuth2/API key authentication
 3. **Terraform Configuration**: Infrastructure provisioning with repository mapping
 4. **GitHub Workflow Dispatch**: GitHub Actions integration with status monitoring
-5. **Webhook Invocation**: HMAC-secured webhooks for system notifications
 
 **Error Handling**: All action types use limited retry logic. When any action fails after retries, execution stops and the request status is marked as failed, requiring manual review and intervention.
 
@@ -444,7 +435,7 @@ jira:
 2. **Instance Selection**: Route to appropriate JIRA instance based on catalog configuration
 3. **Ticket Creation**: POST to JIRA REST API with error handling and validation
 4. **Status Tracking**: Store ticket key and URL for future reference
-5. **Webhook Registration**: Optional webhook setup for status updates
+5. **Status Polling**: Regular polling for status updates
 
 **Template Variable Processing**:
 ```yaml
@@ -464,9 +455,8 @@ ticket:
     {{/each}}
 ```
 
-**Status Polling & Webhook Handling**:
+**Status Polling**:
 - Periodic polling every 5 minutes for ticket status changes
-- Webhook endpoint `/api/v1/webhooks/jira` for real-time updates
 - Status mapping: `Open → In Progress`, `Done → Completed`, `Won't Do → Failed`
 - JIRA comment posting for request updates and error context
 
@@ -584,12 +574,11 @@ config:
 **Action Type Implementation**
 - JIRA ticket creation with variable substitution
 - REST API calls with authentication
-- Webhook invocation
 - GitHub workflow dispatch
 - Terraform configuration management
 
 **Infrastructure Components**
-- GitHub repository integration with webhooks
+- GitHub repository integration with polling
 - Catalog caching (ElastiCache Redis)
 - Request state tracking (RDS PostgreSQL)
 - Lambda deployment with health checks
@@ -697,8 +686,8 @@ functions:
     memory: 512
     
   catalog-processor:
-    purpose: "Process GitHub webhook events for catalog updates"
-    events: ["github.push", "github.pull_request"]
+    purpose: "Process GitHub repository polling for catalog updates"
+    events: ["schedule.rate(5 minutes)"]
     timeout: 120
     memory: 256
     
@@ -710,7 +699,7 @@ functions:
     
   status-updater:
     purpose: "Handle external system status updates"
-    events: ["jira.webhook", "terraform.callback"]
+    events: ["schedule.rate(5 minutes)"]
     timeout: 60
     memory: 256
 ```
@@ -772,7 +761,6 @@ alerting:
 ```bash
 DATABASE_URL=postgresql://user:pass@host:5432/pao
 REDIS_CLUSTER_ENDPOINT=xxx.cache.amazonaws.com:6379
-GITHUB_WEBHOOK_SECRET=xxx
 JIRA_API_TOKEN=xxx
 AWS_SECRETS_MANAGER_REGION=us-east-1
 RDS_PROXY_ENDPOINT=pao-rds-proxy.cluster-xxxxx.us-east-1.rds.amazonaws.com
@@ -791,14 +779,12 @@ functions:
       DATABASE_URL: ${ssm:/pao/database-url}
       REDIS_CLUSTER_ENDPOINT: ${ssm:/pao/redis-endpoint}
   
-  webhook_processor:
+  catalog_processor:
     runtime: go1.x
     memory: 256
     timeout: 60
     events:
-      - eventBridge:
-          pattern:
-            source: ["github.webhook"]
+      - schedule: rate(5 minutes)
 ```
 
 ## Performance & Success Metrics
@@ -856,15 +842,12 @@ functions:
       FUNCTION_TYPE: api
     reservedConcurrency: 100
     
-  webhook-processor:
-    handler: bin/webhook
+  catalog-processor:
+    handler: bin/catalog
     events:
-      - eventBridge:
-          pattern:
-            source: ["github.webhook"]
-            detail-type: ["Repository Event"]
+      - schedule: rate(5 minutes)
     environment:
-      FUNCTION_TYPE: webhook
+      FUNCTION_TYPE: catalog
     
   request-processor:
     handler: bin/processor

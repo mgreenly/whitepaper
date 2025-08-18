@@ -57,7 +57,7 @@ This document contains no proprietary, confidential, or sensitive organizational
 - Variable substitution system supporting 6+ scopes (fields, metadata, request, system, environment, outputs)
 - PostgreSQL database schema for requests and audit logging
 
-**Required API Endpoints (20 total)**:
+**Required API Endpoints (17 total)**:
 
 *Core User Journey (16 endpoints)*:
 - `/api/v1/catalog` - Browse available services
@@ -82,11 +82,8 @@ This document contains no proprietary, confidential, or sensitive organizational
 - `/api/v1/preview/form` - Preview form generation
 - `/api/v1/test/variables` - Test variable substitution
 
-*System Integration (4 endpoints)*:
+*System Integration (1 endpoint)*:
 - `/api/v1/metrics` - Prometheus metrics
-- `/api/v1/webhooks/github` - GitHub events
-- `/api/v1/webhooks/jira` - JIRA status updates
-- `/api/v1/webhooks/terraform` - Terraform notifications
 
 **Service Team Implementation Tasks**:
 1. **Core Infrastructure Setup**
@@ -126,12 +123,16 @@ This document contains no proprietary, confidential, or sensitive organizational
    - Health checks and metrics export
 
 ### DevCtl Team Focus
-- Developer portal with dynamic form generation from catalog schema
-- Request tracking and JIRA ticket status display
-- AWS IAM authentication integration
-- Basic CLI for catalog browsing and request submission
+**Lock-Step Development**: DevCtl must deliver CLI support for ALL Q3 Service and Catalog features simultaneously
 
-**Epic Success Criteria**: Developers can request EKS app + PostgreSQL + parameter store through portal/CLI and receive JIRA tickets with proper variable substitution
+- CLI commands for all 20 Service API endpoints (catalog browsing, request operations, health checks, platform team tools)
+- Dynamic form generation and request submission with real-time validation
+- Request tracking with status monitoring and log streaming capabilities
+- AWS IAM authentication integration with SigV4 signing
+- Platform team validation tools (catalog-item validation, form preview, variable testing)
+- Integration testing capabilities for Service API verification
+
+**Epic Success Criteria**: Developers can request EKS app + PostgreSQL + parameter store through CLI and receive JIRA tickets with proper variable substitution. All Service API endpoints are accessible and testable via DevCtl commands.
 
 ---
 
@@ -139,13 +140,13 @@ This document contains no proprietary, confidential, or sensitive organizational
 
 **Epic Goal**: Add automated fulfillment to proven manual workflows
 
-**Value Delivered**: Developers can request services and receive automated provisioning (Terraform, REST API, webhooks) while platform teams maintain manual fallback
+**Value Delivered**: Developers can request services and receive automated provisioning (Terraform, REST API) while platform teams maintain manual fallback
 
 **Success Metrics**:
 - Production AWS deployment with monitoring, alerting, and high availability
-- Test catalog items enhanced with automated actions (Terraform, REST API, webhooks)
+- Test catalog items enhanced with automated actions (Terraform, REST API)
 - Fulfillment mode switching operational (manual ↔ automated)
-- <1 hour automated provisioning time for EKS app, PostgreSQL, parameter store
+- Automated provisioning working for EKS app, PostgreSQL, parameter store
 - 5+ platform teams can define services with automated and manual fulfillment options
 
 ### Catalog Focus
@@ -161,9 +162,13 @@ This document contains no proprietary, confidential, or sensitive organizational
 - Performance optimization supporting 100+ concurrent requests
 
 ### DevCtl Team Focus
-- Advanced portal features supporting Terraform action tracking and logs
-- CLI automation capabilities for batch operations and CI/CD integration
-- Self-service tools for platform teams (validation, testing, troubleshooting)
-- Documentation integration with auto-generated API docs
+**Lock-Step Development**: DevCtl must deliver CLI support for ALL Q4 Service enhancements simultaneously
 
-**Epic Success Criteria**: Production platform reducing single service provisioning from weeks to <1 hour with 5+ platform teams onboarded
+- Advanced CLI features for Terraform action tracking, logs, and automated fulfillment monitoring
+- Batch operations and CI/CD integration capabilities for automated provisioning workflows
+- Enhanced platform team tools supporting automated action testing and troubleshooting
+- Production-ready CLI with comprehensive error handling and recovery operations
+- Advanced authentication and authorization features matching Service capabilities
+- Performance monitoring and metrics collection CLI commands
+
+**Epic Success Criteria**: Production platform with automated provisioning significantly reducing service delivery time and 5+ platform teams onboarded. All automated fulfillment capabilities are manageable and monitorable via DevCtl.
