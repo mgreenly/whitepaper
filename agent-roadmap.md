@@ -32,8 +32,8 @@ Use the `date '+%Y-%m-%d %H:%M:%S %z (%Z)'` command to get today's date and time
   * read and evaluate @CLAUDE.md
   * You can only modify the files; roadmap.md and agent-roadmap.md
   * when I refernece "this document" or "the document" I am refering to roadmap.md
-  * You have been permission to modify roadmap.md
-  * You have been permission to modify agent-roadmap.md
+  * You have permission to modify roadmap.md
+  * You have permission to modify agent-roadmap.md
 
 ## Critical Development Principle: DevCtl Lock-Step Development
 

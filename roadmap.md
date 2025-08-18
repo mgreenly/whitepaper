@@ -10,7 +10,7 @@ This document contains no proprietary, confidential, or sensitive organizational
 - [Q4 2025: Production Epic](#q4-2025-production-epic)
 - [Future Work Beyond Q4 2025](#future-work-beyond-q4-2025)
 
-*Last Updated: 2025-08-18 02:55:47 +0000 (UTC)*
+*Last Updated: 2025-08-18 03:09:12 +0000 (UTC)*
 
 ## Q3 2025: Foundation Epic 🚧 CURRENT (Aug-Oct)
 
@@ -30,7 +30,8 @@ This document contains no proprietary, confidential, or sensitive organizational
 - Complete CatalogItem schema specification with validation rules
 - GitHub repository with CI/CD, CODEOWNERS enforcement, automated validation
 - Test catalog items: EKS app, PostgreSQL database, parameter store (all JIRA fulfillment)
-- Minimal governance model and platform team contribution workflows
+- Document minimal platform team onboarding process
+- Document catalog contribution workflows
 
 **Catalog Repository Files to Create**:
 - `.github/CODEOWNERS`
@@ -162,44 +163,42 @@ This document contains no proprietary, confidential, or sensitive organizational
 
 **Epic Success Criteria**: Developers can request EKS app + PostgreSQL + parameter store through CLI and receive JIRA tickets with proper variable substitution. All Service API endpoints are accessible and testable via DevCtl commands.
 
-### Sprint Planning
+### Ordered Work Series
 
-**Sprint 1 (Aug 18-29): Foundation Setup**
-- **Catalog Work**: Create GitHub repository structure with CODEOWNERS and basic validation. Implement JSON schemas for CatalogItem and CatalogBundle with validation rules. Set up GitHub repository with branch protection and webhook configuration.
-- **Service Work**: Provision PostgreSQL Aurora cluster with IAM authentication and required schema. Set up in-memory caching infrastructure. Implement core REST API framework with health endpoints. Configure JIRA integration with API tokens, project setup, and required issue types.
-- **DevCtl Work**: Initialize Go CLI project with AWS SigV4 authentication. Implement global options and basic command structure.
-- **Governance Work**: Define governance model and platform team contribution workflows.
-
-**External Dependencies (Sprint 1)**:
-- **AWS Infrastructure**: PostgreSQL Aurora cluster (Multi-AZ, 50GB storage, db.t3.medium)
-- **Caching Infrastructure**: In-memory caching layer for performance optimization
+**External Dependencies**:
+- **Database Team Request**: PostgreSQL Aurora cluster (Multi-AZ, 50GB storage, db.t3.medium) - **2 week lead time required**
+- **Self-Managed Setup**: AWS Parameter Store configuration for secret storage paths (JIRA tokens, GitHub tokens)
 - **JIRA Configuration**: Project PLATFORM with issue types (Task, Story, Bug), custom fields for correlation ID
 - **GitHub Repository**: platform-catalog repository with webhook endpoint configuration
-- **AWS Parameter Store**: Secret storage paths for JIRA tokens and GitHub tokens
 
-**Risk Planning (1 day)**:
+**Risk Planning**:
 - Identify top 5 risks and mitigation strategies
 - Create dependency tracking and escalation procedures
 
-**Sprint 2 (Sep 2-13): Core Functionality**
+**1. Foundation Setup**
+- **Catalog Work**: Create GitHub repository structure with CODEOWNERS and basic validation. Implement JSON schemas for CatalogItem and CatalogBundle with validation rules. Set up GitHub repository with branch protection and webhook configuration.
+- **Service Work**: Provision PostgreSQL Aurora cluster with IAM authentication and required schema. Set up in-memory caching infrastructure. Implement core REST API framework with health endpoints. Configure JIRA integration with API tokens, project setup, and required issue types.
+- **DevCtl Work**: Initialize Go CLI project with AWS SigV4 authentication. Implement global options and basic command structure.
+- **Documentation Work**: Document minimal platform team onboarding process and catalog contribution workflows.
+
+**2. Core Functionality**
 - **Catalog Work**: Complete 3 test catalog items (EKS app, PostgreSQL, parameter store) with JIRA action templates. Implement CI/CD pipeline with automated validation.
 - **Service Work**: Build catalog ingestion from GitHub with validation. Implement request submission pipeline with JSONB storage and correlation ID tracking.
 - **DevCtl Work**: Implement `catalog list/get/refresh` commands with pagination. Build request submission commands with config file support.
-- **Documentation Work**: Create platform team onboarding documentation and testing workflows.
 
-**Sprint 3 (Sep 16-27): Action Framework**
+**3. Action Framework**
 - **Catalog Work**: Enhance validation scripts with Ruby implementation. Create comprehensive test fixtures for valid/invalid examples.
 - **Service Work**: Implement JIRA action framework with variable substitution (6+ scopes). Build status tracking and external reference management.
 - **DevCtl Work**: Complete request management commands (list, get, status, logs). Implement platform team validation tools.
 - **Testing Work**: Test end-to-end workflows and provide feedback for improvements.
 
-**Sprint 4 (Sep 30-Oct 11): Integration & Polish**
+**4. Integration & Polish**
 - **Catalog Work**: Finalize templates and governance documentation. Complete integration testing with service endpoints.
 - **Service Work**: Implement error handling, retry logic, and manual escalation workflows. Complete API endpoint coverage with proper error responses.
 - **DevCtl Work**: Add advanced options (watch, follow-logs, filtering). Implement comprehensive error handling and user-friendly messages.
 - **Testing Work**: Conduct user acceptance testing and gather feedback from early platform team adopters.
 
-**Sprint 5 (Oct 14-25): Testing & Deployment**
+**5. Testing & Deployment**
 - **Integration Work**: End-to-end testing of complete workflow. Deploy to staging environment and conduct load testing.
 - **Service Work**: Performance optimization and monitoring setup.
 - **DevCtl Work**: Release preparation and installation documentation. CLI distribution setup.
@@ -267,33 +266,33 @@ This document contains no proprietary, confidential, or sensitive organizational
 
 **Epic Success Criteria**: Production platform with automated provisioning significantly reducing service delivery time and 5+ platform teams onboarded. All automated fulfillment capabilities are manageable and monitorable via DevCtl.
 
-### Sprint Planning
+### Ordered Work Series
 
-**Sprint 1 (Nov 4-15): Terraform Integration Foundation**
+**1. Terraform Integration Foundation**
 - **Catalog Work**: Enhance schema to support Terraform action types with repository mapping. Create Terraform action templates and validation rules.
 - **Service Work**: Implement background worker pool architecture (transition from synchronous to asynchronous). Implement Terraform action execution framework with state management. Build REST API action type with authentication and retry logic.
 - **DevCtl Work**: Add retry, abort, and escalate commands. Implement Terraform-specific status tracking and log parsing.
 - **Documentation Work**: Design fulfillment mode switching strategy and create migration documentation.
 
-**Sprint 2 (Nov 18-29): Production Infrastructure**
+**2. Production Infrastructure**
 - **Catalog Work**: Create 5+ production-ready catalog items with both manual and automated actions. Implement complex variable templating with secrets scope.
 - **Service Work**: Deploy production EKS infrastructure with Aurora PostgreSQL, caching layer, monitoring, and alerting. Implement fulfillment mode switching logic.
 - **DevCtl Work**: Build Terraform operation commands (plan, apply, destroy). Add batch operations and export functionality.
 - **Testing Work**: Test automated provisioning workflows and provide platform team training materials.
 
-**Sprint 3 (Dec 2-13): Performance & Automation**
+**3. Performance & Automation**
 - **Catalog Work**: Complete 10+ catalog items across all categories. Implement platform team migration tools and training workflows.
 - **Service Work**: Performance optimization for 100+ concurrent requests. Implement advanced error handling and recovery suggestions.
 - **DevCtl Work**: Add automation testing tools and advanced debugging commands. Implement performance monitoring and detailed diagnostics.
 - **Integration Work**: Onboard first 3 platform teams and gather feedback for improvements.
 
-**Sprint 4 (Dec 16-Jan 3): Production Hardening**
+**4. Production Hardening**
 - **Service Work**: Production deployment hardening, security review, and compliance validation. Advanced authentication with role assumption.
 - **DevCtl Work**: Production CLI release with comprehensive logging and audit capabilities. Cross-account authentication support.
 - **Catalog Work**: Final catalog validation and governance process refinement.
 - **Testing Work**: Complete user acceptance testing with 5+ platform teams.
 
-**Sprint 5 (Jan 6-17): Launch & Optimization**
+**5. Launch & Optimization**
 - **Integration Work**: Production launch preparation and monitoring setup. Performance tuning and final optimizations.
 - **Service Work**: Production deployment and real-time monitoring setup.
 - **DevCtl Work**: CLI distribution and user documentation finalization.
@@ -304,3 +303,46 @@ This document contains no proprietary, confidential, or sensitive organizational
 ## Future Work Beyond Q4 2025
 
 Potential areas for future platform evolution include multi-cloud support, enterprise marketplace, AI-powered automation, and advanced compliance frameworks.
+
+**Future Problems (Not Addressed in Q3/Q4)**:
+- Change management process for schema updates
+- User feedback collection mechanism
+
+---
+
+## Proposals
+
+### Database Schema Design Approach
+
+**Proposal**: Use a hybrid approach combining structured tables for core request tracking with JSONB columns for flexible action configuration and user input data. This provides both query performance for status tracking and flexibility for diverse catalog item requirements.
+
+**Rationale**: 
+- Structured columns (request_id, status, created_at) enable efficient indexing and querying
+- JSONB columns (request_data, action_config, error_context) provide schema flexibility
+- PostgreSQL JSONB performance and indexing capabilities support complex queries when needed
+
+### Error Handling Strategy Across Components
+
+**Proposal**: Implement a three-tier error handling strategy:
+1. **Component-Level**: Each component (Catalog, Service, DevCtl) handles its domain-specific errors with appropriate recovery
+2. **Integration-Level**: Standardized error codes and correlation IDs for cross-component error tracking
+3. **User-Level**: Consistent error formatting and actionable error messages across all interfaces
+
+**Rationale**: 
+- Enables independent component development while maintaining integration coherence
+- Correlation IDs provide end-to-end traceability for debugging
+- Standardized error codes enable DevCtl to provide intelligent error handling and suggestions
+
+### Variable Substitution Implementation Approach
+
+**Proposal**: Use a template engine with explicit scoping and validation phases:
+1. **Parse Phase**: Extract all variable references and validate syntax
+2. **Scope Resolution**: Validate all variables can be resolved within available scopes
+3. **Substitution Phase**: Apply template engine with validated context data
+4. **Post-Processing**: Apply transformation functions (upper, lower, concat, etc.)
+
+**Rationale**:
+- Pre-validation prevents runtime template failures
+- Explicit scoping prevents accidental data leakage between contexts
+- Transformation functions provide necessary flexibility for different action types
+- Clear separation of concerns enables easier testing and debugging
