@@ -7,10 +7,22 @@ This document contains no proprietary, confidential, or sensitive organizational
 ## Table of Contents
 
 - [Q3 2025: Foundation Epic](#q3-2025-foundation-epic)
+  - [Catalog Work](#catalog-work)
+  - [Service Work](#service-work)
+  - [DevCtl Work](#devctl-work)
+  - [Ordered Work Series](#ordered-work-series)
 - [Q4 2025: Production Epic](#q4-2025-production-epic)
+  - [Catalog Work](#catalog-work-1)
+  - [Service Work](#service-work-1)
+  - [DevCtl Work](#devctl-work-1)
+  - [Ordered Work Series](#ordered-work-series-1)
 - [Future Work Beyond Q4 2025](#future-work-beyond-q4-2025)
+- [Proposals](#proposals)
+  - [Database Schema Design Approach](#database-schema-design-approach)
+  - [Error Handling Strategy Across Components](#error-handling-strategy-across-components)
+  - [Variable Substitution Implementation Approach](#variable-substitution-implementation-approach)
 
-*Last Updated: 2025-08-18 03:12:43 +0000 (UTC)*
+*Last Updated: 2025-08-18 03:41:46 +0000 (UTC)*
 
 ## Q3 2025: Foundation Epic 🚧 CURRENT (Aug-Oct)
 
