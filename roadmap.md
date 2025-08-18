@@ -7,46 +7,31 @@ This document contains no proprietary, confidential, or sensitive organizational
 ## Table of Contents
 
 - [Q3 2025: Foundation Epic](#q3-2025-foundation-epic)
-  - [Catalog Work](#catalog-work)
-  - [Service Work](#service-work)
-  - [DevCtl Work](#devctl-work)
-  - [Ordered Work Series](#ordered-work-series)
 - [Q4 2025: Production Epic](#q4-2025-production-epic)
-  - [Catalog Work](#catalog-work-1)
-  - [Service Work](#service-work-1)
-  - [DevCtl Work](#devctl-work-1)
-  - [Ordered Work Series](#ordered-work-series-1)
 - [Future Work Beyond Q4 2025](#future-work-beyond-q4-2025)
-- [Proposals](#proposals)
-  - [Database Schema Design Approach](#database-schema-design-approach)
-  - [Error Handling Strategy Across Components](#error-handling-strategy-across-components)
-  - [Variable Substitution Implementation Approach](#variable-substitution-implementation-approach)
 
-*Last Updated: 2025-08-18 03:45:58 +0000 (UTC)*
+*Last Updated: 2025-08-18 03:12:43 +0000 (UTC)*
 
 ## Q3 2025: Foundation Epic 🚧 CURRENT (Aug-Oct)
 
-**Epic Goal**: Define and implement working foundation with manual JIRA fulfillment
-
-**Primary Deliverable**: Complete technical specifications and concrete implementations that enable end-to-end workflow
+**Epic Goal**: Establish working foundation with manual JIRA fulfillment
 
 **Value Delivered**: Platform teams define services in the catalog, users request services, and fulfillment occurs through JIRA actions
 
 **Note**: Q3 uses synchronous request processing only. SQS background processing will be introduced in Q4 for production scalability.
 
-**Critical Foundation Work**: Q3 establishes ALL core technical specifications that enable Q4 automated provisioning. This includes concrete JSON schemas, database designs, API contracts, and variable substitution rules that will support future Terraform and REST API actions.
-
 **Success Metrics**:
-- **Technical Specifications Complete**: JSON schemas, database design, API specifications, variable substitution rules all defined and validated
-- **Working Implementation**: Core REST API deployed with JIRA action type and full end-to-end functionality
-- **Concrete Test Cases**: EKS app, PostgreSQL database, parameter store catalog items working with JIRA fulfillment
-- **Validated Workflow**: Developers can submit requests via DevCtl and Platform Teams receive properly formatted JIRA tickets with variable substitution
+- Schema specification complete with validation coverage
+- Core REST API deployed with JIRA action type
+- Test catalog items working: EKS app, PostgreSQL database, parameter store for secrets (all JIRA fulfillment)
+- Developers can submit requests and Platform Teams receive properly formatted JIRA tickets
 
 ### Catalog Work
-- **Define**: Complete CatalogItem and CatalogBundle JSON schema specifications with comprehensive validation rules
-- **Implement**: GitHub repository with CI/CD, CODEOWNERS enforcement, automated validation scripts
-- **Validate**: Test catalog items (EKS app, PostgreSQL database, parameter store) with working JIRA fulfillment
-- **Document**: Platform team onboarding process and catalog contribution workflows
+- Complete CatalogItem schema specification with validation rules
+- GitHub repository with CI/CD, CODEOWNERS enforcement, automated validation
+- Test catalog items: EKS app, PostgreSQL database, parameter store (all JIRA fulfillment)
+- Document minimal platform team onboarding process
+- Document catalog contribution workflows
 
 **Catalog Repository Files to Create**:
 - `.github/CODEOWNERS`
@@ -71,10 +56,10 @@ This document contains no proprietary, confidential, or sensitive organizational
 - `.gitignore`
 
 ### Service Work
-- **Define**: PostgreSQL database schema, API specifications, JIRA integration architecture, variable substitution system (6+ scopes)
-- **Implement**: Core REST API with catalog ingestion, request submission, status tracking
-- **Integrate**: JIRA action execution framework with complete variable substitution
-- **Validate**: All 19 API endpoints working with proper error handling and audit logging
+- Core REST API with catalog ingestion, request submission, status tracking
+- JIRA action execution framework with variable substitution
+- Variable substitution system supporting 6+ scopes (fields, metadata, request, system, environment, outputs)
+- PostgreSQL database schema for requests and audit logging
 
 **Required API Endpoints (19 total)**:
 
@@ -180,34 +165,40 @@ This document contains no proprietary, confidential, or sensitive organizational
 
 ### Ordered Work Series
 
-**Step 0 (Immediate)**: Request Aurora cluster from database team (2 week lead time)
-- **Database Team Request**: Submit request for PostgreSQL Aurora cluster (Multi-AZ, 50GB storage, db.t3.medium)
-
 **External Dependencies**:
+- **Database Team Request**: PostgreSQL Aurora cluster (Multi-AZ, 50GB storage, db.t3.medium) - **2 week lead time required**
 - **Self-Managed Setup**: AWS Parameter Store configuration for secret storage paths (JIRA tokens, GitHub tokens)
 - **JIRA Configuration**: Project PLATFORM with issue types (Task, Story, Bug), custom fields for correlation ID
+- **GitHub Repository**: platform-catalog repository with webhook endpoint configuration
 
-**Step 1: Foundation Setup**
-- **Catalog Work**: GitHub repository setup (must complete first) - Create repository structure with CODEOWNERS, basic validation, JSON schemas for CatalogItem and CatalogBundle, branch protection and webhook configuration
-- **Documentation Work**: Process documentation (can happen in parallel) - Document minimal platform team onboarding process and catalog contribution workflows
+**1. Foundation Setup**
+- **Catalog Work**: Create GitHub repository structure with CODEOWNERS and basic validation. Implement JSON schemas for CatalogItem and CatalogBundle with validation rules. Set up GitHub repository with branch protection and webhook configuration.
+- **Service Work**: Provision PostgreSQL Aurora cluster with IAM authentication and required schema. Set up in-memory caching infrastructure. Implement core REST API framework with health endpoints. Configure JIRA integration with API tokens, project setup, and required issue types.
+- **DevCtl Work**: Initialize Go CLI project with AWS SigV4 authentication. Implement global options and basic command structure.
+- **Documentation Work**: Document minimal platform team onboarding process and catalog contribution workflows.
 
-**Step 2: Database & Core Service (after Aurora is ready)**
-- **Service Work**: Database schema, core API framework, JIRA integration - Complete database schema setup with IAM authentication, implement core REST API framework with health endpoints, configure JIRA integration with API tokens and required issue types, set up in-memory caching infrastructure
+**2. Core Functionality**
+- **Catalog Work**: Complete 3 test catalog items (EKS app, PostgreSQL, parameter store) with JIRA action templates. Implement CI/CD pipeline with automated validation.
+- **Service Work**: Build catalog ingestion from GitHub with validation. Implement request submission pipeline with JSONB storage and correlation ID tracking.
+- **DevCtl Work**: Implement `catalog list/get/refresh` commands with pagination. Build request submission commands with config file support.
 
-**Step 3: CLI Development**
-- **DevCtl Work**: Now that Service APIs exist, build CLI commands to test them - Initialize Go CLI project with AWS SigV4 authentication, implement global options and basic command structure, implement `catalog list/get/refresh` commands with pagination, build request submission commands with config file support
+**3. Action Framework**
+- **Catalog Work**: Enhance validation scripts with Ruby implementation. Create comprehensive test fixtures for valid/invalid examples.
+- **Service Work**: Implement JIRA action framework with variable substitution (6+ scopes). Build status tracking and external reference management.
+- **DevCtl Work**: Complete request management commands (list, get, status, logs). Implement platform team validation tools.
+- **Testing Work**: Test end-to-end workflows and provide feedback for improvements.
 
-**Step 4: Integration**
-- **Catalog Work**: Test catalog items (needs both Service and DevCtl working) - Complete 3 test catalog items (EKS app, PostgreSQL, parameter store) with JIRA action templates, implement CI/CD pipeline with automated validation, enhance validation scripts with Ruby implementation
-- **Service Work**: Complete API endpoints - Build catalog ingestion from GitHub with validation, implement request submission pipeline with JSONB storage and correlation ID tracking, implement JIRA action framework with variable substitution (6+ scopes), build status tracking and external reference management, implement error handling and retry logic, complete all 19 REST API endpoints
-- **DevCtl Work**: Advanced CLI features - Complete request management commands (list, get, status, logs), implement platform team validation tools, add advanced options (watch, follow-logs, filtering), implement comprehensive error handling and user-friendly messages
+**4. Integration & Polish**
+- **Catalog Work**: Finalize templates and governance documentation. Complete integration testing with service endpoints.
+- **Service Work**: Implement error handling, retry logic, and manual escalation workflows. Complete API endpoint coverage with proper error responses.
+- **DevCtl Work**: Add advanced options (watch, follow-logs, filtering). Implement comprehensive error handling and user-friendly messages.
+- **Testing Work**: Conduct user acceptance testing and gather feedback from early platform team adopters.
 
-**Step 5: Final Testing & Deployment**
-- **Integration Work**: End-to-end testing of complete workflow, deploy to staging environment and conduct load testing
-- **Service Work**: Performance optimization and monitoring setup
-- **DevCtl Work**: Release preparation and installation documentation, CLI distribution setup
-- **Catalog Work**: Final validation rule refinements and documentation updates
-- **Testing Work**: Conduct user acceptance testing and gather feedback from early platform team adopters
+**5. Testing & Deployment**
+- **Integration Work**: End-to-end testing of complete workflow. Deploy to staging environment and conduct load testing.
+- **Service Work**: Performance optimization and monitoring setup.
+- **DevCtl Work**: Release preparation and installation documentation. CLI distribution setup.
+- **Catalog Work**: Final validation rule refinements and documentation updates.
 
 ---
 

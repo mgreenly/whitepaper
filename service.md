@@ -1285,64 +1285,24 @@ The request lifecycle follows strict state transition rules to ensure data integ
 - **Concurrent Users**: 5-10 platform engineers typically active
 - **No High-Performance Requirements**: Simple, reliable operation over speed
 
-**Q3 Request Processing Implementation**:
+**Q3 Request Processing Architecture**:
+The Q3 synchronous processing follows the architectural patterns defined in the Q3 Synchronous Processing Architecture section:
+
 ```go
 type RequestProcessor struct {
     Database     DatabaseService
     ActionRunner ActionRunner
     Logger       Logger
 }
-
-func (rp *RequestProcessor) ProcessRequest(ctx context.Context, requestID string) error {
-    // 1. Load request from database
-    request, err := rp.Database.GetRequest(requestID)
-    if err != nil {
-        return fmt.Errorf("failed to load request: %w", err)
-    }
-    
-    // 2. Update status to in_progress
-    if err := rp.updateRequestStatus(request.ID, StatusInProgress); err != nil {
-        return fmt.Errorf("failed to update status: %w", err)
-    }
-    
-    // 3. Execute actions sequentially
-    for i, action := range request.Actions {
-        if request.CurrentAction > i {
-            continue // Skip already completed actions
-        }
-        
-        rp.Logger.Info("executing action", "requestId", request.ID, "actionIndex", i)
-        
-        // Execute single action
-        result, err := rp.ActionRunner.Execute(ctx, action)
-        if err != nil {
-            // Store error context and stop processing
-            rp.storeErrorContext(request.ID, i, err, result)
-            rp.updateRequestStatus(request.ID, StatusFailed)
-            return fmt.Errorf("action %d failed: %w", i, err)
-        }
-        
-        // Store successful result
-        if err := rp.storeActionResult(request.ID, i, result); err != nil {
-            return fmt.Errorf("failed to store action result: %w", err)
-        }
-        
-        // Update current action index
-        request.CurrentAction = i + 1
-        if err := rp.Database.UpdateRequest(request); err != nil {
-            return fmt.Errorf("failed to update request progress: %w", err)
-        }
-    }
-    
-    // 4. Mark request as completed
-    if err := rp.updateRequestStatus(request.ID, StatusCompleted); err != nil {
-        return fmt.Errorf("failed to mark request completed: %w", err)
-    }
-    
-    rp.Logger.Info("request completed successfully", "requestId", request.ID)
-    return nil
-}
 ```
+
+**Processing Flow Architecture**:
+1. **Request Loading**: Load request from database using DatabaseService interface
+2. **Status Update**: Update status to in_progress with transaction management
+3. **Sequential Action Execution**: Execute JIRA actions using ActionRunner interface
+4. **Error Context Storage**: Store detailed error context for manual resolution
+5. **Result Persistence**: Store action results and update request progress
+6. **Completion**: Mark request as completed or failed based on action outcomes
 
 **Q3 Request Response Format**:
 ```json
@@ -1438,65 +1398,29 @@ func (cp *CatalogProcessor) ProcessCatalogUpdate(event *github.PushEvent) error 
 - Error notifications sent to catalog repository via GitHub Status API
 - Detailed error reports available via `/api/v1/catalog/validation-errors`
 
-**GitHub Webhook Implementation**:
+**GitHub Webhook Architecture**:
+The GitHub webhook integration follows a clean architectural pattern for catalog synchronization:
+
 ```go
 type GitHubWebhookHandler struct {
     Secret           string
     CatalogProcessor *CatalogProcessor
     Logger           Logger
 }
-
-func (gwh *GitHubWebhookHandler) HandlePushEvent(w http.ResponseWriter, r *http.Request) {
-    // 1. Verify webhook signature
-    payload, err := gwh.validateWebhookSignature(r)
-    if err != nil {
-        http.Error(w, "Invalid signature", http.StatusUnauthorized)
-        return
-    }
-    
-    // 2. Parse push event
-    var pushEvent github.PushEvent
-    if err := json.Unmarshal(payload, &pushEvent); err != nil {
-        http.Error(w, "Invalid payload", http.StatusBadRequest)
-        return
-    }
-    
-    // 3. Filter for catalog changes only
-    catalogFiles := gwh.filterCatalogFiles(pushEvent.Commits)
-    if len(catalogFiles) == 0 {
-        w.WriteHeader(http.StatusNoContent)
-        return
-    }
-    
-    // 4. Process catalog updates asynchronously
-    go func() {
-        ctx := context.Background()
-        if err := gwh.CatalogProcessor.ProcessFiles(ctx, catalogFiles); err != nil {
-            gwh.Logger.Error("failed to process catalog files", "error", err)
-        }
-    }()
-    
-    w.WriteHeader(http.StatusAccepted)
-}
-
-func (gwh *GitHubWebhookHandler) filterCatalogFiles(commits []github.Commit) []string {
-    var catalogFiles []string
-    seen := make(map[string]bool)
-    
-    for _, commit := range commits {
-        for _, file := range append(commit.Added, append(commit.Modified, commit.Removed...)...) {
-            if strings.HasPrefix(file, "catalog/") && strings.HasSuffix(file, ".yaml") {
-                if !seen[file] {
-                    catalogFiles = append(catalogFiles, file)
-                    seen[file] = true
-                }
-            }
-        }
-    }
-    
-    return catalogFiles
-}
 ```
+
+**Webhook Processing Architecture**:
+1. **Signature Verification**: Validate webhook authenticity using secret verification
+2. **Event Parsing**: Parse GitHub push events and extract catalog file changes
+3. **File Filtering**: Identify catalog-specific changes (catalog/*.yaml files)
+4. **Asynchronous Processing**: Process catalog updates in background goroutines
+5. **Error Handling**: Log processing errors without blocking webhook response
+
+**Catalog Synchronization Pattern**:
+- **Push Event Detection**: Filter commits for catalog directory changes
+- **File Deduplication**: Ensure unique file processing across multiple commits
+- **Background Processing**: Use goroutines for non-blocking catalog updates
+- **Error Isolation**: Prevent catalog processing errors from affecting webhook responses
 
 ## Performance & Success Metrics
 
@@ -1905,72 +1829,18 @@ type ServiceConfig struct {
     }
 }
 
-func LoadConfig() (*ServiceConfig, error) {
-    var config ServiceConfig
-    if err := env.Parse(&config); err != nil {
-        return nil, fmt.Errorf("failed to parse config: %w", err)
-    }
-    
-    if err := validator.New().Struct(&config); err != nil {
-        return nil, fmt.Errorf("config validation failed: %w", err)
-    }
-    
-    // Load secrets from AWS Parameter Store
-    if err := loadParameterStoreSecrets(&config); err != nil {
-        return nil, fmt.Errorf("failed to load secrets: %w", err)
-    }
-    
-    return &config, nil
+// Configuration Loading Architecture
+type ConfigLoader interface {
+    LoadConfig() (*ServiceConfig, error)
+    LoadSecrets(config *ServiceConfig) error
+    ValidateConfig(config *ServiceConfig) error
 }
 
-func loadParameterStoreSecrets(config *ServiceConfig) error {
-    sess := session.Must(session.NewSession())
-    svc := ssm.New(sess, aws.NewConfig().WithRegion(config.ParameterStore.Region))
-    
-    // Load JIRA API token
-    if config.JIRA.APITokenPath != "" {
-        token, err := getParameter(svc, config.JIRA.APITokenPath)
-        if err != nil {
-            return fmt.Errorf("failed to load JIRA token: %w", err)
-        }
-        config.JIRA.APIToken = token
-    }
-    
-    // Load GitHub token
-    if config.GitHub.TokenPath != "" {
-        token, err := getParameter(svc, config.GitHub.TokenPath)
-        if err != nil {
-            return fmt.Errorf("failed to load GitHub token: %w", err)
-        }
-        config.GitHub.Token = token
-    }
-    
-    // Load GitHub webhook secret
-    if config.GitHub.WebhookSecretPath != "" {
-        secret, err := getParameter(svc, config.GitHub.WebhookSecretPath)
-        if err != nil {
-            return fmt.Errorf("failed to load webhook secret: %w", err)
-        }
-        config.GitHub.WebhookSecret = secret
-    }
-    
-    
-    return nil
-}
-
-func getParameter(svc *ssm.SSM, path string) (string, error) {
-    input := &ssm.GetParameterInput{
-        Name:           aws.String(path),
-        WithDecryption: aws.Bool(true),
-    }
-    
-    result, err := svc.GetParameter(input)
-    if err != nil {
-        return "", err
-    }
-    
-    return aws.StringValue(result.Parameter.Value), nil
-}
+// Configuration loading follows these architectural patterns:
+// 1. Environment variable parsing with validation tags
+// 2. AWS Parameter Store integration for secrets
+// 3. Configuration validation with required field checking
+// 4. Default value application for optional settings
 ```
 
 ### Service Configuration
