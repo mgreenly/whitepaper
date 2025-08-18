@@ -22,7 +22,7 @@ This document contains no proprietary, confidential, or sensitive organizational
   - [Error Handling Strategy Across Components](#error-handling-strategy-across-components)
   - [Variable Substitution Implementation Approach](#variable-substitution-implementation-approach)
 
-*Last Updated: 2025-08-18 03:12:43 +0000 (UTC)*
+*Last Updated: 2025-08-18 04:12:00 +0000 (UTC)*
 
 ## Q3 2025: Foundation Epic 🚧 CURRENT (Aug-Oct)
 
@@ -103,68 +103,152 @@ This document contains no proprietary, confidential, or sensitive organizational
 *System Integration (1 endpoint)*:
 - `/api/v1/webhooks/github` - GitHub webhook handler
 
-**Service Implementation Tasks**:
-1. **Core Infrastructure Setup**
-   - PostgreSQL database schema (requests, request_actions tables)
-   - In-memory caching layer integration
-   - Environment configuration and secrets management
+**Service API Implementation Order** (Enabling DevCtl Lock-Step Development):
 
-2. **Catalog Management Implementation** 
-   - GitHub webhook processing for catalog updates
-   - Catalog item parsing and validation
-   - Schema-to-form generation logic
-   - Catalog refresh and caching mechanisms
+**Phase 1: Foundation APIs**
+- `/api/v1/health` - Service health status
+- `/api/v1/health/ready` - Readiness probe  
+- `/api/v1/version` - Service version info
 
-3. **Request Lifecycle Engine**
-   - Request submission and validation pipeline
-   - Status tracking and state management
-   - Synchronous request processing (Q3: no background queuing)
-   - Audit logging and correlation IDs
+*Dependencies*: Basic Go HTTP server, database connection
+*DevCtl Enablement*: `devctl health check`, `devctl health ready`, `devctl version`
 
-4. **JIRA Action Framework**
-   - JIRA API integration with authentication
-   - Variable substitution engine (6+ scopes)
-   - Template processing and ticket creation
-   - Status polling and webhook handling
+**Phase 2: Catalog Read APIs**
+- `/api/v1/catalog` - Browse available services
+- `/api/v1/catalog/items/{item_id}` - Service details
+- `/api/v1/catalog/items/{item_id}/schema` - Dynamic form schema
+- `/api/v1/catalog/refresh` - Force catalog refresh
 
-5. **Error Handling and Recovery**
-   - Circuit breaker implementation for external calls
-   - Retry logic with exponential backoff
-   - Failure context preservation
-   - Manual escalation workflow
+*Dependencies*: GitHub integration, catalog parsing, schema validation, in-memory caching
+*DevCtl Enablement*: `devctl catalog list`, `devctl catalog get`, `devctl catalog refresh`
 
-6. **API Endpoint Implementation**
-   - All 19 REST endpoints with proper error handling
-   - Request validation and response formatting
-   - Pagination support for list endpoints
-   - Health checks and service monitoring
+**Phase 3: Validation & Testing APIs**
+- `/api/v1/validate/catalog-item` - Validate service definition
+- `/api/v1/validate/request` - Validate user input before submission
+- `/api/v1/preview/form` - Preview form generation
+- `/api/v1/test/variables` - Test variable substitution
+
+*Dependencies*: Complete variable substitution engine, form generation logic
+*DevCtl Enablement*: `devctl validate catalog-item`, `devctl preview form`, `devctl test variables`
+
+**Phase 4: Request Submission APIs**
+- `/api/v1/requests` (POST) - Submit service request
+- `/api/v1/requests` (GET) - List user requests
+- `/api/v1/requests/{request_id}` - Request details
+
+*Dependencies*: JIRA integration, request lifecycle engine, audit logging
+*DevCtl Enablement*: `devctl request submit`, `devctl request list`, `devctl request get`
+
+**Phase 5: Request Management APIs**
+- `/api/v1/requests/{request_id}/status` - Current status
+- `/api/v1/requests/{request_id}/logs` - Execution logs
+- `/api/v1/requests/{request_id}/retry` - Retry failed action
+- `/api/v1/requests/{request_id}/abort` - Abort failed request
+
+*Dependencies*: Status tracking, JIRA status polling, error handling framework
+*DevCtl Enablement*: `devctl request status`, `devctl request logs`, plus retry/abort commands
+
+**Phase 6: Advanced Operations**
+- `/api/v1/requests/{request_id}/escalate` - Escalate to manual support
+- `/api/v1/requests/{request_id}/escalation` - Escalation details
+- `/api/v1/webhooks/github` - GitHub webhook handler
+
+*Dependencies*: Manual escalation workflow, webhook processing
+*DevCtl Enablement*: Complete CLI feature set with escalation support
+
+**Service Implementation Tasks by Phase**:
+
+**Phase 1: Core Infrastructure Setup**
+- PostgreSQL database schema (requests, request_actions tables)
+- Basic HTTP server with health endpoints
+- Environment configuration and secrets management
+
+**Phase 2: Catalog Management Implementation** 
+- GitHub integration for catalog repository access
+- Catalog item parsing and validation
+- Schema-to-form generation logic
+- In-memory caching layer integration
+
+**Phase 3: Variable Substitution & Validation**
+- Variable substitution engine (6+ scopes: fields, metadata, request, system, environment, outputs)
+- Template processing and validation
+- Form preview generation
+- Catalog item validation framework
+
+**Phase 4: Request Lifecycle Engine**
+- Request submission and validation pipeline
+- JIRA API integration with authentication
+- Basic JIRA ticket creation and tracking
+- Audit logging and correlation IDs
+
+**Phase 5: Status & Error Management**
+- Status tracking and state management
+- JIRA status polling integration
+- Retry logic with exponential backoff
+- Error context preservation
+
+**Phase 6: Advanced Workflows**
+- Manual escalation workflow
+- GitHub webhook processing for catalog updates
+- Circuit breaker implementation for external calls
+- Complete error handling and recovery
 
 ### DevCtl Work
-**Lock-Step Development**: DevCtl must deliver CLI support for ALL Q3 Service and Catalog features simultaneously
+**Lock-Step Development**: DevCtl development follows Service API phases with 1-week lag to enable testing and validation
 
-**Core Subcommands and Options Required**:
+**DevCtl Implementation Phases** (Following Service API completion):
 
-1. **Catalog Management (`devctl catalog`)**:
-   - `catalog list` - Browse available services with filters (--category, --owner, --limit, --cursor)
-   - `catalog get <item-id>` - Service details with options (--schema, --examples)
-   - `catalog refresh` - Force catalog refresh with options (--wait, --timeout)
+**DevCtl Phase 1: Foundation Commands**
+*Follows Service API Phase 1 completion*
+- Initialize Go CLI project with AWS SigV4 authentication
+- Implement global options and basic command structure
+- `devctl health check` - System health with options (--components, --detailed)
+- `devctl health ready` - Readiness probe
+- `devctl version` - Service version with options (--full)
 
-2. **Request Operations (`devctl request`)**:
-   - `request submit <item-id>` - Submit requests with options (--config, --field, --dry-run, --wait, --follow-logs)
-   - `request list` - List user requests with filters (--status, --catalog-item, --since, --limit)
-   - `request get <request-id>` - Request details with options (--logs, --actions)
-   - `request status <request-id>` - Status tracking with options (--watch, --interval)
-   - `request logs <request-id>` - Log streaming with options (--follow, --tail, --action)
+*Testing Target*: Verify Service API health endpoints are working correctly
 
-3. **System Health (`devctl health`)**:
-   - `health check` - System health with options (--components, --detailed)
-   - `health ready` - Readiness probe
-   - `version` - Service version with options (--full)
+**DevCtl Phase 2: Catalog Commands**
+*Follows Service API Phase 2 completion*
+- `devctl catalog list` - Browse available services with filters (--category, --owner, --limit, --cursor)
+- `devctl catalog get <item-id>` - Service details with options (--schema, --examples)
+- `devctl catalog refresh` - Force catalog refresh with options (--wait, --timeout)
 
-4. **Platform Team Tools (`devctl validate`)**:
-   - `validate catalog-item <file>` - Validate definitions with options (--strict, --schema-version)
-   - `preview form <file>` - Form preview with options (--render, --interactive)
-   - `test variables <file>` - Variable testing with options (--input, --show-all, --action)
+*Testing Target*: Verify catalog browsing and GitHub integration working
+
+**DevCtl Phase 3: Validation Commands**
+*Follows Service API Phase 3 completion*
+- `devctl validate catalog-item <file>` - Validate definitions with options (--strict, --schema-version)
+- `devctl preview form <file>` - Form preview with options (--render, --interactive)
+- `devctl test variables <file>` - Variable testing with options (--input, --show-all, --action)
+
+*Testing Target*: Verify variable substitution engine and form generation working
+
+**DevCtl Phase 4: Request Submission Commands**
+*Follows Service API Phase 4 completion*
+- `devctl request submit <item-id>` - Submit requests with options (--config, --field, --dry-run, --wait, --follow-logs)
+- `devctl request list` - List user requests with filters (--status, --catalog-item, --since, --limit)
+- `devctl request get <request-id>` - Request details with options (--logs, --actions)
+
+*Testing Target*: Verify JIRA integration and request lifecycle working
+
+**DevCtl Phase 5: Request Management Commands**
+*Follows Service API Phase 5 completion*
+- `devctl request status <request-id>` - Status tracking with options (--watch, --interval)
+- `devctl request logs <request-id>` - Log streaming with options (--follow, --tail, --action)
+- Enhanced retry/abort command foundations (full implementation in Phase 6)
+
+*Testing Target*: Verify status tracking and JIRA polling working
+
+**DevCtl Phase 6: Complete CLI Feature Set**
+*Follows Service API Phase 6 completion*
+- `devctl request retry <request-id>` - Retry failed actions (note: implementation gap in current roadmap)
+- `devctl request abort <request-id>` - Abort failed requests (note: implementation gap in current roadmap)
+- `devctl request escalate <request-id>` - Escalate to manual support (note: implementation gap in current roadmap)
+- Advanced error handling and user-friendly messages
+- CLI distribution setup and installation documentation
+
+*Testing Target*: Complete end-to-end workflow validation
 
 **Global Options Required**:
 - Authentication: --endpoint, --region, --profile

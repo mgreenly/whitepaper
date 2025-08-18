@@ -32,8 +32,40 @@ It is document driven.  The @repo.md file explains the catalog that drives the o
 - Deployment pipelines or CI/CD processes  
 - Supporting services or dependencies
 - Infrastructure configuration or management
-- Example Go implementations or code samples
+- **Example Go implementations or code samples** ⚠️
+- Concrete code examples in any programming language ⚠️
+- Function implementations or method bodies ⚠️
 
 Focus only on the service's internal architecture, APIs, data models, business logic, and direct service-to-service integrations. Implementation examples should be architectural patterns and design specifications, not concrete code.
 
-**Go Architectural Patterns**: Suggesting Go-specific architectural patterns, interfaces, and design approaches is in scope when they clarify service design and implementation strategy.
+**What IS in scope**:
+- Architectural patterns and design approaches
+- Interface definitions and component relationships
+- Data flow and state management patterns
+- Service integration strategies
+- API design specifications
+- Security and performance architectural considerations
+
+**What IS NOT in scope**:
+- Code samples, function bodies, or implementation details
+- Specific technology implementations
+- External system configurations
+
+## Pre-Edit Checklist
+
+**BEFORE making any changes to service.md, verify:**
+
+□ **No Go code blocks** - Remove any ```go code samples
+□ **No function implementations** - Focus on architectural patterns only  
+□ **No concrete examples** - Use design specifications instead
+□ **Architecture focus** - Internal service design, not external systems
+□ **Pattern descriptions** - Describe approaches, not implementations
+□ **API specifications** - Define interfaces, not code
+□ **Security considerations** - Architectural security, not code security
+□ **Performance patterns** - Design approaches, not optimization code
+
+**If suggesting interfaces or patterns:**
+- Describe the architectural purpose and relationships
+- Explain the design pattern and its benefits
+- Define component responsibilities and interactions
+- Avoid showing how to implement the pattern in code
