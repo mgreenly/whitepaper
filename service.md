@@ -11,6 +11,12 @@ This document contains no proprietary, confidential, or sensitive organizational
   - [Essential APIs](#essential-apis)
   - [Authentication & Authorization](#authentication--authorization)
   - [Pagination](#pagination)
+- [Q3 Synchronous Processing Architecture](#q3-synchronous-processing-architecture)
+  - [Synchronous Request Processing Design](#synchronous-request-processing-design)
+  - [Request Lifecycle Architecture](#request-lifecycle-architecture)
+  - [Variable Substitution Architecture](#variable-substitution-architecture)
+  - [JIRA Integration Architecture](#jira-integration-architecture)
+  - [Data Model and Access Architecture](#data-model-and-access-architecture)
 - [Architecture & Technology Stack](#architecture--technology-stack)
   - [Core Design Principles](#core-design-principles)
   - [Service Components](#service-components)
@@ -279,6 +285,379 @@ All list endpoints that return multiple items use cursor-based pagination with t
 - Cursors are stateless and self-contained
 - `total_count` is optional and may be omitted for performance
 - Empty `next_cursor` indicates no more pages
+
+## Q3 Synchronous Processing Architecture
+
+The Q3 Foundation Epic establishes a synchronous request processing architecture specifically designed for JIRA-based fulfillment. This architecture provides the technical foundation for Q4's automated provisioning while delivering immediate value through manual JIRA workflows.
+
+**Q3 Architecture Principles**:
+- **Synchronous Processing**: All requests processed within HTTP request handlers (3-5 seconds)
+- **JIRA-Only Actions**: Single action type for manual fulfillment via JIRA tickets
+- **Direct Database Integration**: PostgreSQL connection pooling without background workers
+- **Real-time Status**: Direct JIRA API queries for status updates (no caching)
+- **Foundation for Q4**: Architectural patterns that support future automated actions
+
+### Synchronous Request Processing Design
+
+**Core Processing Interface Pattern**:
+The synchronous request processor follows a simple interface pattern that handles the complete request lifecycle within HTTP handlers.
+
+```go
+type RequestProcessor interface {
+    ProcessRequest(ctx context.Context, request *ServiceRequest) (*ProcessingResult, error)
+    ValidateRequest(ctx context.Context, request *ServiceRequest) error
+    GetRequestStatus(ctx context.Context, requestID string) (*RequestStatus, error)
+}
+
+type SynchronousProcessor struct {
+    Database     DatabaseService
+    JIRAClient   JIRAService
+    Validator    RequestValidator
+    AuditLogger  AuditService
+}
+```
+
+**Request Processing Flow Architecture**:
+1. **Request Reception**: HTTP handler receives POST to `/api/v1/requests`
+2. **Validation Pipeline**: Multi-stage validation (schema, business rules, authorization)
+3. **Database Transaction**: Store request with correlation ID in single transaction
+4. **JIRA Action Execution**: Synchronous JIRA API call with variable substitution
+5. **State Update**: Update request status and store JIRA ticket reference
+6. **Response**: Return request ID and JIRA ticket details to client
+
+**State Transition Architecture**:
+Q3 supports a simplified state model optimized for synchronous processing:
+- `submitted` → `in_progress` (when JIRA call starts)
+- `in_progress` → `completed` (when JIRA ticket created successfully)
+- `in_progress` → `failed` (when JIRA call fails)
+- `failed` → `aborted` (manual abort operation)
+- `failed` → `escalated` (manual escalation to support)
+
+**Error Boundary Design**:
+- **HTTP Handler Level**: Request validation and authentication errors
+- **Business Logic Level**: Catalog item validation and authorization errors
+- **External Service Level**: JIRA API failures with detailed context preservation
+- **Database Level**: Transaction failures with rollback and correlation tracking
+
+### Request Lifecycle Architecture
+
+**Request Lifecycle Components**:
+The request lifecycle is managed by coordinated components that handle validation, execution, and status tracking.
+
+```go
+type RequestLifecycleManager interface {
+    SubmitRequest(ctx context.Context, submission *RequestSubmission) (*Request, error)
+    ExecuteActions(ctx context.Context, request *Request) error
+    UpdateStatus(ctx context.Context, requestID string, status RequestStatus) error
+    RetrieveStatus(ctx context.Context, requestID string) (*RequestStatus, error)
+}
+
+type RequestValidator interface {
+    ValidateSchema(catalogItem *CatalogItem, fields map[string]interface{}) error
+    ValidateAuthorization(user *AuthContext, catalogItem *CatalogItem) error
+    ValidateBusinessRules(request *ServiceRequest) error
+}
+```
+
+**Database Transaction Patterns**:
+Q3 uses ACID transactions to ensure consistency during synchronous processing:
+
+```go
+type DatabaseTransaction interface {
+    Begin() (Transaction, error)
+    Commit(tx Transaction) error
+    Rollback(tx Transaction) error
+    
+    StoreRequest(tx Transaction, request *Request) error
+    UpdateRequestStatus(tx Transaction, requestID string, status RequestStatus) error
+    StoreActionResult(tx Transaction, requestID string, actionResult *ActionResult) error
+    LogAuditEvent(tx Transaction, event *AuditEvent) error
+}
+```
+
+**Transaction Boundary Strategy**:
+- **Request Submission**: Single transaction for request creation and initial audit log
+- **Action Execution**: Single transaction for action execution and status update
+- **Status Updates**: Individual transactions for each status change with audit logging
+- **Failure Handling**: Rollback with error context preservation for manual resolution
+
+**Audit Trail Architecture**:
+Every request operation generates correlation-tracked audit events:
+
+```go
+type AuditEvent struct {
+    CorrelationID string
+    RequestID     string
+    EventType     string
+    EventData     map[string]interface{}
+    UserContext   *AuthContext
+    Timestamp     time.Time
+}
+
+type AuditService interface {
+    LogEvent(ctx context.Context, event *AuditEvent) error
+    GetRequestAuditTrail(ctx context.Context, requestID string) ([]*AuditEvent, error)
+    GetCorrelationTrail(ctx context.Context, correlationID string) ([]*AuditEvent, error)
+}
+```
+
+### Variable Substitution Architecture
+
+**Variable Scope Resolution Design**:
+The variable substitution system uses a hierarchical scope resolution pattern supporting 6+ core scopes.
+
+```go
+type VariableResolver interface {
+    ResolveTemplate(template string, context *VariableContext) (string, error)
+    ValidateTemplate(template string, availableScopes []string) error
+    GetAvailableScopes(request *ServiceRequest) []string
+}
+
+type VariableContext struct {
+    Fields      map[string]interface{} // User form input
+    Metadata    *CatalogItemMetadata   // Service metadata
+    Request     *RequestContext        // Request information
+    System      *SystemContext         // System-generated variables
+    Environment map[string]string      // Environment variables
+    Outputs     map[string]interface{} // Previous action outputs (Q4)
+}
+```
+
+**Template Processing Architecture**:
+Variable substitution follows a multi-phase processing pattern:
+
+1. **Parse Phase**: Extract variable references and validate syntax
+2. **Scope Validation**: Verify all variables exist in available scopes
+3. **Resolution Phase**: Apply template engine with validated context
+4. **Transformation Phase**: Apply built-in functions (upper, lower, concat, etc.)
+5. **Output Generation**: Return processed template with audit trail
+
+**Scope Isolation Patterns**:
+Each scope has isolated access patterns to prevent data leakage:
+
+```go
+type ScopeResolver interface {
+    ResolvePath(path []string, context interface{}) (interface{}, error)
+    ValidatePath(path []string, scopeType string) error
+}
+
+type FieldsResolver struct{}     // Resolves {{fields.key}} from user input
+type MetadataResolver struct{}   // Resolves {{metadata.key}} from catalog
+type RequestResolver struct{}    // Resolves {{request.key}} from request context
+type SystemResolver struct{}     // Resolves {{system.key}} from system state
+```
+
+**Template Validation Architecture**:
+Pre-execution validation prevents runtime template failures:
+
+```go
+type TemplateValidator interface {
+    ValidateSyntax(template string) error
+    ValidateVariables(template string, availableScopes []string) error
+    ValidateFunctions(template string) error
+}
+```
+
+### JIRA Integration Architecture
+
+**JIRA Client Interface Design**:
+The JIRA integration uses a clean interface pattern supporting multiple JIRA instances and authentication methods.
+
+```go
+type JIRAService interface {
+    CreateTicket(ctx context.Context, config *JIRATicketConfig) (*JIRATicket, error)
+    GetTicketStatus(ctx context.Context, ticketKey string) (*JIRAStatus, error)
+    UpdateTicket(ctx context.Context, ticketKey string, updates *JIRAUpdates) error
+    ValidateConnection(ctx context.Context) error
+}
+
+type JIRATicketConfig struct {
+    Project         string
+    IssueType       string
+    Summary         string
+    Description     string
+    Priority        string
+    Labels          []string
+    CustomFields    map[string]interface{}
+    CorrelationID   string
+}
+```
+
+**Multi-Instance Architecture Pattern**:
+Support for multiple JIRA instances with different authentication:
+
+```go
+type JIRAInstanceManager interface {
+    GetInstance(projectKey string) (JIRAService, error)
+    RegisterInstance(name string, config *JIRAInstanceConfig) error
+    ValidateAllInstances(ctx context.Context) error
+}
+
+type JIRAInstanceConfig struct {
+    BaseURL      string
+    AuthType     string  // api_token, oauth2, basic
+    Credentials  map[string]string
+    DefaultProject string
+    Timeout      time.Duration
+}
+```
+
+**Authentication Architecture**:
+Flexible authentication supporting multiple JIRA configurations:
+
+```go
+type JIRAAuthenticator interface {
+    Authenticate(req *http.Request, config *JIRAInstanceConfig) error
+    RefreshCredentials(config *JIRAInstanceConfig) error
+}
+
+type APITokenAuth struct{}    // Username + API token
+type OAuth2Auth struct{}      // OAuth2 client credentials
+type BasicAuth struct{}       // Username + password (deprecated)
+```
+
+**Status Tracking Architecture**:
+Q3 uses real-time JIRA status queries without caching:
+
+```go
+type StatusTracker interface {
+    GetCurrentStatus(ctx context.Context, externalReference string) (*ActionStatus, error)
+    MapJIRAStatus(jiraStatus string) RequestStatus
+    TrackStatusChange(ctx context.Context, requestID string, oldStatus, newStatus RequestStatus) error
+}
+```
+
+**Template Processing for JIRA**:
+JIRA ticket creation uses the variable substitution system:
+
+```go
+type JIRATemplateProcessor interface {
+    ProcessTicketTemplate(template *JIRATicketTemplate, context *VariableContext) (*JIRATicketConfig, error)
+    ValidateTemplate(template *JIRATicketTemplate) error
+}
+
+type JIRATicketTemplate struct {
+    ProjectTemplate     string
+    SummaryTemplate     string
+    DescriptionTemplate string
+    PriorityTemplate    string
+    LabelsTemplate      []string
+    CustomFieldTemplates map[string]string
+}
+```
+
+### Data Model and Access Architecture
+
+**Request State Model**:
+The database schema optimizes for Q3 synchronous processing patterns with clear state management.
+
+**Core Entity Architecture**:
+```go
+type Request struct {
+    ID                string
+    CatalogItemID     string
+    UserID            string
+    UserEmail         string
+    UserTeams         []string
+    Status            RequestStatus
+    RequestData       map[string]interface{} // JSONB
+    CorrelationID     string
+    ErrorContext      *ErrorContext          // JSONB
+    EscalationTicket  string
+    CreatedAt         time.Time
+    UpdatedAt         time.Time
+    CompletedAt       *time.Time
+    AbortedAt         *time.Time
+}
+
+type RequestAction struct {
+    ID               string
+    RequestID        string
+    ActionIndex      int
+    ActionType       string  // "jira-ticket" in Q3
+    ActionConfig     map[string]interface{} // JSONB
+    Status           ActionStatus
+    Output           map[string]interface{} // JSONB
+    ErrorDetails     map[string]interface{} // JSONB
+    ExternalReference string // JIRA ticket key
+    StartedAt        *time.Time
+    CompletedAt      *time.Time
+}
+```
+
+**Database Access Pattern Architecture**:
+```go
+type RequestRepository interface {
+    Create(ctx context.Context, request *Request) error
+    GetByID(ctx context.Context, id string) (*Request, error)
+    GetByUserID(ctx context.Context, userID string, filters *ListFilters) ([]*Request, error)
+    UpdateStatus(ctx context.Context, id string, status RequestStatus) error
+    ListByStatus(ctx context.Context, status RequestStatus) ([]*Request, error)
+}
+
+type ActionRepository interface {
+    Create(ctx context.Context, action *RequestAction) error
+    GetByRequestID(ctx context.Context, requestID string) ([]*RequestAction, error)
+    UpdateStatus(ctx context.Context, id string, status ActionStatus) error
+    StoreOutput(ctx context.Context, id string, output map[string]interface{}) error
+}
+```
+
+**Query Optimization Architecture**:
+Database indexes optimized for Q3 synchronous query patterns:
+
+- **User Request Queries**: Index on (user_id, created_at DESC) for request lists
+- **Status Filtering**: Index on (status, created_at DESC) for admin views  
+- **Correlation Tracking**: Index on correlation_id for audit trail queries
+- **JIRA Reference Lookup**: Index on external_reference for status queries
+- **Team Access Control**: GIN index on user_teams array for authorization
+
+**Transaction Management Architecture**:
+```go
+type TransactionManager interface {
+    WithTransaction(ctx context.Context, fn func(ctx context.Context) error) error
+    BeginTransaction(ctx context.Context) (context.Context, error)
+    CommitTransaction(ctx context.Context) error
+    RollbackTransaction(ctx context.Context) error
+}
+```
+
+**Audit Trail Data Architecture**:
+Complete audit logging with correlation ID tracking:
+
+```go
+type AuditRepository interface {
+    LogEvent(ctx context.Context, event *AuditEvent) error
+    GetByCorrelationID(ctx context.Context, correlationID string) ([]*AuditEvent, error)
+    GetByRequestID(ctx context.Context, requestID string) ([]*AuditEvent, error)
+    GetByEventType(ctx context.Context, eventType string, timeRange *TimeRange) ([]*AuditEvent, error)
+}
+```
+
+**Cache Architecture for Q3**:
+Minimal caching strategy focused on catalog data:
+
+```go
+type CacheService interface {
+    GetCatalogItem(ctx context.Context, id string) (*CatalogItem, error)
+    SetCatalogItem(ctx context.Context, id string, item *CatalogItem, ttl time.Duration) error
+    InvalidateCatalog(ctx context.Context) error
+    GetFormSchema(ctx context.Context, catalogItemID string) (*FormSchema, error)
+}
+```
+
+**Connection Pool Architecture**:
+PostgreSQL connection management optimized for synchronous processing:
+
+```go
+type DatabaseConfig struct {
+    MaxOpenConns    int           // Higher for persistent containers
+    MaxIdleConns    int           // More idle connections
+    ConnMaxLifetime time.Duration // Longer lifetime
+    ConnMaxIdleTime time.Duration // Longer idle timeout
+    QueryTimeout    time.Duration // Individual query timeout
+}
+```
 
 ## Architecture & Technology Stack
 
@@ -772,34 +1151,13 @@ config:
 
 ### Request Processing Architecture
 
-**Q3 Synchronous Processing (In-Process Handlers)**:
-```go
-func (rp *RequestProcessor) ProcessJIRARequest(ctx context.Context, request *ServiceRequest) (*ProcessingResult, error) {
-    // 1. Validate request synchronously
-    if err := rp.Validator.ValidateRequest(request); err != nil {
-        return nil, fmt.Errorf("validation failed: %w", err)
-    }
-    
-    // 2. Create JIRA ticket synchronously (1-2 seconds)
-    jiraTicket, err := rp.JIRAClient.CreateTicket(ctx, request)
-    if err != nil {
-        return nil, fmt.Errorf("JIRA ticket creation failed: %w", err)
-    }
-    
-    // 3. Store request and ticket reference
-    if err := rp.Database.StoreRequest(request, jiraTicket); err != nil {
-        return nil, fmt.Errorf("failed to store request: %w", err)
-    }
-    
-    // 4. Return immediately
-    return &ProcessingResult{
-        RequestID:   request.ID,
-        JIRATicket:  jiraTicket.Key,
-        Status:      "submitted",
-        CreatedAt:   time.Now(),
-    }, nil
-}
-```
+**Q3 Synchronous Processing Architecture**:
+The Q3 implementation follows the synchronous processing patterns defined in the Q3 Synchronous Processing Architecture section:
+
+1. **Request Validation**: Synchronous validation using RequestValidator interface
+2. **JIRA Action Execution**: Direct JIRA API calls via JIRAService interface (1-2 seconds)
+3. **Database Transaction**: Store request and ticket reference using DatabaseTransaction pattern
+4. **Immediate Response**: Return request ID and JIRA ticket details to client
 
 **Q4 Background Worker Integration (Future Enhancement)**:
 ```yaml

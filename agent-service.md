@@ -32,5 +32,8 @@ It is document driven.  The @repo.md file explains the catalog that drives the o
 - Deployment pipelines or CI/CD processes  
 - Supporting services or dependencies
 - Infrastructure configuration or management
+- Example Go implementations or code samples
 
-Focus only on the service's internal architecture, APIs, data models, business logic, and direct service-to-service integrations.
+Focus only on the service's internal architecture, APIs, data models, business logic, and direct service-to-service integrations. Implementation examples should be architectural patterns and design specifications, not concrete code.
+
+**Go Architectural Patterns**: Suggesting Go-specific architectural patterns, interfaces, and design approaches is in scope when they clarify service design and implementation strategy.
