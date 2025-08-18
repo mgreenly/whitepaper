@@ -50,9 +50,48 @@ This lock-step approach ensures that:
 3. CI/CD pipelines can leverage DevCtl for automation
 4. No functionality is stranded without tooling support
 
+## CRITICAL MISTAKES TO NEVER REPEAT
+
+**NEVER GET THESE WRONG AGAIN:**
+
+### Team Structure
+- **There is only ONE Orchestration team** - never reference separate "DevCtl Team", "Catalog Team", "Service Team", or "Platform Team"
+- **Never include people counts** in sprint planning (no "2 people", "3 people", etc.)
+- Work should be categorized by functional areas: "Catalog Work", "Service Work", "DevCtl Work", "Testing Work", "Integration Work", "Documentation Work"
+
+### Date/Time Handling
+- **Always use the exact date command**: `date '+%Y-%m-%d %H:%M:%S %z (%Z)'`
+- **Use the output exactly as returned** - no interpretation or modification whatsoever
+- Never manually create timestamps
+
+### Technology References
+- **NO references to**: Prometheus, ElastiCache, Redis, metrics endpoints
+- **NO references to**: container building, Docker, containerization
+- **CI/CD deployment is outside project scope** - don't reference deployment configuration or infrastructure setup
+- Use generic terms: "in-memory caching", "service monitoring", "application deployment"
+
+### Forbidden Terms and Concepts
+- ❌ "Prometheus metrics" → ✅ "Service monitoring" 
+- ❌ "ElastiCache Redis cluster" → ✅ "In-memory caching layer"
+- ❌ "container building" → ✅ Focus only on Go application development
+- ❌ "DevCtl Team (2 people)" → ✅ "DevCtl Work"
+- ❌ Manual timestamp creation → ✅ Use date command exactly
+
 ## Roadmap Scope
 
 **Current Focus**: This roadmap covers Q3 and Q4 2025 development in detail. Any work beyond Q4 2025 is speculative future work and should only be mentioned briefly as potential next steps.
+
+## Memory Management
+
+**IMPORTANT**: Any time you need to remember something important for future roadmap work, you MUST save it in this file (agent-roadmap.md). As an AI, you do not have persistent memory between conversations. This file serves as your permanent memory storage for:
+
+- Critical mistakes to avoid
+- Important guidance and constraints  
+- Team structure and process requirements
+- Technology restrictions and preferences
+- Any other important context that must persist
+
+**Always update this file when you learn something new that affects roadmap development.**
 
 ## Actions
 
