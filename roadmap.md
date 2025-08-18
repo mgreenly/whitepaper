@@ -15,7 +15,7 @@ This document contains no proprietary, confidential, or sensitive organizational
 
 **Epic Goal**: Establish working foundation with manual JIRA fulfillment
 
-**Value Delivered**: Platform teams can define services in catalog, users can request them, and requests are fulfilled through JIRA actions
+**Value Delivered**: Platform teams define services in the catalog, users request services, and fulfillment occurs through JIRA actions
 
 **Success Metrics**:
 - Schema specification complete with 100% validation coverage
