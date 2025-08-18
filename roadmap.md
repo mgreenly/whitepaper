@@ -7,14 +7,10 @@ This document contains no proprietary, confidential, or sensitive organizational
 ## Table of Contents
 
 - [Q3 2025: Foundation Epic](#q3-2025-foundation-epic)
-  - [Catalog Work](#catalog-work)
-  - [Service Work](#service-work)
-  - [DevCtl Work](#devctl-work)
+  - [Work Summary](#work-summary)
   - [Ordered Work Series](#ordered-work-series)
 - [Q4 2025: Production Epic](#q4-2025-production-epic)
-  - [Catalog Work](#catalog-work-1)
-  - [Service Work](#service-work-1)
-  - [DevCtl Work](#devctl-work-1)
+  - [Work Summary](#work-summary-1)
   - [Ordered Work Series](#ordered-work-series-1)
 - [Future Work Beyond Q4 2025](#future-work-beyond-q4-2025)
 - [Proposals](#proposals)
@@ -38,18 +34,10 @@ This document contains no proprietary, confidential, or sensitive organizational
 - Test catalog items working: EKS app, PostgreSQL database, parameter store for secrets (all JIRA fulfillment)
 - Developers can submit requests and Platform Teams receive properly formatted JIRA tickets
 
-### Catalog Work
-- Complete CatalogItem schema specification with validation rules
-- GitHub repository with CI/CD, CODEOWNERS enforcement, automated validation
-- Test catalog items: EKS app, PostgreSQL database, parameter store (all JIRA fulfillment)
-- Document minimal platform team onboarding process
-- Document catalog contribution workflows
-
-### Service Work
-- Core REST API with catalog ingestion, request submission, status tracking
-- JIRA action execution framework with variable substitution
-- Variable substitution system supporting 6+ scopes (fields, metadata, request, system, environment, outputs)
-- PostgreSQL database schema for requests and audit logging
+**Work Summary**:
+- **Catalog**: Create GitHub repository with schemas, validation scripts, and 3 test YAML catalog items (EKS, PostgreSQL, Parameter Store) that define JIRA ticket templates.
+- **Service**: Build core REST API with 19 endpoints, catalog ingestion from GitHub, JIRA integration for ticket creation, and PostgreSQL database for request tracking.
+- **DevCtl**: Develop CLI with AWS SigV4 authentication covering all service endpoints (health, catalog browsing, request submission/management, validation tools) in 6 phases.
 
 **Required API Endpoints (19 total)**:
 
@@ -171,71 +159,7 @@ This document contains no proprietary, confidential, or sensitive organizational
 - Circuit breaker implementation for external calls
 - Complete error handling and recovery
 
-### DevCtl Work
-**Lock-Step Development**: DevCtl development follows Service API phases with 1-week lag to enable testing and validation
-
-**DevCtl Implementation Phases** (Following Service API completion):
-
-**DevCtl Phase 1: Foundation Commands**
-*Follows Service API Phase 1 completion*
-- Initialize Go CLI project with AWS SigV4 authentication
-- Implement global options and basic command structure
-- `devctl health check` - System health with options (--components, --detailed)
-- `devctl health ready` - Readiness probe
-- `devctl version` - Service version with options (--full)
-
-*Testing Target*: Verify Service API health endpoints are working correctly
-
-**DevCtl Phase 2: Catalog Commands**
-*Follows Service API Phase 2 completion*
-- `devctl catalog list` - Browse available services with filters (--category, --owner, --limit, --cursor)
-- `devctl catalog get <item-id>` - Service details with options (--schema, --examples)
-- `devctl catalog refresh` - Force catalog refresh with options (--wait, --timeout)
-
-*Testing Target*: Verify catalog browsing and GitHub integration working
-
-**DevCtl Phase 3: Validation Commands**
-*Follows Service API Phase 3 completion*
-- `devctl validate catalog-item <file>` - Validate definitions with options (--strict, --schema-version)
-- `devctl preview form <file>` - Form preview with options (--render, --interactive)
-- `devctl test variables <file>` - Variable testing with options (--input, --show-all, --action)
-
-*Testing Target*: Verify variable substitution engine and form generation working
-
-**DevCtl Phase 4: Request Submission Commands**
-*Follows Service API Phase 4 completion*
-- `devctl request submit <item-id>` - Submit requests with options (--config, --field, --dry-run, --wait, --follow-logs)
-- `devctl request list` - List user requests with filters (--status, --catalog-item, --since, --limit)
-- `devctl request get <request-id>` - Request details with options (--logs, --actions)
-
-*Testing Target*: Verify JIRA integration and request lifecycle working
-
-**DevCtl Phase 5: Request Management Commands**
-*Follows Service API Phase 5 completion*
-- `devctl request status <request-id>` - Status tracking with options (--watch, --interval)
-- `devctl request logs <request-id>` - Log streaming with options (--follow, --tail, --action)
-- Enhanced retry/abort command foundations (full implementation in Phase 6)
-
-*Testing Target*: Verify status tracking and JIRA polling working
-
-**DevCtl Phase 6: Complete CLI Feature Set**
-*Follows Service API Phase 6 completion*
-- `devctl request retry <request-id>` - Retry failed actions (note: implementation gap in current roadmap)
-- `devctl request abort <request-id>` - Abort failed requests (note: implementation gap in current roadmap)
-- `devctl request escalate <request-id>` - Escalate to manual support (note: implementation gap in current roadmap)
-- Advanced error handling and user-friendly messages
-- CLI distribution setup and installation documentation
-
-*Testing Target*: Complete end-to-end workflow validation
-
-**Global Options Required**:
-- Authentication: --endpoint, --region, --profile
-- Output: --output (json/yaml/table), --verbose, --debug, --no-color
-- Performance: --timeout
-
-**AWS IAM Integration**: SigV4 signing, automatic SSO session detection, profile management
-
-**Epic Success Criteria**: Developers can request EKS app + PostgreSQL + parameter store through CLI and receive JIRA tickets with proper variable substitution. All Service API endpoints are accessible and testable via DevCtl commands.
+**DevCtl Lock-Step Development Note**: DevCtl development follows Service API phases with 1-week lag to enable testing and validation. See DevCtl Phase 1-6 implementation details referenced in work items below.
 
 ### Ordered Work Series
 
@@ -293,6 +217,11 @@ This document contains no proprietary, confidential, or sensitive organizational
 - Fulfillment mode switching operational (manual ↔ automated)
 - Automated provisioning working for EKS app, PostgreSQL, parameter store
 - 5+ platform teams can define services with automated and manual fulfillment options
+
+**Work Summary**:
+- **Catalog**: Enhance schemas for Terraform actions, create 10+ production catalog items with automated fulfillment, develop platform team migration tools.
+- **Service**: Implement background workers, Terraform execution framework, REST API actions, fulfillment mode switching, and production hardening for 100+ concurrent requests.
+- **DevCtl**: Add retry/abort/escalate commands, Terraform operations, batch processing, export capabilities, and production-ready CLI distribution.
 
 ### Ordered Work Series
 
