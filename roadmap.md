@@ -23,7 +23,7 @@ This document contains no proprietary, confidential, or sensitive organizational
 - Test catalog items working: EKS app, PostgreSQL database, parameter store (all JIRA fulfillment)
 - Developers can submit requests and receive JIRA tickets with proper variable substitution
 
-### Catalog Focus
+### Catalog Work
 - Complete CatalogItem schema specification with validation rules
 - GitHub repository with CI/CD, CODEOWNERS enforcement, automated validation
 - Test catalog items: EKS app, PostgreSQL database, parameter store (all JIRA fulfillment)
@@ -51,7 +51,7 @@ This document contains no proprietary, confidential, or sensitive organizational
 - `README.md`
 - `.gitignore`
 
-### Service Focus
+### Service Work
 - Core REST API with catalog ingestion, request submission, status tracking
 - JIRA action execution framework with variable substitution
 - Variable substitution system supporting 6+ scopes (fields, metadata, request, system, environment, outputs)
@@ -122,15 +122,40 @@ This document contains no proprietary, confidential, or sensitive organizational
    - Pagination support for list endpoints
    - Health checks and metrics export
 
-### DevCtl Focus
+### DevCtl Work
 **Lock-Step Development**: DevCtl must deliver CLI support for ALL Q3 Service and Catalog features simultaneously
 
-- CLI commands for all 20 Service API endpoints (catalog browsing, request operations, health checks, platform team tools)
-- Dynamic form generation and request submission with real-time validation
-- Request tracking with status monitoring and log streaming capabilities
-- AWS IAM authentication integration with SigV4 signing
-- Platform team validation tools (catalog-item validation, form preview, variable testing)
-- Integration testing capabilities for Service API verification
+**Core Subcommands and Options Required**:
+
+1. **Catalog Management (`devctl catalog`)**:
+   - `catalog list` - Browse available services with filters (--category, --owner, --limit, --cursor)
+   - `catalog get <item-id>` - Service details with options (--schema, --examples)
+   - `catalog refresh` - Force catalog refresh with options (--wait, --timeout)
+
+2. **Request Operations (`devctl request`)**:
+   - `request submit <item-id>` - Submit requests with options (--config, --field, --dry-run, --wait, --follow-logs)
+   - `request list` - List user requests with filters (--status, --catalog-item, --since, --limit)
+   - `request get <request-id>` - Request details with options (--logs, --actions)
+   - `request status <request-id>` - Status tracking with options (--watch, --interval)
+   - `request logs <request-id>` - Log streaming with options (--follow, --tail, --action)
+
+3. **System Health (`devctl health`)**:
+   - `health check` - System health with options (--components, --detailed)
+   - `health ready` - Readiness probe
+   - `version` - Service version with options (--full)
+   - `metrics` - Prometheus metrics with options (--filter, --format)
+
+4. **Platform Team Tools (`devctl validate`)**:
+   - `validate catalog-item <file>` - Validate definitions with options (--strict, --schema-version)
+   - `preview form <file>` - Form preview with options (--render, --interactive)
+   - `test variables <file>` - Variable testing with options (--input, --show-all, --action)
+
+**Global Options Required**:
+- Authentication: --endpoint, --region, --profile
+- Output: --output (json/yaml/table), --verbose, --debug, --no-color
+- Performance: --timeout
+
+**AWS IAM Integration**: SigV4 signing, automatic SSO session detection, profile management
 
 **Epic Success Criteria**: Developers can request EKS app + PostgreSQL + parameter store through CLI and receive JIRA tickets with proper variable substitution. All Service API endpoints are accessible and testable via DevCtl commands.
 
@@ -149,26 +174,48 @@ This document contains no proprietary, confidential, or sensitive organizational
 - Automated provisioning working for EKS app, PostgreSQL, parameter store
 - 5+ platform teams can define services with automated and manual fulfillment options
 
-### Catalog Focus
+### Catalog Work
 - Enhanced schema supporting Terraform action types with repository mapping
 - 10+ production-ready catalog items for compute, database, storage, networking
 - Platform team migration tools and training materials
 - Complex variable templating patterns with secrets and outputs scope
 
-### Service Focus
+### Service Work
 - Terraform action type with infrastructure provisioning capabilities
 - Production AWS deployment with RDS, Redis, monitoring, alerting
 - Fulfillment mode switching (seamless manual ↔ automated switching)
 - Performance optimization supporting 100+ concurrent requests
 
-### DevCtl Focus
+### DevCtl Work
 **Lock-Step Development**: DevCtl must deliver CLI support for ALL Q4 Service enhancements simultaneously
 
-- Advanced CLI features for Terraform action tracking, logs, and automated fulfillment monitoring
-- Batch operations and CI/CD integration capabilities for automated provisioning workflows
-- Enhanced platform team tools supporting automated action testing and troubleshooting
-- Production-ready CLI with comprehensive error handling and recovery operations
-- Advanced authentication and authorization features matching Service capabilities
-- Performance monitoring and metrics collection CLI commands
+**Enhanced Subcommands and Options for Q4**:
+
+1. **Extended Request Operations**:
+   - `request retry <request-id>` - Retry failed actions with options (--action, --force)
+   - `request abort <request-id>` - Abort failed requests with confirmation
+   - `request escalate <request-id>` - Escalate to manual support with context
+   - Enhanced `request logs` with Terraform-specific log parsing and filtering
+
+2. **Terraform Action Support**:
+   - Enhanced `request status` with Terraform plan/apply progress tracking
+   - `request terraform <request-id>` - Terraform-specific operations (--plan, --apply, --destroy)
+   - Infrastructure state viewing and validation commands
+
+3. **Batch Operations and Automation**:
+   - `request batch submit` - Bulk request submission with options (--config-dir, --parallel)
+   - `request export` - Export request data for CI/CD integration (--format, --filter)
+   - Pipeline-friendly output formats and exit codes
+
+4. **Enhanced Platform Team Tools**:
+   - `validate terraform <file>` - Terraform action validation
+   - `test automation <file>` - End-to-end automation testing
+   - `debug request <request-id>` - Advanced troubleshooting and diagnostics
+
+5. **Production Operations**:
+   - Enhanced error handling with recovery suggestions
+   - Performance monitoring commands with detailed metrics
+   - Advanced authentication with role assumption and cross-account support
+   - Comprehensive logging and audit trail capabilities
 
 **Epic Success Criteria**: Production platform with automated provisioning significantly reducing service delivery time and 5+ platform teams onboarded. All automated fulfillment capabilities are manageable and monitorable via DevCtl.

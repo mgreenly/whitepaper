@@ -356,6 +356,13 @@ config:
 - Null/undefined variables are replaced with empty strings
 - JIRA markup characters are automatically escaped
 
+**JIRA Status Handling:**
+- The orchestrator does not track or store JIRA ticket status
+- When a status request is made via API or CLI, the service queries JIRA in real-time
+- Each status check makes a fresh API call to JIRA to get current ticket state
+- Platform teams update ticket status in JIRA as work progresses
+- No polling or caching of JIRA status occurs
+
 ### 2. REST API
 ```yaml
 type: rest-api
@@ -790,6 +797,16 @@ jobs:
 - Schema changes trigger additional architecture review
 - Breaking changes require major version bump
 
+**Catalog Synchronization:**
+
+The orchestrator service stays synchronized with the catalog repository through GitHub webhooks:
+
+- **Push Events**: When changes are merged to the main branch, GitHub sends a webhook to the PAO service
+- **Webhook Endpoint**: The service exposes `/api/v1/webhooks/github` to receive catalog update notifications
+- **Validation**: The service validates incoming catalog changes against the schema before accepting them
+- **Cache Invalidation**: Successfully validated changes trigger cache refresh in the service
+- **Fallback**: Manual catalog refresh available via `/api/v1/catalog/refresh` endpoint if needed
+
 This comprehensive validation system ensures catalog integrity while allowing teams to work independently within their domains.
 
 ## Platform Team Onboarding
@@ -971,3 +988,37 @@ fi
 ### Other Files
 - `README.md`: Link to catalog.md, quick start commands, troubleshooting
 - `.gitignore`: `*.tmp`, `.DS_Store`, `node_modules/`, `vendor/`, test output files
+
+## Future Enhancements
+
+The following catalog capabilities are potential future enhancements beyond the Q3/Q4 2025 roadmap:
+
+### Advanced Action Types
+- **Webhook Action**: Generic outbound webhook invocation for external system notifications
+- **ServiceNow Integration**: Direct integration with ServiceNow for enterprise ITSM
+- **Slack/Teams Notifications**: Direct messaging integration for status updates
+- **Email Notifications**: SMTP-based email actions for approvals and notifications
+
+### Enhanced Bundle Capabilities
+- **Parallel Execution**: Execute independent components simultaneously
+- **Conditional Components**: Components that only deploy based on field values or conditions
+- **Rollback Support**: Automatic rollback of all components if any fail
+- **Cross-Bundle Dependencies**: Reference outputs from other bundle deployments
+
+### Advanced Governance Features
+- **Approval Workflows**: Multi-step approval chains before provisioning
+- **Cost Estimation**: Automatic cost calculation for requested resources
+- **Quota Management**: Team-based quotas and resource limits
+- **Compliance Scanning**: Automatic security and compliance validation
+
+### Developer Experience Improvements
+- **GitOps Integration**: Manage requests through Git pull requests
+- **IDE Extensions**: VS Code and IntelliJ plugins for catalog development
+- **Dry Run Mode**: Preview what would be provisioned without creating resources
+- **Request Templates**: Save and share common request configurations
+
+### Platform Intelligence
+- **Recommendation Engine**: Suggest optimal configurations based on usage patterns
+- **Anomaly Detection**: Identify unusual request patterns or potential issues
+- **Performance Analytics**: Track provisioning times and optimization opportunities
+- **Dependency Mapping**: Visualize relationships between catalog items and deployments

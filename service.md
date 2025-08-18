@@ -22,6 +22,8 @@ This document contains no proprietary, confidential, or sensitive organizational
 - [Implementation Requirements](#implementation-requirements)
 - [Performance & Success Metrics](#performance--success-metrics)
 - [Deployment Configuration](#deployment-configuration)
+- [SQL Schema](#sql-schema)
+- [Future Enhancements](#future-enhancements)
 
 ## Overview
 
@@ -889,6 +891,427 @@ resources:
 2. **Test**: Unit tests, integration tests, security validation
 3. **Deploy**: Serverless framework deployment with automated rollback
 4. **Monitor**: Post-deployment function health verification
+
+## SQL Schema
+
+### Complete Database Schema
+
+**Core Tables**
+
+```sql
+-- Enable UUID extension
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- Requests table - Core request tracking
+CREATE TABLE requests (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    catalog_item_id VARCHAR(255) NOT NULL,
+    catalog_item_version VARCHAR(50) NOT NULL DEFAULT '1.0.0',
+    user_id VARCHAR(255) NOT NULL,
+    user_email VARCHAR(255) NOT NULL,
+    user_teams TEXT[] NOT NULL DEFAULT '{}',
+    status VARCHAR(50) NOT NULL CHECK (status IN (
+        'submitted', 'validating', 'queued', 'in_progress', 
+        'completed', 'failed', 'aborted', 'escalated'
+    )),
+    request_data JSONB NOT NULL,
+    current_action_index INTEGER NOT NULL DEFAULT 0,
+    error_context JSONB,
+    correlation_id UUID NOT NULL DEFAULT uuid_generate_v4(),
+    escalation_ticket_id VARCHAR(100),
+    escalation_timestamp TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    completed_at TIMESTAMP WITH TIME ZONE,
+    aborted_at TIMESTAMP WITH TIME ZONE,
+    CONSTRAINT valid_escalation CHECK (
+        (status = 'escalated' AND escalation_ticket_id IS NOT NULL) OR
+        (status != 'escalated' AND escalation_ticket_id IS NULL)
+    )
+);
+
+-- Request actions table - Individual action execution tracking
+CREATE TABLE request_actions (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    request_id UUID NOT NULL REFERENCES requests(id) ON DELETE CASCADE,
+    action_index INTEGER NOT NULL,
+    action_type VARCHAR(100) NOT NULL CHECK (action_type IN (
+        'jira-ticket', 'rest-api', 'terraform', 'github-workflow'
+    )),
+    action_config JSONB NOT NULL,
+    status VARCHAR(50) NOT NULL CHECK (status IN (
+        'pending', 'in_progress', 'completed', 'failed', 'retrying'
+    )),
+    output JSONB,
+    error_details JSONB,
+    retry_count INTEGER NOT NULL DEFAULT 0,
+    external_reference VARCHAR(255), -- JIRA ticket key, GitHub run ID, etc.
+    started_at TIMESTAMP WITH TIME ZONE,
+    completed_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(request_id, action_index)
+);
+
+-- Catalog items cache table - Cached catalog definitions
+CREATE TABLE catalog_items (
+    id VARCHAR(255) PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    description TEXT NOT NULL,
+    version VARCHAR(50) NOT NULL,
+    category VARCHAR(100) NOT NULL,
+    owner_team VARCHAR(255) NOT NULL,
+    owner_contact VARCHAR(255) NOT NULL,
+    definition JSONB NOT NULL,
+    file_path VARCHAR(500) NOT NULL,
+    git_sha VARCHAR(40) NOT NULL,
+    is_active BOOLEAN NOT NULL DEFAULT true,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Audit log table - Complete audit trail
+CREATE TABLE audit_logs (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    correlation_id UUID NOT NULL,
+    request_id UUID REFERENCES requests(id) ON DELETE SET NULL,
+    action_id UUID REFERENCES request_actions(id) ON DELETE SET NULL,
+    event_type VARCHAR(100) NOT NULL,
+    event_data JSONB NOT NULL,
+    user_id VARCHAR(255),
+    user_email VARCHAR(255),
+    source_system VARCHAR(100) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- User sessions table - Track user authentication sessions
+CREATE TABLE user_sessions (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id VARCHAR(255) NOT NULL,
+    user_email VARCHAR(255) NOT NULL,
+    user_teams TEXT[] NOT NULL DEFAULT '{}',
+    session_token_hash VARCHAR(256) NOT NULL,
+    expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    last_accessed_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+**Indexes for Performance**
+
+```sql
+-- Primary query patterns for requests
+CREATE INDEX idx_requests_user_id ON requests(user_id);
+CREATE INDEX idx_requests_status ON requests(status);
+CREATE INDEX idx_requests_catalog_item ON requests(catalog_item_id);
+CREATE INDEX idx_requests_created_at ON requests(created_at DESC);
+CREATE INDEX idx_requests_correlation_id ON requests(correlation_id);
+CREATE INDEX idx_requests_status_created ON requests(status, created_at DESC);
+
+-- User team filtering support
+CREATE INDEX idx_requests_user_teams ON requests USING GIN(user_teams);
+
+-- Request actions lookup patterns
+CREATE INDEX idx_actions_request_id ON request_actions(request_id);
+CREATE INDEX idx_actions_status ON request_actions(status);
+CREATE INDEX idx_actions_type_status ON request_actions(action_type, status);
+CREATE INDEX idx_actions_external_ref ON request_actions(external_reference) WHERE external_reference IS NOT NULL;
+
+-- Catalog items lookup patterns
+CREATE INDEX idx_catalog_category ON catalog_items(category);
+CREATE INDEX idx_catalog_owner_team ON catalog_items(owner_team);
+CREATE INDEX idx_catalog_active ON catalog_items(is_active) WHERE is_active = true;
+CREATE INDEX idx_catalog_git_sha ON catalog_items(git_sha);
+
+-- Audit log query patterns
+CREATE INDEX idx_audit_correlation_id ON audit_logs(correlation_id);
+CREATE INDEX idx_audit_request_id ON audit_logs(request_id) WHERE request_id IS NOT NULL;
+CREATE INDEX idx_audit_event_type ON audit_logs(event_type);
+CREATE INDEX idx_audit_created_at ON audit_logs(created_at DESC);
+CREATE INDEX idx_audit_user_id ON audit_logs(user_id) WHERE user_id IS NOT NULL;
+
+-- Session management
+CREATE INDEX idx_sessions_token_hash ON user_sessions(session_token_hash);
+CREATE INDEX idx_sessions_user_id ON user_sessions(user_id);
+CREATE INDEX idx_sessions_expires_at ON user_sessions(expires_at);
+```
+
+**Triggers for Automated Updates**
+
+```sql
+-- Auto-update timestamps
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = CURRENT_TIMESTAMP;
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+CREATE TRIGGER update_requests_updated_at 
+    BEFORE UPDATE ON requests 
+    FOR EACH ROW 
+    EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_actions_updated_at 
+    BEFORE UPDATE ON request_actions 
+    FOR EACH ROW 
+    EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_catalog_updated_at 
+    BEFORE UPDATE ON catalog_items 
+    FOR EACH ROW 
+    EXECUTE FUNCTION update_updated_at_column();
+
+-- Audit logging trigger
+CREATE OR REPLACE FUNCTION log_request_changes()
+RETURNS TRIGGER AS $$
+BEGIN
+    INSERT INTO audit_logs (
+        correlation_id, request_id, event_type, event_data, 
+        user_id, user_email, source_system
+    ) VALUES (
+        COALESCE(NEW.correlation_id, OLD.correlation_id),
+        COALESCE(NEW.id, OLD.id),
+        CASE 
+            WHEN TG_OP = 'INSERT' THEN 'request_created'
+            WHEN TG_OP = 'UPDATE' AND OLD.status != NEW.status THEN 'request_status_changed'
+            WHEN TG_OP = 'UPDATE' THEN 'request_updated'
+            WHEN TG_OP = 'DELETE' THEN 'request_deleted'
+        END,
+        jsonb_build_object(
+            'old_status', OLD.status,
+            'new_status', NEW.status,
+            'operation', TG_OP
+        ),
+        COALESCE(NEW.user_id, OLD.user_id),
+        COALESCE(NEW.user_email, OLD.user_email),
+        'orchestrator_service'
+    );
+    RETURN COALESCE(NEW, OLD);
+END;
+$$ language 'plpgsql';
+
+CREATE TRIGGER audit_request_changes
+    AFTER INSERT OR UPDATE OR DELETE ON requests
+    FOR EACH ROW
+    EXECUTE FUNCTION log_request_changes();
+```
+
+### Migration Strategy
+
+**Migration Versioning**
+
+```sql
+-- Migration tracking table
+CREATE TABLE schema_migrations (
+    version VARCHAR(20) PRIMARY KEY,
+    description TEXT NOT NULL,
+    applied_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    checksum VARCHAR(64) NOT NULL
+);
+
+-- Initial migration record
+INSERT INTO schema_migrations (version, description, checksum) 
+VALUES ('001_initial_schema', 'Initial database schema creation', 'sha256_checksum_here');
+```
+
+**Connection Pooling Configuration**
+
+```go
+// Lambda-optimized connection pool settings
+type DatabaseConfig struct {
+    // Connection pool settings for Lambda
+    MaxOpenConns    int           `default:"10"`    // Lower for Lambda
+    MaxIdleConns    int           `default:"2"`     // Minimal idle connections
+    ConnMaxLifetime time.Duration `default:"5m"`    // Shorter lifetime
+    ConnMaxIdleTime time.Duration `default:"30s"`   // Quick idle timeout
+    
+    // RDS Proxy settings (recommended for Lambda)
+    UseRDSProxy     bool   `default:"true"`
+    ProxyEndpoint   string `env:"RDS_PROXY_ENDPOINT"`
+    IAMAuth         bool   `default:"true"`
+    
+    // SSL configuration
+    SSLMode         string `default:"require"`
+    SSLCert         string `env:"DB_SSL_CERT_PATH"`
+    
+    // Query timeouts
+    QueryTimeout    time.Duration `default:"30s"`
+    PrepareTimeout  time.Duration `default:"5s"`
+}
+
+// Connection pool optimization for Lambda
+func ConfigureDatabasePool(db *sql.DB, config DatabaseConfig) {
+    db.SetMaxOpenConns(config.MaxOpenConns)
+    db.SetMaxIdleConns(config.MaxIdleConns)
+    db.SetConnMaxLifetime(config.ConnMaxLifetime)
+    db.SetConnMaxIdleTime(config.ConnMaxIdleTime)
+}
+```
+
+**Foreign Key Relationships and Cascading Behaviors**
+
+```sql
+-- Explicit foreign key constraints with appropriate cascading
+ALTER TABLE request_actions 
+    ADD CONSTRAINT fk_actions_request 
+    FOREIGN KEY (request_id) 
+    REFERENCES requests(id) 
+    ON DELETE CASCADE 
+    ON UPDATE RESTRICT;
+
+ALTER TABLE audit_logs 
+    ADD CONSTRAINT fk_audit_request 
+    FOREIGN KEY (request_id) 
+    REFERENCES requests(id) 
+    ON DELETE SET NULL 
+    ON UPDATE RESTRICT;
+
+ALTER TABLE audit_logs 
+    ADD CONSTRAINT fk_audit_action 
+    FOREIGN KEY (action_id) 
+    REFERENCES request_actions(id) 
+    ON DELETE SET NULL 
+    ON UPDATE RESTRICT;
+
+-- Check constraints for data integrity
+ALTER TABLE requests 
+    ADD CONSTRAINT valid_current_action 
+    CHECK (current_action_index >= 0);
+
+ALTER TABLE request_actions 
+    ADD CONSTRAINT valid_action_index 
+    CHECK (action_index >= 0);
+
+ALTER TABLE request_actions 
+    ADD CONSTRAINT valid_retry_count 
+    CHECK (retry_count >= 0 AND retry_count <= 5);
+```
+
+**Database Maintenance**
+
+```sql
+-- Cleanup queries for automated maintenance
+-- Remove completed requests older than 90 days
+DELETE FROM requests 
+WHERE status = 'completed' 
+AND completed_at < CURRENT_TIMESTAMP - INTERVAL '90 days';
+
+-- Remove audit logs older than 1 year
+DELETE FROM audit_logs 
+WHERE created_at < CURRENT_TIMESTAMP - INTERVAL '1 year';
+
+-- Remove expired user sessions
+DELETE FROM user_sessions 
+WHERE expires_at < CURRENT_TIMESTAMP;
+
+-- Vacuum and analyze for performance
+VACUUM ANALYZE requests;
+VACUUM ANALYZE request_actions;
+VACUUM ANALYZE audit_logs;
+```
+
+## Future Enhancements
+
+### Q4 2025 and Beyond
+
+**Advanced Action Types**
+- **Terraform Integration**: Direct Terraform Cloud/Enterprise integration with state management
+- **AWS Lambda Functions**: Direct Lambda invocation for custom automation workflows
+- **CloudFormation/CDK**: AWS native infrastructure provisioning capabilities
+- **Ansible Playbooks**: Configuration management and server provisioning
+- **Custom Scripts**: Shell script execution in secure sandboxed environments
+
+**Enhanced Orchestration**
+- **Parallel Action Execution**: Execute independent actions concurrently for faster provisioning
+- **Conditional Workflows**: Dynamic action execution based on runtime conditions
+- **Approval Gates**: Human approval requirements for sensitive operations
+- **Rollback Mechanisms**: Automated rollback on failure with resource cleanup
+- **Circuit Breaker Patterns**: Advanced failure handling and service degradation
+
+**Developer Experience Improvements**
+- **Real-time Status Updates**: WebSocket connections for live status streaming
+- **Interactive Debugging**: Step-through debugging for failed requests
+- **Request Templates**: Saved request configurations for common use cases
+- **Bulk Operations**: Submit multiple related requests as atomic operations
+- **Resource Dependency Visualization**: Graphical view of service dependencies
+
+**Platform Team Tools**
+- **Catalog Analytics**: Usage metrics and performance insights for catalog items
+- **A/B Testing Framework**: Test new service configurations with subset of users
+- **Validation Sandbox**: Test catalog items in isolated environment before publishing
+- **Auto-generated Documentation**: Dynamic documentation generation from catalog schemas
+- **Cost Estimation**: Predicted resource costs for requested services
+
+**Security and Compliance**
+- **Policy as Code**: Automated policy enforcement through Open Policy Agent (OPA)
+- **Compliance Reporting**: Automated compliance validation and reporting
+- **Secret Rotation**: Automated secret rotation for provisioned resources
+- **Access Reviews**: Periodic access reviews for provisioned resources
+- **Data Classification**: Automatic data classification and protection policies
+
+**Multi-Cloud and Hybrid**
+- **Multi-Cloud Support**: Extend beyond AWS to Azure, GCP, and on-premises
+- **Cloud Provider Abstraction**: Abstract cloud-specific implementations
+- **Hybrid Cloud Workflows**: Seamless provisioning across cloud boundaries
+- **Cost Optimization**: Cross-cloud cost comparison and optimization recommendations
+- **Disaster Recovery**: Multi-region and multi-cloud disaster recovery automation
+
+**AI and Machine Learning**
+- **Intelligent Recommendations**: ML-powered service recommendations based on usage patterns
+- **Anomaly Detection**: Automated detection of unusual provisioning patterns
+- **Predictive Scaling**: Predict resource needs based on historical data
+- **Natural Language Processing**: Natural language service requests and troubleshooting
+- **Automated Optimization**: AI-driven resource right-sizing and cost optimization
+
+**Enterprise Integration**
+- **ServiceNow Integration**: Bi-directional integration with enterprise ITSM
+- **Active Directory/LDAP**: Enhanced user management and group-based access control
+- **Enterprise Monitoring**: Integration with enterprise monitoring and alerting systems
+- **Compliance Frameworks**: Built-in support for SOC2, PCI-DSS, HIPAA, etc.
+- **Financial Management**: Chargeback, showback, and budget management capabilities
+
+**Advanced Analytics and Observability**
+- **Request Flow Tracing**: End-to-end tracing across all system components
+- **Performance Profiling**: Detailed performance analysis and optimization recommendations
+- **Capacity Planning**: Predictive capacity planning based on usage trends
+- **Business Metrics**: Integration with business KPIs and outcome tracking
+- **Custom Dashboards**: User-configurable dashboards for different stakeholder groups
+
+**Ecosystem Extensions**
+- **Marketplace Integration**: Public and private marketplace for community-contributed catalog items
+- **Plugin Architecture**: Extensible plugin system for custom integrations
+- **API Gateway**: Enhanced API management with rate limiting, versioning, and documentation
+- **Event Streaming**: Real-time event streaming for external system integration
+- **GraphQL Support**: Alternative GraphQL API alongside REST for flexible data querying
+
+### Implementation Priorities
+
+**Phase 1 (Q4 2025)**: Terraform integration, parallel execution, real-time updates
+**Phase 2 (Q1 2026)**: Multi-cloud support, advanced security features, AI recommendations
+**Phase 3 (Q2 2026)**: Enterprise integrations, compliance frameworks, marketplace
+**Phase 4 (Q3 2026)**: Advanced analytics, ecosystem extensions, natural language processing
+
+### Technology Evolution
+
+**Architecture Patterns**
+- Event-driven architecture with event sourcing
+- Microservices decomposition for enhanced scalability
+- CQRS (Command Query Responsibility Segregation) for read/write optimization
+- Saga pattern for distributed transaction management
+
+**Infrastructure Modernization**
+- Kubernetes deployment options alongside Lambda
+- Service mesh integration (Istio/Linkerd) for advanced networking
+- GitOps deployment patterns with ArgoCD/Flux
+- Infrastructure as Code with Pulumi/CDK support
+
+**Data and Analytics**
+- Data lake integration for advanced analytics
+- Real-time stream processing with Apache Kafka
+- Machine learning pipelines with MLOps practices
+- Time-series databases for metrics and monitoring
 
 ---
 
