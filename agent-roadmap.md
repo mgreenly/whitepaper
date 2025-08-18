@@ -50,6 +50,10 @@ This lock-step approach ensures that:
 3. CI/CD pipelines can leverage DevCtl for automation
 4. No functionality is stranded without tooling support
 
+## Roadmap Scope
+
+**Current Focus**: This roadmap covers Q3 and Q4 2025 development in detail. Any work beyond Q4 2025 is speculative future work and should only be mentioned briefly as potential next steps.
+
 ## Actions
 
   * After reading this file wait for instructions.
