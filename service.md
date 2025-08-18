@@ -21,7 +21,8 @@ This document contains no proprietary, confidential, or sensitive organizational
   - [Manual Failure Resolution](#manual-failure-resolution)
 - [Implementation Requirements](#implementation-requirements)
 - [Performance & Success Metrics](#performance--success-metrics)
-- [Deployment Configuration](#deployment-configuration)
+- [Architectural Recommendation](#architectural-recommendation)
+- [Service Configuration](#service-configuration)
 - [SQL Schema](#sql-schema)
 - [Future Enhancements](#future-enhancements)
 
@@ -38,6 +39,8 @@ For strategic context see [whitepaper.md](whitepaper.md). For catalog design see
 ## Core API Specification
 
 ### Essential APIs
+
+The Platform Automation Orchestrator provides a comprehensive REST API organized into four primary categories:
 
 **Catalog Management**
 ```http
@@ -65,7 +68,6 @@ GET    /api/v1/requests/{request_id}/escalation  # Escalation details
 ```http
 GET    /api/v1/health                            # Service health status
 GET    /api/v1/health/ready                      # Readiness probe
-GET    /api/v1/metrics                           # Prometheus metrics
 GET    /api/v1/version                           # Service version info
 ```
 
@@ -81,37 +83,13 @@ POST   /api/v1/test/variables                    # Test variable substitution
 POST   /api/v1/webhooks/github                   # GitHub webhook handler
 ```
 
-**Total API Endpoints**: 20 endpoints as specified in Q3 roadmap requirements
+**Total API Endpoints**: 19 endpoints as specified in Q3 roadmap requirements
 - Core User Journey: 12 endpoints
-- System Health: 4 endpoints  
+- System Health: 3 endpoints  
 - Platform Team Tools: 3 endpoints
 - System Integration: 1 endpoint
 
-**Missing Critical Implementation Details for Q3**:
-
-1. **Complete API Endpoint Verification**: All 20 endpoints listed above must be implemented with full request/response schemas, error handling, and validation
-
-2. **JIRA Real-time Status Integration**: Unlike typical polling systems, the orchestrator queries JIRA status in real-time for each API request
-
-3. **GitHub Webhook Processing**: Robust webhook handling for catalog updates with signature verification and asynchronous processing
-
-4. **Comprehensive Variable Substitution**: 6+ variable scopes with pre-execution validation and detailed error reporting
-
-5. **Background Request Processing**: In-process queue system with background workers for sequential action execution
-
-6. **Authentication Implementation**: Complete AWS SigV4 signing with team-based authorization and session management
-
-7. **Configuration Management**: Full environment variable specification with validation and secure secret handling
-
-8. **Database Schema**: Complete PostgreSQL schema with indexes, triggers, and migration support
-
-9. **Error Context Preservation**: Detailed failure state preservation for manual escalation with cleanup instructions
-
-10. **Cache Strategy**: Multi-tier Redis caching with invalidation patterns and performance optimization
-
-### Detailed API Specifications
-
-**Core API Request/Response Schemas**:
+### API Request/Response Schemas
 
 #### POST /api/v1/requests - Submit Service Request
 **Request**:
@@ -193,7 +171,6 @@ POST   /api/v1/webhooks/github                   # GitHub webhook handler
 - `REQUEST_NOT_FOUND`: Requested resource not found
 - `ACTION_FAILED`: Action execution failed
 - `INVALID_STATE_TRANSITION`: Invalid request state change
-
 
 ### Authentication & Authorization
 
@@ -306,6 +283,7 @@ All list endpoints that return multiple items use cursor-based pagination with t
 ## Architecture & Technology Stack
 
 ### Core Design Principles
+
 1. **Schema-Driven**: All services defined via schema YAML documents
 2. **Smart Fulfillment**: Automated actions with manual fallback - uses automation when available, falls back to manual JIRA when needed. No automatic error recovery; failures require human intervention
 3. **Document-Driven Convergence**: Platform teams collaborate through central document store
@@ -315,345 +293,16 @@ All list endpoints that return multiple items use cursor-based pagination with t
 ### Service Components
 
 **Catalog Management Engine**
-- GitHub repository integration with polling
+- GitHub repository integration with polling and webhook processing
 - Schema validation and error reporting
-- Multi-tier caching (Redis + PostgreSQL)
+- PostgreSQL persistence with in-memory caching
 - CODEOWNERS enforcement for governance
-
-### GitHub Catalog Integration
-
-**Catalog Update Processing**:
-1. **Periodic Polling**: Regular polling of GitHub repository for changes
-2. **Change Detection**: Identify added, modified, or deleted catalog files
-3. **Validation Pipeline**: Schema validation for all changed files
-4. **Cache Invalidation**: Remove stale entries from Redis and update PostgreSQL
-5. **Notification**: Send status updates via notification channels
-
-**Catalog Synchronization**:
-
-The orchestrator service stays synchronized with the catalog repository through GitHub webhooks:
-
-- **Push Events**: When changes are merged to the main branch, GitHub sends a webhook to the PAO service
-- **Webhook Endpoint**: The service exposes `/api/v1/webhooks/github` to receive catalog update notifications
-- **Validation**: The service validates incoming catalog changes against the schema before accepting them
-- **Cache Invalidation**: Successfully validated changes trigger cache refresh in the service
-- **Fallback**: Manual catalog refresh available via `/api/v1/catalog/refresh` endpoint if needed
-
-**Catalog File Processing**:
-```go
-type CatalogProcessor struct {
-    GitHubClient   *github.Client
-    SchemaValidator *jsonschema.Validator
-    Cache          CacheService
-    Database       DatabaseService
-}
-
-func (cp *CatalogProcessor) ProcessCatalogUpdate(event *github.PushEvent) error {
-    // 1. Fetch changed files from GitHub API
-    changedFiles := cp.getChangedCatalogFiles(event)
-    
-    // 2. Download and parse each file
-    for _, file := range changedFiles {
-        content := cp.downloadFile(file.Path)
-        catalogItem := cp.parseYAML(content)
-        
-        // 3. Validate against schema
-        if err := cp.validateCatalogItem(catalogItem); err != nil {
-            return fmt.Errorf("validation failed for %s: %w", file.Path, err)
-        }
-        
-        // 4. Update cache and database
-        cp.updateCatalogCache(catalogItem)
-    }
-    
-    return nil
-}
-```
-
-**CODEOWNERS Enforcement**:
-- Pre-commit validation via GitHub Actions using CODEOWNERS rules
-- API endpoint validation checks user permissions against CODEOWNERS
-- Automatic PR review requests based on changed file paths
-- Catalog team approval required for schema changes
-
-**Cache Strategy**:
-- **Redis L1 Cache**: Individual catalog items (TTL: 1 hour)
-- **Redis L2 Cache**: Category listings and search indexes (TTL: 6 hours)
-- **PostgreSQL Storage**: Persistent catalog storage with versioning
-- **Cache Invalidation**: Event-driven invalidation on catalog updates
-
-**Error Handling for Malformed Catalog Files**:
-- Schema validation errors logged with file path and line numbers
-- Invalid files excluded from catalog without breaking entire update
-- Error notifications sent to catalog repository via GitHub Status API
-- Detailed error reports available via `/api/v1/catalog/validation-errors`
-
-**GitHub Webhook Implementation**:
-```go
-type GitHubWebhookHandler struct {
-    Secret           string
-    CatalogProcessor *CatalogProcessor
-    Logger           Logger
-}
-
-func (gwh *GitHubWebhookHandler) HandlePushEvent(w http.ResponseWriter, r *http.Request) {
-    // 1. Verify webhook signature
-    payload, err := gwh.validateWebhookSignature(r)
-    if err != nil {
-        http.Error(w, "Invalid signature", http.StatusUnauthorized)
-        return
-    }
-    
-    // 2. Parse push event
-    var pushEvent github.PushEvent
-    if err := json.Unmarshal(payload, &pushEvent); err != nil {
-        http.Error(w, "Invalid payload", http.StatusBadRequest)
-        return
-    }
-    
-    // 3. Filter for catalog changes only
-    catalogFiles := gwh.filterCatalogFiles(pushEvent.Commits)
-    if len(catalogFiles) == 0 {
-        w.WriteHeader(http.StatusNoContent)
-        return
-    }
-    
-    // 4. Process catalog updates asynchronously
-    go func() {
-        ctx := context.Background()
-        if err := gwh.CatalogProcessor.ProcessFiles(ctx, catalogFiles); err != nil {
-            gwh.Logger.Error("failed to process catalog files", "error", err)
-        }
-    }()
-    
-    w.WriteHeader(http.StatusAccepted)
-}
-
-func (gwh *GitHubWebhookHandler) filterCatalogFiles(commits []github.Commit) []string {
-    var catalogFiles []string
-    seen := make(map[string]bool)
-    
-    for _, commit := range commits {
-        for _, file := range append(commit.Added, append(commit.Modified, commit.Removed...)...) {
-            if strings.HasPrefix(file, "catalog/") && strings.HasSuffix(file, ".yaml") {
-                if !seen[file] {
-                    catalogFiles = append(catalogFiles, file)
-                    seen[file] = true
-                }
-            }
-        }
-    }
-    
-    return catalogFiles
-}
-```
 
 **Request Orchestration System**
 - Request lifecycle: Submitted → Validation → Queued → In Progress → Completed/Failed
-- Variable substitution with 8+ scopes (user, metadata, request, system, etc.)
+- Variable substitution with 6+ scopes (user, metadata, request, system, environment, outputs)
 - Circuit breaker architecture for external service calls
 - State tracking and audit trail
-
-### Request Processing Architecture
-
-**Q3 Synchronous Processing (In-Process Handlers)**:
-```go
-func (rp *RequestProcessor) ProcessJIRARequest(ctx context.Context, request *ServiceRequest) (*ProcessingResult, error) {
-    // 1. Validate request synchronously
-    if err := rp.Validator.ValidateRequest(request); err != nil {
-        return nil, fmt.Errorf("validation failed: %w", err)
-    }
-    
-    // 2. Create JIRA ticket synchronously (1-2 seconds)
-    jiraTicket, err := rp.JIRAClient.CreateTicket(ctx, request)
-    if err != nil {
-        return nil, fmt.Errorf("JIRA ticket creation failed: %w", err)
-    }
-    
-    // 3. Store request and ticket reference
-    if err := rp.Database.StoreRequest(request, jiraTicket); err != nil {
-        return nil, fmt.Errorf("failed to store request: %w", err)
-    }
-    
-    // 4. Return immediately
-    return &ProcessingResult{
-        RequestID:   request.ID,
-        JIRATicket:  jiraTicket.Key,
-        Status:      "submitted",
-        CreatedAt:   time.Now(),
-    }, nil
-}
-```
-
-**Q4 Background Worker Integration (Future Enhancement)**:
-```yaml
-backgroundWorkers:
-  workerPool: 10  # Concurrent workers
-  queueSize: 1000  # In-memory queue capacity
-  processingTimeout: 300  # 5 minutes
-  retryDelay: 30  # 30 seconds
-  
-containerConfig:
-  replicas: 2-6  # Horizontal pod autoscaling
-  resources:
-    requests:
-      cpu: 1000m
-      memory: 2Gi
-    limits:
-      cpu: 2000m
-      memory: 4Gi
-```
-
-**Request Validation Pipeline**:
-1. **Schema Validation**: Validate against catalog item schema using JSON Schema
-2. **Business Rules**: Custom validation rules (naming conflicts, quota limits)
-3. **User Authorization**: Verify user has permission to request this service
-4. **Resource Availability**: Check dependent services and capacity constraints
-5. **Variable Resolution**: Validate all template variables can be resolved
-
-**Status Tracking and State Transitions**:
-```go
-type RequestStatus string
-
-const (
-    StatusSubmitted   RequestStatus = "submitted"
-    StatusValidating  RequestStatus = "validating" 
-    StatusQueued      RequestStatus = "queued"
-    StatusInProgress  RequestStatus = "in_progress"
-    StatusCompleted   RequestStatus = "completed"
-    StatusFailed      RequestStatus = "failed"
-    StatusAborted     RequestStatus = "aborted"
-    StatusEscalated   RequestStatus = "escalated"
-)
-
-type RequestState struct {
-    ID              string                 `json:"id"`
-    CatalogItemID   string                 `json:"catalogItemId"`
-    UserID          string                 `json:"userId"`
-    Status          RequestStatus          `json:"status"`
-    RequestData     map[string]interface{} `json:"requestData"`
-    CurrentAction   int                    `json:"currentAction"`
-    Actions         []ActionState          `json:"actions"`
-    ErrorContext    *ErrorContext          `json:"errorContext,omitempty"`
-    CreatedAt       time.Time              `json:"createdAt"`
-    UpdatedAt       time.Time              `json:"updatedAt"`
-}
-```
-
-**Audit Logging Implementation**:
-- Correlation ID tracking across all system components
-- Structured JSON logging with standardized fields
-- Database audit trail for all state changes
-- Integration with CloudWatch Logs and X-Ray tracing
-
-**Q3 Request Processing (Synchronous JIRA Only)**:
-1. **Request Validation**: Immediate validation of request against catalog schema
-2. **JIRA Ticket Creation**: Synchronous JIRA API call with variable substitution (1-2 seconds)
-3. **State Persistence**: Store request and JIRA ticket reference in database
-4. **Response**: Return request ID and JIRA ticket key to user immediately
-5. **Status Queries**: Real-time JIRA status queries when requested
-
-**Q4 Background Processing Architecture (Future)**:
-1. **Request Queuing**: In-memory queue for long-running operations (Terraform, etc.)
-2. **Worker Pool Processing**: Background goroutines process queued requests
-3. **Action Execution**: Sequential execution of catalog-defined actions
-4. **State Persistence**: Each action result stored in database
-5. **Error Handling**: Failed actions trigger manual intervention workflow
-6. **Status Updates**: Real-time status updates via WebSocket connections
-
-**Volume Expectations**:
-- **Very Low Volume Service**: Designed for internal platform teams, not end users
-- **Expected Load**: 10-50 requests per day across entire organization
-- **Peak Capacity**: Designed to handle 100 requests per hour maximum
-- **Concurrent Users**: 5-10 platform engineers typically active
-- **No High-Performance Requirements**: Simple, reliable operation over speed
-
-**Q3 Request Processing Implementation**:
-```go
-type RequestProcessor struct {
-    Database     DatabaseService
-    ActionRunner ActionRunner
-    SQSClient    SQSService
-    Logger       Logger
-}
-
-func (rp *RequestProcessor) ProcessRequest(ctx context.Context, requestID string) error {
-    // 1. Load request from database
-    request, err := rp.Database.GetRequest(requestID)
-    if err != nil {
-        return fmt.Errorf("failed to load request: %w", err)
-    }
-    
-    // 2. Update status to in_progress
-    if err := rp.updateRequestStatus(request.ID, StatusInProgress); err != nil {
-        return fmt.Errorf("failed to update status: %w", err)
-    }
-    
-    // 3. Execute actions sequentially
-    for i, action := range request.Actions {
-        if request.CurrentAction > i {
-            continue // Skip already completed actions
-        }
-        
-        rp.Logger.Info("executing action", "requestId", request.ID, "actionIndex", i)
-        
-        // Execute single action
-        result, err := rp.ActionRunner.Execute(ctx, action)
-        if err != nil {
-            // Store error context and stop processing
-            rp.storeErrorContext(request.ID, i, err, result)
-            rp.updateRequestStatus(request.ID, StatusFailed)
-            return fmt.Errorf("action %d failed: %w", i, err)
-        }
-        
-        // Store successful result
-        if err := rp.storeActionResult(request.ID, i, result); err != nil {
-            return fmt.Errorf("failed to store action result: %w", err)
-        }
-        
-        // Update current action index
-        request.CurrentAction = i + 1
-        if err := rp.Database.UpdateRequest(request); err != nil {
-            return fmt.Errorf("failed to update request progress: %w", err)
-        }
-    }
-    
-    // 4. Mark request as completed
-    if err := rp.updateRequestStatus(request.ID, StatusCompleted); err != nil {
-        return fmt.Errorf("failed to mark request completed: %w", err)
-    }
-    
-    rp.Logger.Info("request completed successfully", "requestId", request.ID)
-    return nil
-}
-```
-
-**Q3 Request Response Format**:
-```json
-{
-  "requestId": "req-123e4567-e89b-12d3-a456-426614174000",
-  "jiraTicket": "PLATFORM-12345",
-  "jiraUrl": "https://company.atlassian.net/browse/PLATFORM-12345",
-  "status": "submitted",
-  "correlationId": "corr-123e4567-e89b-12d3-a456-426614174000",
-  "createdAt": "2025-08-18T10:30:00Z",
-  "processingTime": "1.2s"
-}
-```
-
-**Q4 Background Worker Message Format (Future)**:
-```json
-{
-  "requestId": "req-123e4567-e89b-12d3-a456-426614174000",
-  "catalogItemId": "database-postgresql-standard",
-  "priority": "normal",
-  "correlationId": "corr-123e4567-e89b-12d3-a456-426614174000",
-  "timestamp": "2025-08-18T10:30:00Z",
-  "retryCount": 0,
-  "maxRetries": 3,
-  "workerAssignment": "worker-pool-1"
-}
-```
 
 **Multi-Action Fulfillment Engine**
 - 4+ action types: JIRA, REST API, Terraform, GitHub workflows
@@ -674,20 +323,17 @@ func (rp *RequestProcessor) ProcessRequest(ctx context.Context, requestID string
 
 **Data Storage**
 - PostgreSQL 14+ (primary database)
-- Redis Cluster 7+ (caching layer)
 - JSONB support for flexible state storage
 
 **External Integrations**
-- GitHub/GitLab APIs
-- JIRA REST API
-- Terraform Cloud API
-- HashiCorp Vault (secrets)
+- GitHub/GitLab APIs for catalog management
+- JIRA REST API for ticket creation and status tracking
+- AWS Parameter Store for secret management
 
 **Deployment Architecture**
 - EKS container pods with horizontal autoscaling
 - Application Load Balancer for REST endpoints
 - Helm charts for infrastructure deployment
-- CloudWatch and Prometheus for monitoring and logging
 
 ### Schema Integration
 
@@ -1116,14 +762,361 @@ config:
 **External Integrations**
 - GitHub repository integration with polling
 - JIRA REST API integration  
-- Redis caching layer
 - PostgreSQL database for state tracking
 
 **Reliability & Performance**
 - Circuit breaker architecture for external API calls
 - Retry logic with exponential backoff (limited retries, no infinite loops)
-- Connection pooling for database and Redis
+- Connection pooling for database
 - **Error Handling**: All failures require manual intervention; no automatic recovery mechanisms
+
+### Request Processing Architecture
+
+**Q3 Synchronous Processing (In-Process Handlers)**:
+```go
+func (rp *RequestProcessor) ProcessJIRARequest(ctx context.Context, request *ServiceRequest) (*ProcessingResult, error) {
+    // 1. Validate request synchronously
+    if err := rp.Validator.ValidateRequest(request); err != nil {
+        return nil, fmt.Errorf("validation failed: %w", err)
+    }
+    
+    // 2. Create JIRA ticket synchronously (1-2 seconds)
+    jiraTicket, err := rp.JIRAClient.CreateTicket(ctx, request)
+    if err != nil {
+        return nil, fmt.Errorf("JIRA ticket creation failed: %w", err)
+    }
+    
+    // 3. Store request and ticket reference
+    if err := rp.Database.StoreRequest(request, jiraTicket); err != nil {
+        return nil, fmt.Errorf("failed to store request: %w", err)
+    }
+    
+    // 4. Return immediately
+    return &ProcessingResult{
+        RequestID:   request.ID,
+        JIRATicket:  jiraTicket.Key,
+        Status:      "submitted",
+        CreatedAt:   time.Now(),
+    }, nil
+}
+```
+
+**Q4 Background Worker Integration (Future Enhancement)**:
+```yaml
+backgroundWorkers:
+  workerPool: 10  # Concurrent workers
+  queueSize: 1000  # In-memory queue capacity
+  processingTimeout: 300  # 5 minutes
+  retryDelay: 30  # 30 seconds
+  
+containerConfig:
+  replicas: 2-6  # Horizontal pod autoscaling
+  resources:
+    requests:
+      cpu: 1000m
+      memory: 2Gi
+    limits:
+      cpu: 2000m
+      memory: 4Gi
+```
+
+**Request Validation Pipeline**:
+1. **Schema Validation**: Validate against catalog item schema using JSON Schema
+2. **Business Rules**: Custom validation rules (naming conflicts, quota limits)
+3. **User Authorization**: Verify user has permission to request this service
+4. **Resource Availability**: Check dependent services and capacity constraints
+5. **Variable Resolution**: Validate all template variables can be resolved
+
+**Status Tracking and State Transitions**:
+```go
+type RequestStatus string
+
+const (
+    StatusSubmitted   RequestStatus = "submitted"
+    StatusValidating  RequestStatus = "validating" 
+    StatusQueued      RequestStatus = "queued"
+    StatusInProgress  RequestStatus = "in_progress"
+    StatusCompleted   RequestStatus = "completed"
+    StatusFailed      RequestStatus = "failed"
+    StatusAborted     RequestStatus = "aborted"
+    StatusEscalated   RequestStatus = "escalated"
+)
+
+type RequestState struct {
+    ID              string                 `json:"id"`
+    CatalogItemID   string                 `json:"catalogItemId"`
+    UserID          string                 `json:"userId"`
+    Status          RequestStatus          `json:"status"`
+    RequestData     map[string]interface{} `json:"requestData"`
+    CurrentAction   int                    `json:"currentAction"`
+    Actions         []ActionState          `json:"actions"`
+    ErrorContext    *ErrorContext          `json:"errorContext,omitempty"`
+    CreatedAt       time.Time              `json:"createdAt"`
+    UpdatedAt       time.Time              `json:"updatedAt"`
+}
+```
+
+**Audit Logging Implementation**:
+- Correlation ID tracking across all system components
+- Structured JSON logging with standardized fields
+- Database audit trail for all state changes
+
+**Q3 Request Processing (Synchronous JIRA Only)**:
+1. **Request Validation**: Immediate validation of request against catalog schema
+2. **JIRA Ticket Creation**: Synchronous JIRA API call with variable substitution (1-2 seconds)
+3. **State Persistence**: Store request and JIRA ticket reference in database
+4. **Response**: Return request ID and JIRA ticket key to user immediately
+5. **Status Queries**: Real-time JIRA status queries when requested
+
+**Q4 Background Processing Architecture (Future)**:
+1. **Request Queuing**: In-memory queue for long-running operations (Terraform, etc.)
+2. **Worker Pool Processing**: Background goroutines process queued requests
+3. **Action Execution**: Sequential execution of catalog-defined actions
+4. **State Persistence**: Each action result stored in database
+5. **Error Handling**: Failed actions trigger manual intervention workflow
+6. **Status Updates**: Real-time status updates via WebSocket connections
+
+**Volume Expectations**:
+- **Very Low Volume Service**: Designed for internal platform teams, not end users
+- **Expected Load**: 10-50 requests per day across entire organization
+- **Peak Capacity**: Designed to handle 100 requests per hour maximum
+- **Concurrent Users**: 5-10 platform engineers typically active
+- **No High-Performance Requirements**: Simple, reliable operation over speed
+
+**Q3 Request Processing Implementation**:
+```go
+type RequestProcessor struct {
+    Database     DatabaseService
+    ActionRunner ActionRunner
+    Logger       Logger
+}
+
+func (rp *RequestProcessor) ProcessRequest(ctx context.Context, requestID string) error {
+    // 1. Load request from database
+    request, err := rp.Database.GetRequest(requestID)
+    if err != nil {
+        return fmt.Errorf("failed to load request: %w", err)
+    }
+    
+    // 2. Update status to in_progress
+    if err := rp.updateRequestStatus(request.ID, StatusInProgress); err != nil {
+        return fmt.Errorf("failed to update status: %w", err)
+    }
+    
+    // 3. Execute actions sequentially
+    for i, action := range request.Actions {
+        if request.CurrentAction > i {
+            continue // Skip already completed actions
+        }
+        
+        rp.Logger.Info("executing action", "requestId", request.ID, "actionIndex", i)
+        
+        // Execute single action
+        result, err := rp.ActionRunner.Execute(ctx, action)
+        if err != nil {
+            // Store error context and stop processing
+            rp.storeErrorContext(request.ID, i, err, result)
+            rp.updateRequestStatus(request.ID, StatusFailed)
+            return fmt.Errorf("action %d failed: %w", i, err)
+        }
+        
+        // Store successful result
+        if err := rp.storeActionResult(request.ID, i, result); err != nil {
+            return fmt.Errorf("failed to store action result: %w", err)
+        }
+        
+        // Update current action index
+        request.CurrentAction = i + 1
+        if err := rp.Database.UpdateRequest(request); err != nil {
+            return fmt.Errorf("failed to update request progress: %w", err)
+        }
+    }
+    
+    // 4. Mark request as completed
+    if err := rp.updateRequestStatus(request.ID, StatusCompleted); err != nil {
+        return fmt.Errorf("failed to mark request completed: %w", err)
+    }
+    
+    rp.Logger.Info("request completed successfully", "requestId", request.ID)
+    return nil
+}
+```
+
+**Q3 Request Response Format**:
+```json
+{
+  "requestId": "req-123e4567-e89b-12d3-a456-426614174000",
+  "jiraTicket": "PLATFORM-12345",
+  "jiraUrl": "https://company.atlassian.net/browse/PLATFORM-12345",
+  "status": "submitted",
+  "correlationId": "corr-123e4567-e89b-12d3-a456-426614174000",
+  "createdAt": "2025-08-18T10:30:00Z",
+  "processingTime": "1.2s"
+}
+```
+
+**Q4 Background Worker Message Format (Future)**:
+```json
+{
+  "requestId": "req-123e4567-e89b-12d3-a456-426614174000",
+  "catalogItemId": "database-postgresql-standard",
+  "priority": "normal",
+  "correlationId": "corr-123e4567-e89b-12d3-a456-426614174000",
+  "timestamp": "2025-08-18T10:30:00Z",
+  "retryCount": 0,
+  "maxRetries": 3,
+  "workerAssignment": "worker-pool-1"
+}
+```
+
+### GitHub Catalog Integration
+
+**Catalog Update Processing**:
+1. **Periodic Polling**: Regular polling of GitHub repository for changes
+2. **Change Detection**: Identify added, modified, or deleted catalog files
+3. **Validation Pipeline**: Schema validation for all changed files
+4. **Cache Invalidation**: Refresh in-memory cache and update PostgreSQL
+5. **Notification**: Send status updates via notification channels
+
+**Catalog Synchronization**:
+
+The orchestrator service stays synchronized with the catalog repository through GitHub webhooks:
+
+- **Push Events**: When changes are merged to the main branch, GitHub sends a webhook to the PAO service
+- **Webhook Endpoint**: The service exposes `/api/v1/webhooks/github` to receive catalog update notifications
+- **Validation**: The service validates incoming catalog changes against the schema before accepting them
+- **Cache Invalidation**: Successfully validated changes trigger cache refresh in the service
+- **Fallback**: Manual catalog refresh available via `/api/v1/catalog/refresh` endpoint if needed
+
+**Catalog File Processing**:
+```go
+type CatalogProcessor struct {
+    GitHubClient   *github.Client
+    SchemaValidator *jsonschema.Validator
+    Cache          CacheService
+    Database       DatabaseService
+}
+
+func (cp *CatalogProcessor) ProcessCatalogUpdate(event *github.PushEvent) error {
+    // 1. Fetch changed files from GitHub API
+    changedFiles := cp.getChangedCatalogFiles(event)
+    
+    // 2. Download and parse each file
+    for _, file := range changedFiles {
+        content := cp.downloadFile(file.Path)
+        catalogItem := cp.parseYAML(content)
+        
+        // 3. Validate against schema
+        if err := cp.validateCatalogItem(catalogItem); err != nil {
+            return fmt.Errorf("validation failed for %s: %w", file.Path, err)
+        }
+        
+        // 4. Update cache and database
+        cp.updateCatalogCache(catalogItem)
+    }
+    
+    return nil
+}
+```
+
+**CODEOWNERS Enforcement**:
+- Pre-commit validation via GitHub Actions using CODEOWNERS rules
+- API endpoint validation checks user permissions against CODEOWNERS
+- Automatic PR review requests based on changed file paths
+- Catalog team approval required for schema changes
+
+**Cache Strategy**:
+- **In-Memory Cache**: Individual catalog items with expiration management
+- **PostgreSQL Storage**: Persistent catalog storage with versioning
+- **Cache Invalidation**: Event-driven invalidation on catalog updates
+
+**Error Handling for Malformed Catalog Files**:
+- Schema validation errors logged with file path and line numbers
+- Invalid files excluded from catalog without breaking entire update
+- Error notifications sent to catalog repository via GitHub Status API
+- Detailed error reports available via `/api/v1/catalog/validation-errors`
+
+**GitHub Webhook Implementation**:
+```go
+type GitHubWebhookHandler struct {
+    Secret           string
+    CatalogProcessor *CatalogProcessor
+    Logger           Logger
+}
+
+func (gwh *GitHubWebhookHandler) HandlePushEvent(w http.ResponseWriter, r *http.Request) {
+    // 1. Verify webhook signature
+    payload, err := gwh.validateWebhookSignature(r)
+    if err != nil {
+        http.Error(w, "Invalid signature", http.StatusUnauthorized)
+        return
+    }
+    
+    // 2. Parse push event
+    var pushEvent github.PushEvent
+    if err := json.Unmarshal(payload, &pushEvent); err != nil {
+        http.Error(w, "Invalid payload", http.StatusBadRequest)
+        return
+    }
+    
+    // 3. Filter for catalog changes only
+    catalogFiles := gwh.filterCatalogFiles(pushEvent.Commits)
+    if len(catalogFiles) == 0 {
+        w.WriteHeader(http.StatusNoContent)
+        return
+    }
+    
+    // 4. Process catalog updates asynchronously
+    go func() {
+        ctx := context.Background()
+        if err := gwh.CatalogProcessor.ProcessFiles(ctx, catalogFiles); err != nil {
+            gwh.Logger.Error("failed to process catalog files", "error", err)
+        }
+    }()
+    
+    w.WriteHeader(http.StatusAccepted)
+}
+
+func (gwh *GitHubWebhookHandler) filterCatalogFiles(commits []github.Commit) []string {
+    var catalogFiles []string
+    seen := make(map[string]bool)
+    
+    for _, commit := range commits {
+        for _, file := range append(commit.Added, append(commit.Modified, commit.Removed...)...) {
+            if strings.HasPrefix(file, "catalog/") && strings.HasSuffix(file, ".yaml") {
+                if !seen[file] {
+                    catalogFiles = append(catalogFiles, file)
+                    seen[file] = true
+                }
+            }
+        }
+    }
+    
+    return catalogFiles
+}
+```
+
+## Performance & Success Metrics
+
+### Performance Targets
+- **API Response Time**: < 500ms for catalog operations
+- **Request Submission**: < 3 seconds end-to-end (including JIRA ticket creation)
+- **System Availability**: 99.5% uptime (allows for maintenance windows)
+- **Throughput**: 100 requests per hour maximum (very low volume service)
+- **Status Monitoring**: < 2 seconds for real-time JIRA status queries
+- **Concurrent Users**: Support 5-10 platform engineers simultaneously
+
+### Business Impact Metrics
+- **Provisioning Time**: Significant reduction from multi-week delays
+- **Platform Adoption**: High platform team adoption with multiple services
+- **Developer Satisfaction**: High rating on self-service experience
+- **Automation Rate**: High percentage of services automated
+
+### Operational Excellence
+- **Error Rate**: Low failure rate for automated actions
+- **Security Compliance**: Strong security posture with full audit trail
+- **MTTR**: Fast incident resolution
+- **Support Efficiency**: Timely resolution for platform team issues
 
 ## Architectural Recommendation
 
@@ -1168,7 +1161,7 @@ For an enterprise organization with 1,700 developers performing 250,000 applicat
 **EKS Benefits**:
 - **No Cold Starts**: Eliminates 1-3 second delays affecting 10-15% of requests
 - **Consistent Performance**: Sub-200ms response times under normal load
-- **Persistent Connections**: Stable PostgreSQL/Redis connection pools
+- **Persistent Connections**: Stable PostgreSQL connection pools
 - **Better Observability**: Standard Kubernetes monitoring and logging
 - **Simplified Operations**: 10-20 hours/year engineering time savings
 
@@ -1268,7 +1261,6 @@ For an enterprise platform supporting 1,700 developers, the recommendation prior
 
 **Monitoring & Observability**
 - Health check endpoints (`/api/v1/health`, `/api/v1/health/ready`)
-- Metrics endpoint (`/api/v1/metrics`)
 - Structured JSON logging with correlation IDs
 
 **Security & Compliance**
@@ -1277,82 +1269,82 @@ For an enterprise platform supporting 1,700 developers, the recommendation prior
 - AWS Parameter Store for secret configuration
 - Request validation and sanitization
 
-### Database Schema
+## Service Configuration
 
-**Requests Table**
-```sql
-CREATE TABLE requests (
-    id UUID PRIMARY KEY,
-    catalog_item_id VARCHAR(255) NOT NULL,
-    user_id VARCHAR(255) NOT NULL,
-    status VARCHAR(50) NOT NULL,  -- submitted, in_progress, completed, failed, aborted, escalated
-    request_data JSONB NOT NULL,
-    created_at TIMESTAMP NOT NULL,
-    updated_at TIMESTAMP NOT NULL,
-    completed_at TIMESTAMP,
-    aborted_at TIMESTAMP,
-    escalation_ticket_id VARCHAR(50),
-    escalation_timestamp TIMESTAMP
-);
-```
+### Container Configuration
 
-**Request Actions Table**
-```sql
-CREATE TABLE request_actions (
-    id UUID PRIMARY KEY,
-    request_id UUID REFERENCES requests(id),
-    action_type VARCHAR(100) NOT NULL,
-    action_config JSONB NOT NULL,
-    status VARCHAR(50) NOT NULL,
-    output JSONB,
-    started_at TIMESTAMP,
-    completed_at TIMESTAMP
-);
-```
+**Service Container Requirements**:
+- HTTP server listening on port 8080
+- Health check endpoints: `/api/v1/health` and `/api/v1/health/ready`
+- Environment variable configuration support
+- Graceful shutdown handling
+- Resource requirements: 1-2 CPU cores, 2-4GB RAM
 
-### Core Infrastructure Implementation Details
+### Security Configuration
 
-**Database Connection Pooling and Optimization**:
+- **Authentication**: AWS IAM with SigV4 request signing
+- **Secret Management**: AWS Parameter Store for sensitive configuration
+- **Database Access**: Aurora PostgreSQL with IAM authentication
+- **External APIs**: JIRA and GitHub API authentication via tokens from Parameter Store
+
+### Service Health Monitoring
+
+- **Health Endpoints**: `/api/v1/health` and `/api/v1/health/ready` for container orchestration
+- **Logging**: Structured JSON logs with correlation ID tracking
+
+### Build and Deployment
+
+- **Build Requirements**: Go binary compilation with container image packaging
+- **Deployment**: Standard containerized deployment process
+- **Configuration**: Environment variable and Parameter Store integration
+
+### Database Connection Pooling and Optimization
+
 ```go
+// EKS-optimized connection pool settings
 type DatabaseConfig struct {
-    MaxOpenConns    int           `default:"50"`    // Higher for persistent containers
+    // Connection pool settings for persistent containers
+    MaxOpenConns    int           `default:"50"`    // Higher for containers
     MaxIdleConns    int           `default:"20"`    // More idle connections
     ConnMaxLifetime time.Duration `default:"1h"`    // Longer lifetime
-    ConnMaxIdleTime time.Duration `default:"10m"`   // Longer idle time
+    ConnMaxIdleTime time.Duration `default:"10m"`   // Longer idle timeout
+    
+    // Direct database connection (no proxy needed)
+    DatabaseURL     string `env:"DATABASE_URL"`
+    IAMAuth         bool   `default:"true"`
+    
+    // SSL configuration
+    SSLMode         string `default:"require"`
+    SSLCert         string `env:"DB_SSL_CERT_PATH"`
+    
+    // Query timeouts
+    QueryTimeout    time.Duration `default:"30s"`
+    PrepareTimeout  time.Duration `default:"5s"`
 }
 
-// Direct database connection for EKS containers
-type EKSDataConfig struct {
-    DatabaseURL   string `env:"DATABASE_URL"`
-    IAMAuth       bool   `default:"true"`
-    Region        string `env:"AWS_REGION"`
-    SSLMode       string `default:"require"`
+// Connection pool optimization for EKS containers
+func ConfigureDatabasePool(db *sql.DB, config DatabaseConfig) {
+    db.SetMaxOpenConns(config.MaxOpenConns)
+    db.SetMaxIdleConns(config.MaxIdleConns)
+    db.SetConnMaxLifetime(config.ConnMaxLifetime)
+    db.SetConnMaxIdleTime(config.ConnMaxIdleTime)
 }
 ```
 
-**Redis Caching Strategy and Key Structure**:
+### In-Memory Caching Strategy
+
 ```yaml
-keyStructure:
-  catalogItems: "catalog:item:{itemId}"
-  catalogCategories: "catalog:category:{category}"
-  requestStatus: "request:status:{requestId}"
-  userSessions: "session:user:{userId}"
-  formSchemas: "form:schema:{itemId}"
-  
-cacheTTL:
-  catalogItems: 3600      # 1 hour
-  categories: 21600       # 6 hours  
-  requestStatus: 300      # 5 minutes
-  formSchemas: 7200       # 2 hours
-
-clusterConfig:
-  nodes: 3
-  replicationFactor: 2
-  failoverEnabled: true
-  backupSchedule: "0 2 * * *"  # Daily at 2 AM
+cacheConfig:
+  catalogItems: 3600      # 1 hour TTL
+  categories: 21600       # 6 hours TTL
+  requestStatus: 300      # 5 minutes TTL
+  formSchemas: 7200       # 2 hours TTL
+  maxMemoryUsage: "512MB" # Maximum cache memory
+  evictionPolicy: "LRU"   # Least Recently Used
 ```
 
-**Service Process Organization**:
+### Service Process Organization
+
 ```yaml
 serviceComponents:
   api-server:
@@ -1373,7 +1365,8 @@ serviceComponents:
     schedule: "Every 5 minutes"
 ```
 
-**Error Context Preservation for Manual Escalation**:
+### Error Context Preservation for Manual Escalation
+
 ```go
 type ErrorContext struct {
     RequestID        string                 `json:"requestId"`
@@ -1394,30 +1387,9 @@ type CleanupInstruction struct {
 }
 ```
 
-**Service Metrics Collection**:
-```yaml
-serviceMetrics:
-  - name: "pao_requests_total"
-    type: "counter"
-    labels: ["status", "catalog_item", "user_team"]
-    
-  - name: "pao_request_duration_seconds"
-    type: "histogram"
-    labels: ["catalog_item", "action_type"]
-    buckets: [0.1, 0.5, 1, 5, 10, 30, 60]
-    
-  - name: "pao_catalog_cache_hit_ratio"
-    type: "gauge"
-    labels: ["cache_type"]
-    
-  - name: "pao_action_failure_rate"
-    type: "gauge"
-    labels: ["action_type", "failure_reason"]
-```
 
-### Configuration Requirements
+### Complete Environment Variables
 
-**Complete Environment Variables**:
 ```bash
 # Database Configuration
 DATABASE_HOST=pao-aurora-cluster.cluster-xxx.us-east-1.rds.amazonaws.com
@@ -1429,10 +1401,9 @@ DB_MAX_IDLE_CONNS=20
 DB_CONN_MAX_LIFETIME=1h
 DB_CONN_MAX_IDLE_TIME=10m
 
-# Redis Cache Configuration
-REDIS_CLUSTER_ENDPOINT=xxx.cache.amazonaws.com:6379
-REDIS_TLS_ENABLED=true
-REDIS_PASSWORD_PATH=/pao/redis/password
+# Cache Configuration
+CACHE_MAX_MEMORY=512MB
+CACHE_EVICTION_POLICY=LRU
 
 # JIRA Integration
 JIRA_BASE_URL=https://company.atlassian.net
@@ -1448,7 +1419,6 @@ CATALOG_POLL_INTERVAL=5m
 JIRA_API_TOKEN_PATH=/pao/jira/api-token
 GITHUB_TOKEN_PATH=/pao/github/token
 GITHUB_WEBHOOK_SECRET_PATH=/pao/github/webhook-secret
-REDIS_PASSWORD_PATH=/pao/redis/password
 
 # AWS Configuration
 AWS_REGION=us-east-1
@@ -1475,7 +1445,8 @@ TRACING_ENABLED=true
 TRACING_SAMPLE_RATE=0.1
 ```
 
-**Configuration Validation**:
+### Configuration Validation
+
 ```go
 type ServiceConfig struct {
     Database struct {
@@ -1489,10 +1460,9 @@ type ServiceConfig struct {
         ConnMaxLifetime time.Duration `env:"DB_CONN_MAX_LIFETIME" default:"1h"`
     }
     
-    Redis struct {
-        Endpoint     string `env:"REDIS_CLUSTER_ENDPOINT" validate:"required"`
-        PasswordPath string `env:"REDIS_PASSWORD_PATH"`
-        TLSEnabled   bool   `env:"REDIS_TLS_ENABLED" default:"true"`
+    Cache struct {
+        MaxMemory      string `env:"CACHE_MAX_MEMORY" default:"512MB"`
+        EvictionPolicy string `env:"CACHE_EVICTION_POLICY" default:"LRU"`
     }
     
     JIRA struct {
@@ -1582,14 +1552,6 @@ func loadParameterStoreSecrets(config *ServiceConfig) error {
         config.GitHub.WebhookSecret = secret
     }
     
-    // Load Redis password
-    if config.Redis.PasswordPath != "" {
-        password, err := getParameter(svc, config.Redis.PasswordPath)
-        if err != nil {
-            return fmt.Errorf("failed to load Redis password: %w", err)
-        }
-        config.Redis.Password = password
-    }
     
     return nil
 }
@@ -1609,7 +1571,8 @@ func getParameter(svc *ssm.SSM, path string) (string, error) {
 }
 ```
 
-**Service Configuration**
+### Service Configuration
+
 ```yaml
 service:
   port: 8080
@@ -1617,14 +1580,14 @@ service:
     DATABASE_HOST: ${env:DATABASE_HOST}
     DATABASE_NAME: ${env:DATABASE_NAME}
     DATABASE_USER: ${env:DATABASE_USER}
-    REDIS_CLUSTER_ENDPOINT: ${env:REDIS_CLUSTER_ENDPOINT}
+    CACHE_MAX_MEMORY: ${env:CACHE_MAX_MEMORY}
+    CACHE_EVICTION_POLICY: ${env:CACHE_EVICTION_POLICY}
     JIRA_BASE_URL: ${env:JIRA_BASE_URL}
     CATALOG_GITHUB_REPO: ${env:CATALOG_GITHUB_REPO}
     # Secrets loaded from AWS Parameter Store
     JIRA_API_TOKEN_PATH: ${env:JIRA_API_TOKEN_PATH}
     GITHUB_TOKEN_PATH: ${env:GITHUB_TOKEN_PATH}
     GITHUB_WEBHOOK_SECRET_PATH: ${env:GITHUB_WEBHOOK_SECRET_PATH}
-    REDIS_PASSWORD_PATH: ${env:REDIS_PASSWORD_PATH}
   
 workers:
   catalog_processor:
@@ -1634,58 +1597,6 @@ workers:
   status_updater:
     interval: "5m"
 ```
-
-## Performance & Success Metrics
-
-### Performance Targets
-- **API Response Time**: < 500ms for catalog operations
-- **Request Submission**: < 3 seconds end-to-end (including JIRA ticket creation)
-- **System Availability**: 99.5% uptime (allows for maintenance windows)
-- **Throughput**: 100 requests per hour maximum (very low volume service)
-- **Status Monitoring**: < 2 seconds for real-time JIRA status queries
-- **Concurrent Users**: Support 5-10 platform engineers simultaneously
-
-### Business Impact Metrics
-- **Provisioning Time**: Significant reduction from multi-week delays
-- **Platform Adoption**: High platform team adoption with multiple services
-- **Developer Satisfaction**: High rating on self-service experience
-- **Automation Rate**: High percentage of services automated
-
-### Operational Excellence
-- **Error Rate**: Low failure rate for automated actions
-- **Security Compliance**: Strong security posture with full audit trail
-- **MTTR**: Fast incident resolution
-- **Support Efficiency**: Timely resolution for platform team issues
-
-## Service Configuration
-
-### Container Configuration
-
-**Service Container Requirements**:
-- HTTP server listening on port 8080
-- Health check endpoints: `/api/v1/health` and `/api/v1/health/ready`
-- Environment variable configuration support
-- Graceful shutdown handling
-- Resource requirements: 1-2 CPU cores, 2-4GB RAM
-
-### Security Configuration
-
-- **Authentication**: AWS IAM with SigV4 request signing
-- **Secret Management**: AWS Parameter Store for sensitive configuration
-- **Database Access**: Aurora PostgreSQL with IAM authentication
-- **External APIs**: JIRA and GitHub API authentication via tokens from Parameter Store
-
-### Service Health Monitoring
-
-- **Health Endpoints**: `/api/v1/health` and `/api/v1/health/ready` for container orchestration
-- **Metrics**: Prometheus-format metrics at `/api/v1/metrics` endpoint
-- **Logging**: Structured JSON logs with correlation ID tracking
-
-### Build and Deployment
-
-- **Build Requirements**: Go binary compilation with container image packaging
-- **Deployment**: Standard containerized deployment process
-- **Configuration**: Environment variable and Parameter Store integration
 
 ## SQL Schema
 
@@ -1792,7 +1703,7 @@ CREATE TABLE user_sessions (
 );
 ```
 
-**Indexes for Performance**
+### Indexes for Performance
 
 ```sql
 -- Primary query patterns for requests
@@ -1831,7 +1742,7 @@ CREATE INDEX idx_sessions_user_id ON user_sessions(user_id);
 CREATE INDEX idx_sessions_expires_at ON user_sessions(expires_at);
 ```
 
-**Triggers for Automated Updates**
+### Triggers for Automated Updates
 
 ```sql
 -- Auto-update timestamps
@@ -1911,40 +1822,7 @@ INSERT INTO schema_migrations (version, description, checksum)
 VALUES ('001_initial_schema', 'Initial database schema creation', 'sha256_checksum_here');
 ```
 
-**Connection Pooling Configuration**
-
-```go
-// EKS-optimized connection pool settings
-type DatabaseConfig struct {
-    // Connection pool settings for persistent containers
-    MaxOpenConns    int           `default:"50"`    // Higher for containers
-    MaxIdleConns    int           `default:"20"`    // More idle connections
-    ConnMaxLifetime time.Duration `default:"1h"`    // Longer lifetime
-    ConnMaxIdleTime time.Duration `default:"10m"`   // Longer idle timeout
-    
-    // Direct database connection (no proxy needed)
-    DatabaseURL     string `env:"DATABASE_URL"`
-    IAMAuth         bool   `default:"true"`
-    
-    // SSL configuration
-    SSLMode         string `default:"require"`
-    SSLCert         string `env:"DB_SSL_CERT_PATH"`
-    
-    // Query timeouts
-    QueryTimeout    time.Duration `default:"30s"`
-    PrepareTimeout  time.Duration `default:"5s"`
-}
-
-// Connection pool optimization for EKS containers
-func ConfigureDatabasePool(db *sql.DB, config DatabaseConfig) {
-    db.SetMaxOpenConns(config.MaxOpenConns)
-    db.SetMaxIdleConns(config.MaxIdleConns)
-    db.SetConnMaxLifetime(config.ConnMaxLifetime)
-    db.SetConnMaxIdleTime(config.ConnMaxIdleTime)
-}
-```
-
-**Foreign Key Relationships and Cascading Behaviors**
+### Foreign Key Relationships and Cascading Behaviors
 
 ```sql
 -- Explicit foreign key constraints with appropriate cascading
@@ -1983,7 +1861,7 @@ ALTER TABLE request_actions
     CHECK (retry_count >= 0 AND retry_count <= 5);
 ```
 
-**Database Maintenance**
+### Database Maintenance
 
 ```sql
 -- Cleanup queries for automated maintenance

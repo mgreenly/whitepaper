@@ -10,7 +10,7 @@ This document contains no proprietary, confidential, or sensitive organizational
 - [Q4 2025: Production Epic](#q4-2025-production-epic)
 - [Future Work Beyond Q4 2025](#future-work-beyond-q4-2025)
 
-*Last Updated: 2025-08-17 21:37:12 -0500 (CDT)*
+*Last Updated: 2025-08-18 02:39:56 +0000 (UTC)*
 
 ## Q3 2025: Foundation Epic 🚧 CURRENT (Aug-Oct)
 
@@ -48,7 +48,7 @@ This document contains no proprietary, confidential, or sensitive organizational
 - `tests/invalid/invalid-naming-conventions.yaml`
 - `templates/catalog-item-template.yaml`
 - `templates/jira-action-template.yaml`
-- `catalog/compute/eks-containerapp.yaml`
+- `catalog/compute/eks-application.yaml`
 - `catalog/databases/postgresql-standard.yaml`
 - `catalog/security/parameterstore-standard.yaml`
 - `README.md`
@@ -60,9 +60,9 @@ This document contains no proprietary, confidential, or sensitive organizational
 - Variable substitution system supporting 6+ scopes (fields, metadata, request, system, environment, outputs)
 - PostgreSQL database schema for requests and audit logging
 
-**Required API Endpoints (17 total)**:
+**Required API Endpoints (19 total)**:
 
-*Core User Journey (16 endpoints)*:
+*Core User Journey (12 endpoints)*:
 - `/api/v1/catalog` - Browse available services
 - `/api/v1/catalog/items/{item_id}` - Service details
 - `/api/v1/catalog/items/{item_id}/schema` - Dynamic form schema
@@ -76,6 +76,8 @@ This document contains no proprietary, confidential, or sensitive organizational
 - `/api/v1/requests/{request_id}/escalate` - Escalate to manual support
 - `/api/v1/requests/{request_id}/escalation` - Escalation details
 - `/api/v1/catalog/refresh` - Force catalog refresh
+
+*System Health (3 endpoints)*:
 - `/api/v1/health` - Service health status
 - `/api/v1/health/ready` - Readiness probe
 - `/api/v1/version` - Service version info
@@ -86,13 +88,12 @@ This document contains no proprietary, confidential, or sensitive organizational
 - `/api/v1/test/variables` - Test variable substitution
 
 *System Integration (1 endpoint)*:
-- `/api/v1/metrics` - Prometheus metrics
+- `/api/v1/webhooks/github` - GitHub webhook handler
 
 **Service Implementation Tasks**:
 1. **Core Infrastructure Setup**
    - PostgreSQL database schema (requests, request_actions tables)
-   - Redis caching layer integration
-   - EKS container deployment framework
+   - In-memory caching layer integration
    - Environment configuration and secrets management
 
 2. **Catalog Management Implementation** 
@@ -120,10 +121,10 @@ This document contains no proprietary, confidential, or sensitive organizational
    - Manual escalation workflow
 
 6. **API Endpoint Implementation**
-   - All 20 REST endpoints with proper error handling
+   - All 19 REST endpoints with proper error handling
    - Request validation and response formatting
    - Pagination support for list endpoints
-   - Health checks and metrics export
+   - Health checks and service monitoring
 
 ### DevCtl Work
 **Lock-Step Development**: DevCtl must deliver CLI support for ALL Q3 Service and Catalog features simultaneously
@@ -146,7 +147,6 @@ This document contains no proprietary, confidential, or sensitive organizational
    - `health check` - System health with options (--components, --detailed)
    - `health ready` - Readiness probe
    - `version` - Service version with options (--full)
-   - `metrics` - Prometheus metrics with options (--filter, --format)
 
 4. **Platform Team Tools (`devctl validate`)**:
    - `validate catalog-item <file>` - Validate definitions with options (--strict, --schema-version)
@@ -162,48 +162,48 @@ This document contains no proprietary, confidential, or sensitive organizational
 
 **Epic Success Criteria**: Developers can request EKS app + PostgreSQL + parameter store through CLI and receive JIRA tickets with proper variable substitution. All Service API endpoints are accessible and testable via DevCtl commands.
 
-### Sprint Planning (Team Size: 6-8 people)
+### Sprint Planning
 
 **Sprint 1 (Aug 18-29): Foundation Setup**
-- **Catalog Team (2 people)**: Create GitHub repository structure with CODEOWNERS and basic validation. Implement JSON schemas for CatalogItem and CatalogBundle with validation rules. Set up GitHub repository with branch protection and webhook configuration.
-- **Service Team (3 people)**: Provision PostgreSQL Aurora cluster with IAM authentication and required schema. Set up ElastiCache Redis cluster with TLS. Implement core REST API framework with health endpoints and metrics. Configure JIRA integration with API tokens, project setup, and required issue types.
-- **DevCtl Team (2 people)**: Initialize Go CLI project with AWS SigV4 authentication. Implement global options and basic command structure.
-- **Platform Team (1 person)**: Define governance model and platform team contribution workflows.
+- **Catalog Work**: Create GitHub repository structure with CODEOWNERS and basic validation. Implement JSON schemas for CatalogItem and CatalogBundle with validation rules. Set up GitHub repository with branch protection and webhook configuration.
+- **Service Work**: Provision PostgreSQL Aurora cluster with IAM authentication and required schema. Set up in-memory caching infrastructure. Implement core REST API framework with health endpoints. Configure JIRA integration with API tokens, project setup, and required issue types.
+- **DevCtl Work**: Initialize Go CLI project with AWS SigV4 authentication. Implement global options and basic command structure.
+- **Governance Work**: Define governance model and platform team contribution workflows.
 
 **External Dependencies (Sprint 1)**:
 - **AWS Infrastructure**: PostgreSQL Aurora cluster (Multi-AZ, 50GB storage, db.t3.medium)
-- **Redis Infrastructure**: ElastiCache Redis cluster (3 nodes, cache.t3.micro)
+- **Caching Infrastructure**: In-memory caching layer for performance optimization
 - **JIRA Configuration**: Project PLATFORM with issue types (Task, Story, Bug), custom fields for correlation ID
 - **GitHub Repository**: platform-catalog repository with webhook endpoint configuration
-- **AWS Parameter Store**: Secret storage paths for JIRA tokens, GitHub tokens, and Redis passwords
+- **AWS Parameter Store**: Secret storage paths for JIRA tokens and GitHub tokens
 
 **Risk Planning (1 day)**:
 - Identify top 5 risks and mitigation strategies
 - Create dependency tracking and escalation procedures
 
 **Sprint 2 (Sep 2-13): Core Functionality**
-- **Catalog Team (2 people)**: Complete 3 test catalog items (EKS app, PostgreSQL, parameter store) with JIRA action templates. Implement CI/CD pipeline with automated validation.
-- **Service Team (3 people)**: Build catalog ingestion from GitHub with validation. Implement request submission pipeline with JSONB storage and correlation ID tracking.
-- **DevCtl Team (2 people)**: Implement `catalog list/get/refresh` commands with pagination. Build request submission commands with config file support.
-- **Platform Team (1 person)**: Create platform team onboarding documentation and testing workflows.
+- **Catalog Work**: Complete 3 test catalog items (EKS app, PostgreSQL, parameter store) with JIRA action templates. Implement CI/CD pipeline with automated validation.
+- **Service Work**: Build catalog ingestion from GitHub with validation. Implement request submission pipeline with JSONB storage and correlation ID tracking.
+- **DevCtl Work**: Implement `catalog list/get/refresh` commands with pagination. Build request submission commands with config file support.
+- **Documentation Work**: Create platform team onboarding documentation and testing workflows.
 
 **Sprint 3 (Sep 16-27): Action Framework**
-- **Catalog Team (2 people)**: Enhance validation scripts with Ruby implementation. Create comprehensive test fixtures for valid/invalid examples.
-- **Service Team (3 people)**: Implement JIRA action framework with variable substitution (6+ scopes). Build status tracking and external reference management.
-- **DevCtl Team (2 people)**: Complete request management commands (list, get, status, logs). Implement platform team validation tools.
-- **Platform Team (1 person)**: Test end-to-end workflows and provide feedback for improvements.
+- **Catalog Work**: Enhance validation scripts with Ruby implementation. Create comprehensive test fixtures for valid/invalid examples.
+- **Service Work**: Implement JIRA action framework with variable substitution (6+ scopes). Build status tracking and external reference management.
+- **DevCtl Work**: Complete request management commands (list, get, status, logs). Implement platform team validation tools.
+- **Testing Work**: Test end-to-end workflows and provide feedback for improvements.
 
 **Sprint 4 (Sep 30-Oct 11): Integration & Polish**
-- **Catalog Team (2 people)**: Finalize templates and governance documentation. Complete integration testing with service endpoints.
-- **Service Team (3 people)**: Implement error handling, retry logic, and manual escalation workflows. Complete API endpoint coverage with proper error responses.
-- **DevCtl Team (2 people)**: Add advanced options (watch, follow-logs, filtering). Implement comprehensive error handling and user-friendly messages.
-- **Platform Team (1 person)**: Conduct user acceptance testing and gather feedback from early platform team adopters.
+- **Catalog Work**: Finalize templates and governance documentation. Complete integration testing with service endpoints.
+- **Service Work**: Implement error handling, retry logic, and manual escalation workflows. Complete API endpoint coverage with proper error responses.
+- **DevCtl Work**: Add advanced options (watch, follow-logs, filtering). Implement comprehensive error handling and user-friendly messages.
+- **Testing Work**: Conduct user acceptance testing and gather feedback from early platform team adopters.
 
 **Sprint 5 (Oct 14-25): Testing & Deployment**
-- **All Teams**: End-to-end testing of complete workflow. Deploy to staging environment and conduct load testing.
-- **Service Team**: Performance optimization and monitoring setup. EKS container deployment configuration.
-- **DevCtl Team**: Release preparation and installation documentation. CLI distribution setup.
-- **Catalog Team**: Final validation rule refinements and documentation updates.
+- **Integration Work**: End-to-end testing of complete workflow. Deploy to staging environment and conduct load testing.
+- **Service Work**: Performance optimization and monitoring setup.
+- **DevCtl Work**: Release preparation and installation documentation. CLI distribution setup.
+- **Catalog Work**: Final validation rule refinements and documentation updates.
 
 ---
 
@@ -228,7 +228,7 @@ This document contains no proprietary, confidential, or sensitive organizational
 
 ### Service Work
 - Terraform action type with infrastructure provisioning capabilities
-- Production EKS deployment with Aurora PostgreSQL, Redis, monitoring, alerting
+- Production EKS deployment with Aurora PostgreSQL, caching layer, monitoring, alerting
 - Background worker pool implementation (Q4: transition from synchronous to asynchronous)
 - Fulfillment mode switching (seamless manual ↔ automated switching)
 - Performance optimization supporting 100+ concurrent requests
@@ -261,43 +261,43 @@ This document contains no proprietary, confidential, or sensitive organizational
 
 5. **Production Operations**:
    - Enhanced error handling with recovery suggestions
-   - Performance monitoring commands with detailed metrics
+   - Performance monitoring commands with detailed diagnostics
    - Advanced authentication with role assumption and cross-account support
    - Comprehensive logging and audit trail capabilities
 
 **Epic Success Criteria**: Production platform with automated provisioning significantly reducing service delivery time and 5+ platform teams onboarded. All automated fulfillment capabilities are manageable and monitorable via DevCtl.
 
-### Sprint Planning (Team Size: 6-8 people)
+### Sprint Planning
 
 **Sprint 1 (Nov 4-15): Terraform Integration Foundation**
-- **Catalog Team (2 people)**: Enhance schema to support Terraform action types with repository mapping. Create Terraform action templates and validation rules.
-- **Service Team (3 people)**: Implement background worker pool architecture (transition from synchronous to asynchronous). Implement Terraform action execution framework with state management. Build REST API action type with authentication and retry logic.
-- **DevCtl Team (2 people)**: Add retry, abort, and escalate commands. Implement Terraform-specific status tracking and log parsing.
-- **Platform Team (1 person)**: Design fulfillment mode switching strategy and create migration documentation.
+- **Catalog Work**: Enhance schema to support Terraform action types with repository mapping. Create Terraform action templates and validation rules.
+- **Service Work**: Implement background worker pool architecture (transition from synchronous to asynchronous). Implement Terraform action execution framework with state management. Build REST API action type with authentication and retry logic.
+- **DevCtl Work**: Add retry, abort, and escalate commands. Implement Terraform-specific status tracking and log parsing.
+- **Documentation Work**: Design fulfillment mode switching strategy and create migration documentation.
 
 **Sprint 2 (Nov 18-29): Production Infrastructure**
-- **Catalog Team (2 people)**: Create 5+ production-ready catalog items with both manual and automated actions. Implement complex variable templating with secrets scope.
-- **Service Team (3 people)**: Deploy production EKS infrastructure with Aurora PostgreSQL, Redis clustering, monitoring, and alerting. Implement fulfillment mode switching logic.
-- **DevCtl Team (2 people)**: Build Terraform operation commands (plan, apply, destroy). Add batch operations and export functionality.
-- **Platform Team (1 person)**: Test automated provisioning workflows and provide platform team training materials.
+- **Catalog Work**: Create 5+ production-ready catalog items with both manual and automated actions. Implement complex variable templating with secrets scope.
+- **Service Work**: Deploy production EKS infrastructure with Aurora PostgreSQL, caching layer, monitoring, and alerting. Implement fulfillment mode switching logic.
+- **DevCtl Work**: Build Terraform operation commands (plan, apply, destroy). Add batch operations and export functionality.
+- **Testing Work**: Test automated provisioning workflows and provide platform team training materials.
 
 **Sprint 3 (Dec 2-13): Performance & Automation**
-- **Catalog Team (2 people)**: Complete 10+ catalog items across all categories. Implement platform team migration tools and training workflows.
-- **Service Team (3 people)**: Performance optimization for 100+ concurrent requests. Implement advanced error handling and recovery suggestions.
-- **DevCtl Team (2 people)**: Add automation testing tools and advanced debugging commands. Implement performance monitoring and detailed metrics.
-- **Platform Team (1 person)**: Onboard first 3 platform teams and gather feedback for improvements.
+- **Catalog Work**: Complete 10+ catalog items across all categories. Implement platform team migration tools and training workflows.
+- **Service Work**: Performance optimization for 100+ concurrent requests. Implement advanced error handling and recovery suggestions.
+- **DevCtl Work**: Add automation testing tools and advanced debugging commands. Implement performance monitoring and detailed diagnostics.
+- **Integration Work**: Onboard first 3 platform teams and gather feedback for improvements.
 
 **Sprint 4 (Dec 16-Jan 3): Production Hardening**
-- **Service Team (4 people)**: Production deployment hardening, security review, and compliance validation. Advanced authentication with role assumption.
-- **DevCtl Team (2 people)**: Production CLI release with comprehensive logging and audit capabilities. Cross-account authentication support.
-- **Catalog Team (1 people)**: Final catalog validation and governance process refinement.
-- **Platform Team (1 person)**: Complete user acceptance testing with 5+ platform teams.
+- **Service Work**: Production deployment hardening, security review, and compliance validation. Advanced authentication with role assumption.
+- **DevCtl Work**: Production CLI release with comprehensive logging and audit capabilities. Cross-account authentication support.
+- **Catalog Work**: Final catalog validation and governance process refinement.
+- **Testing Work**: Complete user acceptance testing with 5+ platform teams.
 
 **Sprint 5 (Jan 6-17): Launch & Optimization**
-- **All Teams**: Production launch preparation and monitoring setup. Performance tuning and final optimizations.
-- **Service Team**: Production deployment and real-time monitoring setup.
-- **DevCtl Team**: CLI distribution and user documentation finalization.
-- **Catalog Team**: Platform team onboarding automation and success metric tracking.
+- **Integration Work**: Production launch preparation and monitoring setup. Performance tuning and final optimizations.
+- **Service Work**: Production deployment and real-time monitoring setup.
+- **DevCtl Work**: CLI distribution and user documentation finalization.
+- **Catalog Work**: Platform team onboarding automation and success metric tracking.
 
 ---
 

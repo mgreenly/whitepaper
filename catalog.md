@@ -14,8 +14,8 @@ This document contains no proprietary, confidential, or sensitive organizational
   - [CatalogItem - Individual Service](#catalogitem---individual-service)
 - [Field Types](#field-types)
 - [Action Types](#action-types)
-  - [JIRA Ticket](#1-jira-ticket)
-  - [REST API](#2-rest-api)
+  - [JIRA Ticket](#jira-ticket)
+  - [REST API](#rest-api)
   - [Future Action Types](#future-action-types)
 - [Templates and Variables](#templates-and-variables)
   - [Variable System](#variable-system)
@@ -29,9 +29,30 @@ This document contains no proprietary, confidential, or sensitive organizational
   - [Validation System](#validation-system)
   - [Testing Process](#testing-process)
   - [CI/CD Integration](#cicd-integration)
+- [Platform Team Onboarding](#platform-team-onboarding)
+  - [Prerequisites](#prerequisites)
+  - [Onboarding Process](#onboarding-process)
+  - [Support Resources](#support-resources)
+- [Governance Process](#governance-process)
+  - [Pull Request Requirements](#pull-request-requirements)
+  - [Service Naming Standards](#service-naming-standards)
+  - [Review Checklist](#review-checklist)
 - [Implementation Guidance](#implementation-guidance)
+  - [JSON Schema Files](#json-schema-files)
+  - [Ruby Validation Scripts](#ruby-validation-scripts)
+  - [Test Files](#test-files)
+  - [Templates](#templates)
+  - [Other Files](#other-files)
+- [Future Enhancements](#future-enhancements)
+  - [Advanced Action Types](#advanced-action-types)
+  - [Enhanced Bundle Capabilities](#enhanced-bundle-capabilities)
+  - [Advanced Governance Features](#advanced-governance-features)
+  - [Developer Experience Improvements](#developer-experience-improvements)
+  - [Platform Intelligence](#platform-intelligence)
 
 ## Repository Structure
+
+The Platform Automation Orchestrator catalog repository follows a structured layout designed to organize service definitions, validation tools, and governance processes. This structure ensures clear separation of concerns and enables effective collaboration between platform teams.
 
 ```
 orchestrator-catalog-repo/
@@ -101,7 +122,9 @@ This configuration ensures:
 
 ## Naming Conventions
 
-**Important**: This catalog uses specific naming conventions to ensure consistency and compatibility with the Go-based orchestrator service:
+The catalog enforces specific naming conventions to ensure consistency and compatibility with the Go-based orchestrator service. These conventions align with Go language standards and cloud-native tooling for optimal compatibility.
+
+**Important**: All naming conventions must be followed precisely for proper integration:
 
 - **Type Names** (`kind` field): Use **PascalCase**
   - Examples: `CatalogItem`, `CatalogBundle`
@@ -124,6 +147,8 @@ This configuration ensures:
 These conventions align with Go language standards and cloud-native tooling (Kubernetes, Helm, etc.) for optimal compatibility. Terraform identifiers require special handling to ensure valid HCL syntax.
 
 ## Schema Reference
+
+The catalog schema defines two primary document types that platform teams use to define their service offerings. The schema follows a hierarchical structure where CatalogBundles orchestrate multiple CatalogItems into complete solutions.
 
 **Important Note on Error Handling**: The catalog documents do not specify error handling behavior. All error handling, retry logic, and recovery mechanisms are the responsibility of the orchestrator service. When any action fails during execution, the service stops and requires manual intervention. Future phases may introduce automated recovery, but this is not part of the catalog specification.
 
@@ -273,7 +298,7 @@ fulfillment:
 
 ## Field Types
 
-Fields define the user input interface. Each field type has specific validation and display characteristics:
+Fields define the user input interface for catalog items and bundles. Each field type provides specific validation rules and generates corresponding UI elements in the developer portal. Platform teams use these field types to create dynamic forms that collect the necessary information for service provisioning.
 
 | Type | Use Case | Validation | UI Element |
 |------|----------|------------|------------|
@@ -306,9 +331,11 @@ fields:
 
 ## Action Types
 
+Action types define how the orchestrator fulfills service requests. Each action type represents a different integration method that platform teams can use to automate or manage their service provisioning workflows.
+
 **Current Implementation**: The Q3 2025 Foundation Epic supports JIRA and REST API action types. Additional action types (Terraform, GitHub Workflows) are planned for future releases.
 
-### 1. JIRA Ticket
+### JIRA Ticket
 
 **Required Fields:**
 - `project`: JIRA project key (e.g., PLATFORM, DBA, COMPUTE)
@@ -363,7 +390,7 @@ config:
 - Platform teams update ticket status in JIRA as work progresses
 - No polling or caching of JIRA status occurs
 
-### 2. REST API
+### REST API
 ```yaml
 type: rest-api
 config:
@@ -396,6 +423,8 @@ The following action types are planned for Q4 2025 and beyond:
 
 ## Templates and Variables
 
+The template and variable system enables dynamic content generation within catalog definitions. Platform teams use variables to create flexible service definitions that adapt to user input, request context, and system state.
+
 ### Variable System
 
 Variables allow dynamic content insertion throughout catalog definitions. Variables are replaced at runtime when requests are processed.
@@ -424,6 +453,8 @@ Built-in functions for data transformation:
 - `{{base64(string)}}` - Base64 encoding
 
 ## Examples
+
+This section provides comprehensive examples demonstrating the catalog schema in practice. Examples progress from complete bundle solutions to individual service definitions, illustrating the hierarchical structure and integration patterns.
 
 ### Complete Bundle Example
 
@@ -682,6 +713,8 @@ fulfillment:
 
 ## Validation and Testing
 
+The catalog repository implements a comprehensive validation and testing framework to ensure service definitions meet quality standards and schema requirements. This multi-layered approach catches errors early and maintains catalog integrity across all platform teams.
+
 ### Validation System
 
 The catalog repository includes a comprehensive validation system to ensure all service definitions conform to the schema specifications. This system operates at multiple levels to catch errors before they reach the orchestrator service.
@@ -811,7 +844,10 @@ This comprehensive validation system ensures catalog integrity while allowing te
 
 ## Platform Team Onboarding
 
+The onboarding process enables platform teams to contribute services to the catalog systematically. This structured approach ensures teams understand governance requirements, validation processes, and best practices before contributing their first service definition.
+
 ### Prerequisites
+
 Before a platform team can contribute to the catalog, they must:
 
 1. **JIRA Project Setup**
@@ -855,6 +891,8 @@ Before a platform team can contribute to the catalog, they must:
 
 ## Governance Process
 
+The governance process establishes standards and procedures for catalog contributions, ensuring quality, consistency, and proper review workflows. This process balances team autonomy with architectural oversight and quality assurance.
+
 ### Pull Request Requirements
 
 **All Changes:**
@@ -896,13 +934,15 @@ Platform team reviewers should verify:
 
 ## Implementation Guidance
 
-### JSON Schema Files (`/schema/`)
+This section provides technical implementation details for teams setting up and maintaining the catalog repository infrastructure. It covers schema definitions, validation scripts, test frameworks, and supporting tools necessary for a production-ready catalog.
+
+### JSON Schema Files
 - Use JSON Schema Draft-07
 - `catalog-item.json`: Require metadata (id, name, description, version, category, owner), presentation.form.groups, fulfillment.strategy.mode, fulfillment.manual.actions
 - `catalog-bundle.json`: Require metadata, components array with catalogItem references, presentation, fulfillment.orchestration
 - `common-types.json`: Define enums for categories (compute, databases, security, etc.), field types (string, number, select, etc.), action types (jira-ticket, rest-api); patterns for IDs (kebab-case), variable syntax (`^\{\{[a-z]+\.[a-zA-Z]+\}\}$`)
 
-### Ruby Validation Scripts (`/scripts/`)
+### Ruby Validation Scripts
 
 **Core Requirements:**
 - Use `json_schemer` gem for JSON Schema validation
@@ -975,12 +1015,12 @@ fi
 - Field IDs must be unique within a form group
 - Circular dependencies in bundles are prohibited
 
-### Test Files (`/tests/`)
+### Test Files
 - `valid/`: Include examples with all field types, both action types (jira-ticket, rest-api), cross-component references
 - `invalid/missing-required-fields.yaml`: Omit metadata.id, fulfillment.manual.actions
 - `invalid/invalid-naming-conventions.yaml`: Use snake_case for fields, PascalCase for IDs
 
-### Templates (`/templates/`)
+### Templates
 - Include minimal valid structure with TODO comments
 - `catalog-item-template.yaml`: Basic metadata, one field, one JIRA action
 - `jira-action-template.yaml`: Project, issueType, summaryTemplate with variable examples
@@ -990,6 +1030,8 @@ fi
 - `.gitignore`: `*.tmp`, `.DS_Store`, `node_modules/`, `vendor/`, test output files
 
 ## Future Enhancements
+
+This section outlines potential catalog capabilities and enhancements planned beyond the initial Q3/Q4 2025 implementation. These enhancements represent the evolution path for the catalog system as the platform matures and adoption grows.
 
 The following catalog capabilities are potential future enhancements beyond the Q3/Q4 2025 roadmap:
 
