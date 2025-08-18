@@ -272,30 +272,30 @@ This document contains no proprietary, confidential, or sensitive organizational
 **1. Foundation Setup**
 - **Catalog Work**: Create GitHub repository structure with CODEOWNERS and basic validation. Implement JSON schemas for CatalogItem and CatalogBundle with validation rules. Set up GitHub repository with branch protection and webhook configuration.
 - **Service Work**: Set up in-memory caching infrastructure. Implement core REST API framework with health endpoints. Configure JIRA integration with API tokens, project setup, and required issue types.
-- **DevCtl Work**: Initialize Go CLI project with AWS SigV4 authentication. Implement global options and basic command structure.
+- **DevCtl Work**: Initialize Go CLI project with AWS SigV4 authentication. Implement DevCtl Phase 1 foundation commands as specified in lock-step development section.
 - **Documentation Work**: Add platform team onboarding process and catalog contribution workflow sections to existing repository files (no new documentation files).
 
 **2. Core Functionality**
 - **Catalog Work**: Create 3 test YAML catalog item documents (compute-eks-containerapp.yaml, database-postgresql-standard.yaml, security-parameterstore-standard.yaml) defining JIRA action templates. Implement automated validation workflows in GitHub Actions.
 - **Service Work**: Build catalog ingestion from GitHub with validation. Implement request submission pipeline with JSONB storage and correlation ID tracking.
-- **DevCtl Work**: Implement `catalog list/get/refresh` commands with pagination. Build request submission commands with config file support.
+- **DevCtl Work**: Implement DevCtl Phase 2 and begin Phase 4 commands as specified in lock-step development section.
 
 **3. Action Framework**
 - **Catalog Work**: Enhance validation scripts with Ruby implementation. Create comprehensive test fixtures for valid/invalid examples.
 - **Service Work**: Implement JIRA action framework with variable substitution (6+ scopes). Build status tracking and external reference management.
-- **DevCtl Work**: Complete request management commands (list, get, status, logs). Implement platform team validation tools.
+- **DevCtl Work**: Complete DevCtl Phase 4 and Phase 5 commands as specified in lock-step development section.
 - **Testing Work**: Test end-to-end workflows and provide feedback for improvements.
 
 **4. Integration & Polish**
 - **Catalog Work**: Finalize templates and add governance sections to existing files. Complete integration testing with service endpoints.
 - **Service Work**: Implement error handling, retry logic, and manual escalation workflows. Complete API endpoint coverage with proper error responses.
-- **DevCtl Work**: Add advanced options (watch, follow-logs, filtering). Implement comprehensive error handling and user-friendly messages.
+- **DevCtl Work**: Complete DevCtl Phase 6 with all advanced options and error handling as specified in lock-step development section.
 - **Testing Work**: Conduct user acceptance testing and gather feedback from early platform team adopters.
 
 **5. Testing & Optimization**
 - **Integration Work**: End-to-end testing of complete workflow with performance validation.
 - **Service Work**: Performance optimization and service observability implementation.
-- **DevCtl Work**: Binary compilation and distribution preparation. Add installation instructions to DevCtl README.
+- **DevCtl Work**: Binary compilation, distribution setup, and installation instructions as part of DevCtl Phase 6 completion.
 - **Catalog Work**: Final validation rule refinements and catalog item polish.
 
 ---
