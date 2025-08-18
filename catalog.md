@@ -164,7 +164,7 @@ kind: CatalogItem
 - `v2pre2` - Later development version, closer to stable
 - `v2` - Next stable version
 
-**Version Support**: We support the current stable version plus one previous version during transitions. Deprecated versions include warnings and migration guidance.
+**Version Support**: We support the current stable version plus one previous version during transitions. Deprecation processes will be defined in future phases as needed.
 
 ## Schema Reference
 
