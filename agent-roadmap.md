@@ -25,7 +25,7 @@ There should be several epics.  Each epic should last 1 quarter.
 
 Assume the team is 6-8 people.
 
-Use the `date` cli tool to get today's date.
+Use the `date '+%Y-%m-%d %H:%M:%S %z (%Z)'` command to get today's date and time with timezone. Use the output exactly as returned by the command without any interpretation or modification.
 
 ## Guidance
 
