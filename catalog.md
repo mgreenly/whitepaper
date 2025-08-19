@@ -140,7 +140,7 @@ The catalog schema defines two primary document types that platform teams use to
 
 **Important Note on Error Handling**: The catalog documents do not specify error handling behavior. All error handling, retry logic, and recovery mechanisms are the responsibility of the orchestrator service. When any action fails during execution, the service stops and requires manual intervention.
 
-**Current Scope**: All services use manual fulfillment via JIRA tickets. The `automatic` fulfillment sections shown in examples are for future automated provisioning capabilities.
+The `automatic` fulfillment sections shown in examples demonstrate automated provisioning capabilities alongside manual JIRA fulfillment options.
 
 ### CatalogBundle - Composite Service
 
@@ -268,7 +268,7 @@ fulfillment:
             type: json
             contentTemplate: |
               {
-                "service": "{{.metadata.database.id}}",
+                "service": "{{.metadata.database-aurora-postgresql-standard.id}}",
                 "name": "{{.input.config.name}}"
               }
 ```
@@ -310,7 +310,7 @@ fields:
 
 Action types define how the orchestrator fulfills service requests. Each action type represents a different integration method that platform teams can use to automate or manage their service provisioning workflows.
 
-**Current Implementation**: The implementation supports JIRA action types. REST API action types and additional action types (Terraform, GitHub Workflows) are planned for future releases.
+**Current Implementation**: The implementation supports JIRA ticket and REST API action types. Additional action types (Terraform, GitHub Workflows) are available for future implementation.
 
 **Important Note on Error Handling**: Action type configurations do not specify error handling, retry logic, timeouts, or recovery mechanisms. All error handling is the responsibility of the orchestrator service implementation. When actions fail, the service determines the appropriate response (retry, abort, escalate, etc.).
 
@@ -342,7 +342,7 @@ config:
     summaryTemplate: "{{.input.config.name}} request"
     descriptionTemplate: |
       Requesting: {{.input.config.name}}
-      Type: {{.metadata.database.name}}
+      Type: {{.metadata.database-aurora-postgresql-standard.name}}
       User: {{.system.user.email}}
       Request ID: {{.system.requestId}}
       
@@ -351,7 +351,7 @@ config:
     priority: "{{.input.config.priority}}"
     labels:
       - platform-automation
-      - "{{.metadata.database.category}}"
+      - "{{.metadata.database-aurora-postgresql-standard.category}}"
     customFields:
       customfield_10001: "{{.input.config.costCenter}}"
       customfield_10002: "{{.input.config.environment}}"
@@ -513,7 +513,7 @@ The orchestrator maintains a map of named values organized by dot-separated path
 
 ### Namespace Structure
 
-**Three Top-Level Namespaces**:
+**Four Top-Level Namespaces**:
 
 | Namespace | Purpose | Population Timing | Access Pattern |
 |-----------|---------|-------------------|----------------|
@@ -544,22 +544,22 @@ The `.metadata` namespace contains static metadata from catalog items. For bundl
 **Metadata Namespace Population Rules**:
 - **Individual CatalogItems**: Catalog item ID → available as `{{.metadata.{catalogItemId}.*}}`
 - **Bundle Components**: Referenced catalog item ID → available as `{{.metadata.{catalogItemId}.*}}`
-- **Catalog Item Reference**: Both individual items and bundle components use the catalog item ID as the metadata key
+- **Catalog Item Reference**: Both individual items and bundle components always use the full catalog item ID as the metadata key (never component IDs)
 - **Static Population**: Metadata is loaded from catalog definitions at system startup, before any user input
 
 **Example Bundle Component Mapping**:
 ```yaml
 # Bundle component definition:
 components:
-  - id: database                    # → {{.metadata.database.*}}
+  - id: database                    # → {{.metadata.database-aurora-postgresql-standard.*}}
     catalogItem: database-aurora-postgresql-standard
-  - id: secrets                     # → {{.metadata.secrets.*}}
+  - id: secrets                     # → {{.metadata.security-parameterstore-standard.*}}
     catalogItem: security-parameterstore-standard
-  - id: app                         # → {{.metadata.app.*}}
+  - id: app                         # → {{.metadata.compute-eks-containerapp.*}}
     catalogItem: compute-eks-containerapp
 
 # Individual CatalogItem usage:
-# User supplies name="myapp" → {{.metadata.myapp.*}}
+# When requesting compute-eks-containerapp → {{.metadata.compute-eks-containerapp.*}}
 ```
 
 **Output Namespace Structure**:
@@ -631,15 +631,19 @@ The `.output` namespace is organized by the user-supplied `name` field value. Ea
 
 Access to namespace paths is strictly controlled by component type:
 
-- **CatalogItem Fulfillment**: Can reference `.input.*`, `.output.*`, `.system.*`, and `.metadata.{catalogItemId}.*` where `{catalogItemId}` is the catalog item being requested
+- **CatalogItem Fulfillment**: Can reference `.input.{name}.*`, `.output.{name}.*`, `.system.*`, and all `.metadata.*` (all catalog item metadata is always available)
 - **CatalogBundle Components**: No variable interpretation - only catalog item references and dependencies
-- **Action Templates**: Can reference all paths available in their execution context
+- **Action Templates**: Can reference all variable namespaces:
+  - `.input.{name}.*` - User form data scoped under user-supplied name
+  - `.output.{name}.*` - Computed values scoped under user-supplied name  
+  - `.system.*` - Platform context and environment
+  - `.metadata.*` - All catalog item metadata (always available using catalog item IDs as keys)
 
 **Important**: Only static metadata can be referenced via `.metadata.*` paths. No dynamic runtime values are available. All variable substitution occurs exclusively within fulfillment action templates.
 
 **Name Field Usage**: The user-supplied `name` field serves dual purposes:
 1. **Resource Identification**: Becomes the basis for AWS resource names, Kubernetes namespaces, etc.
-2. **Output Variable Namespacing**: Creates the `.output.{name}.*` namespace where all computed fulfillment outputs are stored
+2. **Input/Output Variable Namespacing**: Creates the `.input.{name}.*` and `.output.{name}.*` namespaces where user form data and computed fulfillment outputs are stored. This `{name}` becomes the dynamic namespace key that scopes all user-specific data.
 
 ## Bundle-to-Component Data Flow
 
@@ -657,20 +661,23 @@ When a bundle is submitted, the bundle's input form collects user input that bec
 
 **Example Data Flow**:
 ```yaml
-# Bundle input form collects:
+# Bundle input form collects (using required 'name' field = "webapp"):
 # .input.webapp.application.appName = "myapp"  
 # .input.webapp.database.dbSize = "db.t3.medium"
-# Required name field = "webapp" (user supplies this)
 
-# Component 1 (Database) computes and adds to .output:
+# Component 1 (Database) uses database-aurora-postgresql-standard catalog item:
+# Template can access: {{.metadata.database-aurora-postgresql-standard.connectionTemplate}}
+# Computes and adds to .output:
 # .output.webapp.databaseUrl = "postgres://{{.input.webapp.application.appName}}-db.aws.com:5432/db"
 # .output.webapp.databaseName = "{{.input.webapp.application.appName}}-db"
 
-# Component 2 (EKS) can reference accumulated outputs:
+# Component 2 (EKS) uses compute-eks-containerapp catalog item:
+# Template can access: {{.metadata.compute-eks-containerapp.defaultNamespace}}
 # Template uses: {{.output.webapp.databaseUrl}} and {{.input.webapp.application.appName}}
 # Computes: .output.webapp.appUrl = "https://{{.input.webapp.application.appName}}.company.com"
 
-# Component 3 (Secrets) has access to all previous outputs:
+# Component 3 (Secrets) uses security-parameterstore-standard catalog item:
+# Template can access: {{.metadata.security-parameterstore-standard.parameterPath}}
 # Can reference: {{.output.webapp.databaseUrl}}, {{.output.webapp.appUrl}}, {{.input.webapp.*}}
 ```
 
@@ -976,6 +983,16 @@ The `platform-automation-repository` repository includes a comprehensive validat
    - Invalid examples with expected error messages
    - Edge cases for comprehensive testing
 
+**Schema Validation Requirements:**
+
+All catalog documents must comply with the following validation rules:
+
+- **Document Structure**: Must include `schemaVersion` and `kind` fields at root level
+- **Metadata Requirements**: All items require `id`, `name`, `description`, `version`, `category`, and `owner` fields
+- **Input Form Structure**: Must contain `input.form.groups` array with at least one group containing fields
+- **Required Name Field**: All catalog items and bundles must include a required `name` field in their input form with kebab-case validation pattern: `"^[a-z][a-z0-9-]{2,28}[a-z0-9]$"`
+- **Fulfillment Configuration**: Must specify `fulfillment.strategy.mode` and include corresponding action configurations
+
 **What Gets Validated:**
 
 - **Structural Compliance**: YAML structure matches schema requirements
@@ -983,9 +1000,10 @@ The `platform-automation-repository` repository includes a comprehensive validat
 - **Required Fields**: All mandatory fields are present with valid values
 - **Type Constraints**: Field values match their declared types
 - **Enum Validation**: Select and multiselect field values match their enum constraints
-- **Template Syntax**: Variable references use correct scope and syntax
+- **Template Syntax**: Variable references use correct scope and syntax (`{{.namespace.path.field}}`)
 - **Cross-References**: Bundle components reference existing CatalogItems
 - **Action Configurations**: Each action type has required parameters
+- **Variable Reference Validation**: All template variables reference valid scopes (`.input`, `.output`, `.metadata`, `.system`)
 
 ### Testing Process
 
@@ -1270,6 +1288,9 @@ This section outlines potential catalog capabilities and enhancements. These enh
 The following catalog capabilities are potential future enhancements:
 
 ### Advanced Action Types
+- **Terraform Configuration**: Infrastructure as Code provisioning with state management
+- **Git Commit**: Automated repository updates with pull request workflows  
+- **GitHub Workflow**: Automated CI/CD pipeline triggering with workflow dispatch
 - **Webhook Action**: Generic outbound webhook invocation for external system notifications
 - **ServiceNow Integration**: Direct integration with ServiceNow for enterprise ITSM
 - **Slack/Teams Notifications**: Direct messaging integration for status updates
