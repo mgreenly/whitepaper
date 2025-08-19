@@ -7,6 +7,10 @@
 
 This document contains no proprietary, confidential, or sensitive organizational information and represents generalized industry practices and publicly available methodologies. The content was created with the assistance of agentic AI systems, with human oversight and review applied throughout the process. Users should verify all technical recommendations and adapt them to their specific requirements and constraints.
 
+## Note on Implementation
+
+This document serves as architectural guidance and conceptual inspiration for engineering teams developing catalog repository systems. It is not intended as a precise implementation specification or detailed blueprint. Engineering teams should interpret these concepts, adapt the proposed patterns to their specific technical environment and organizational requirements, and develop their own detailed work plans accordingly. While implementation approaches may vary, the core architectural concepts, data structures, and operational patterns described herein should be represented in the final system design to ensure consistency with the overall platform vision.
+
 ## Table of Contents
 
 - [Repository Structure](#repository-structure)
@@ -137,12 +141,12 @@ These conventions align with Go language standards and cloud-native tooling (Kub
 
 ## Schema Versioning
 
-All catalog documents must declare their schema version using `version`. This ensures compatibility and enables safe schema evolution.
+All catalog documents must declare their schema version using `schemaVersion`. This ensures compatibility and enables safe schema evolution.
 
 **Current Version**: `catalog/v1`
 
 ```yaml
-version: catalog/v1
+schemaVersion: catalog/v1
 kind: CatalogItem
 ```
 
@@ -176,7 +180,7 @@ In Q3, bundles create multiple JIRA tickets (one per component) and establish JI
 3. Returns a bundle request with links to all created tickets
 
 ```yaml
-version: catalog/v1
+schemaVersion: catalog/v1
 kind: CatalogBundle
 
 metadata:
@@ -254,7 +258,7 @@ fulfillment:
 ### CatalogItem - Individual Service
 
 ```yaml
-version: catalog/v1
+schemaVersion: catalog/v1
 kind: CatalogItem
 
 metadata:
@@ -620,7 +624,7 @@ This section provides comprehensive examples demonstrating the catalog schema in
 ### Complete Bundle Example
 
 ```yaml
-version: catalog/v1
+schemaVersion: catalog/v1
 kind: CatalogBundle
 
 metadata:
@@ -709,7 +713,7 @@ fulfillment:
 ### EKS Container Application
 
 ```yaml
-version: catalog/v1
+schemaVersion: catalog/v1
 kind: CatalogItem
 
 metadata:
@@ -765,7 +769,7 @@ fulfillment:
 ### Aurora PostgreSQL Database
 
 ```yaml
-version: catalog/v1
+schemaVersion: catalog/v1
 kind: CatalogItem
 
 metadata:
@@ -825,7 +829,7 @@ fulfillment:
 ### AWS Parameter Store
 
 ```yaml
-version: catalog/v1
+schemaVersion: catalog/v1
 kind: CatalogItem
 
 metadata:
