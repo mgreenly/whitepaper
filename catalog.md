@@ -720,6 +720,13 @@ input:
       - id: application
         name: Application Settings
         fields:
+          - id: name
+            name: Resource Name
+            type: string
+            required: true
+            validation:
+              pattern: "^[a-z][a-z0-9-]{2,28}[a-z0-9]$"
+            description: "Unique identifier for this bundle"
           - id: appName
             name: Application Name
             type: string
