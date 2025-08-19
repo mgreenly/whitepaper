@@ -137,7 +137,7 @@ The catalog schema defines two primary document types that platform teams use to
 
 **Critical Schema Requirements**:
 
-1. **Required Input Sections**: All catalog items and bundles must define input sections with at minimum the required `name` field
+1. **Required Input Sections**: All catalog items and bundles must define input sections with at minimum the required `name` field as a top-level field outside any group
 2. **Name Field Validation**: The `name` field must use the pattern `"^[a-z][a-z0-9-]{2,28}[a-z0-9]$"` and be marked as required
 3. **Form Structure Uniqueness**: Group names must be unique within each catalog item or bundle, and field names must be unique within each group
 4. **Variable Scoping**: Template variables use the syntax `{{.namespace.path.to.value}}` and are scoped by component type
@@ -198,19 +198,15 @@ components:
 
 input:
   form:
+    name: Bundle Name
+    type: string
+    required: true
+    validation:
+      pattern: "^[a-z][a-z0-9-]{2,28}[a-z0-9]$"
+    description: "Unique identifier for this bundle deployment"
     groups:
       - id: basic
         name: Basic Configuration
-        fields:
-          - id: name
-            name: Bundle Name
-            type: string
-            required: true
-            validation:
-              pattern: "^[a-z][a-z0-9-]{2,28}[a-z0-9]$"
-            description: "Unique identifier for this bundle deployment"
-      - id: database
-        name: Database Configuration
         fields:
           - id: instanceName
             name: Database Instance Name
@@ -220,16 +216,10 @@ input:
             name: Instance Class
             type: select
             enum: [db.t3.micro, db.t3.small, db.t3.medium]
-      - id: secrets
-        name: Secrets Configuration
-        fields:
           - id: secretName
             name: Secret Name
             type: string
             required: true
-      - id: application
-        name: Application Configuration
-        fields:
           - id: appName
             name: Application Name
             type: string
@@ -271,16 +261,15 @@ metadata:
 
 input:
   form:
+    name: Resource Name
+    type: string
+    required: true
+    validation:
+      pattern: "^[a-z][a-z0-9-]{2,28}[a-z0-9]$"
     groups:
-      - id: config
-        name: Configuration
+      - id: basic
+        name: Basic Configuration
         fields:
-          - id: name
-            name: Resource Name
-            type: string
-            required: true
-            validation:
-              pattern: "^[a-z][a-z0-9-]{2,28}[a-z0-9]$"
 
 fulfillment:
   strategy:
@@ -293,7 +282,7 @@ fulfillment:
           ticket:
             project: PLATFORM
             issueType: Task
-            summaryTemplate: "Provision {{.current.config.name}}"
+            summaryTemplate: "Provision {{.current.basic.name}}"
   
   automatic:
     actions:
@@ -307,7 +296,7 @@ fulfillment:
             contentTemplate: |
               {
                 "service": "{{.metadata.database-aurora-postgresql-standard.id}}",
-                "name": "{{.current.config.name}}"
+                "name": "{{.current.basic.name}}"
               }
 ```
 
@@ -328,20 +317,31 @@ Fields define the user input interface for catalog items and bundles. Each field
 | `password` | Sensitive data | pattern, strength | Password field |
 | `email` | Email addresses | format validation | Email input |
 
-**Field Definition Structure:**
+**Form Definition Structure:**
 ```yaml
-fields:
-  - id: fieldName           # Unique identifier (camelCase)
-    name: Display Name      # User-friendly label
-    type: string           # Field type from table above
-    required: true         # Optional, default false
-    default: "value"       # Optional static default value (no variables allowed)
-    description: "Help"    # Optional help text
-    enum: [a, b, c]        # Allowed values for select/multiselect types (top-level)
-    validation:            # Optional validation rules
-      pattern: "^[a-z]+$"  # Regex for string types
-      min: 1               # Minimum for numbers
-      max: 100             # Maximum for numbers
+input:
+  form:
+    name: Display Name      # Required top-level name field (always required)
+    type: string           # Always string for name field
+    required: true         # Always required
+    validation:            # Name field validation rules
+      pattern: "^[a-z][a-z0-9-]{2,28}[a-z0-9]$"  # Kebab-case pattern
+    description: "Help"    # Optional help text for name field
+    groups:                # Optional groups for additional fields
+      - id: groupName      # Unique group identifier (camelCase)
+        name: Group Label  # User-friendly group label
+        fields:            # Fields within this group
+          - id: fieldName  # Unique identifier (camelCase)
+            name: Field Label  # User-friendly label
+            type: string   # Field type from table above
+            required: true # Optional, default false
+            default: "value"  # Optional static default value
+            description: "Help"  # Optional help text
+            enum: [a, b, c]  # Allowed values for select/multiselect
+            validation:    # Optional validation rules
+              pattern: "^[a-z]+$"  # Regex for string types
+              min: 1       # Minimum for numbers
+              max: 100     # Maximum for numbers
 ```
 
 ## Action Types
@@ -377,22 +377,22 @@ type: jira-ticket
 config:
   ticket:
     project: PLATFORM
-    summaryTemplate: "{{.current.config.name}} request"
+    summaryTemplate: "{{.current.basic.name}} request"
     descriptionTemplate: |
-      Requesting: {{.current.config.name}}
+      Requesting: {{.current.basic.name}}
       Type: {{.metadata.database-aurora-postgresql-standard.name}}
       User: {{.system.user.email}}
       Request ID: {{.system.requestId}}
       
       Configuration details provided in request form.
     issueType: Task
-    priority: "{{.current.config.priority}}"
+    priority: "{{.current.basic.priority}}"
     labels:
       - platform-automation
       - "{{.metadata.database-aurora-postgresql-standard.category}}"
     customFields:
-      customfield_10001: "{{.current.config.costCenter}}"
-      customfield_10002: "{{.current.config.environment}}"
+      customfield_10001: "{{.current.basic.costCenter}}"
+      customfield_10002: "{{.current.basic.environment}}"
 ```
 
 **Variable Substitution in JIRA:**
@@ -543,9 +543,10 @@ The orchestrator maintains a map of named values organized by dot-separated path
 
 **How it works**: User form data populates `.current` paths, computed values during fulfillment populate `.output` paths sequentially, and static metadata from catalog items populates `.metadata` paths using catalog item IDs. The `.output` namespace accumulates computed values that are available to subsequent fulfillment actions.
 
-**Required Name Field**: All catalog items and bundles must include a required `name` field in their input form for resource identification and naming. This field is always required regardless of other field configurations.
+**Required Name Field**: All catalog items and bundles must include a required `name` field as the top-level field in their input form for resource identification and naming. This field is always required regardless of other field configurations.
 
 **Form Structure Requirements**: 
+- The `name` field must be defined at the top level of the form, outside any group
 - Group names must be unique within each catalog item or bundle
 - Field names must be unique within each group
 - All bundles and catalog items must define input sections with at least the required `name` field
@@ -585,7 +586,7 @@ The orchestrator builds up the variable namespace progressively:
 
 **Inter-Scope Communication**: Actions can access the current request's input data via `.current.*` and can reference outputs from previous actions using the user-supplied name in the output namespace. Template writers know the user-supplied name context during template creation since it's provided in the current request.
 
-**Key Design Principle**: Templates are processed at runtime when user-supplied names are available. Output namespacing uses the user-supplied name from the current request's `name` field to create scoped output paths (e.g., `{{.output.webapp.databaseUrl}}` where "webapp" comes from `{{.current.basic.name}}`).
+**Key Design Principle**: Templates are processed at runtime when user-supplied names are available. Output namespacing uses the user-supplied name from the current request's `name` field to create scoped output paths (e.g., `{{.output.webapp.databaseUrl}}` where "webapp" comes from `{{.current.name}}`).
 
 **Note**: `{catalogItemId}` in `.metadata` patterns represents:
 - **Individual Items**: The catalog item ID being requested (e.g., `compute-eks-containerapp`)
@@ -653,8 +654,8 @@ The `.output` namespace is organized by the user-supplied `name` field value. Ea
 **Current Request Input Paths**:
 ```
 {{.current.basic.appName}}                     # From basic group (current request)
-{{.current.database.instanceName}}             # From database group (current request)
-{{.current.secrets.secretName}}                # From secrets group (current request)
+{{.current.basic.instanceName}}                # From basic group (current request)
+{{.current.basic.secretName}}                  # From basic group (current request)
 ```
 
 **Output Paths** (computed during fulfillment):
@@ -698,12 +699,12 @@ The `.current` namespace contains all user input from the current request's form
 
 **Examples**:
 ```
-{{.current.basic.name}}                 # string - Required name field
-{{.current.database.instanceName}}      # string - Database instance name
-{{.current.database.instanceClass}}     # string - Selected instance class
-{{.current.database.storageSize}}       # number - Storage size in GB
-{{.current.application.replicas}}       # number - Replica count
-{{.current.secrets.secretKeys}}         # array - Multi-select field values
+{{.current.name}}                       # string - Required name field
+{{.current.basic.instanceName}}         # string - Database instance name
+{{.current.basic.instanceClass}}        # string - Selected instance class
+{{.current.basic.storageSize}}          # number - Storage size in GB
+{{.current.basic.replicas}}             # number - Replica count
+{{.current.basic.secrets}}              # array - Multi-select field values
 ```
 
 ### .output Namespace
@@ -711,7 +712,7 @@ The `.current` namespace contains all user input from the current request's form
 The `.output` namespace contains computed values from previous actions in the current request.
 
 **Structure**: `{{.output.{userName}.{outputKey}}}`
-- `{userName}`: Value from `{{.current.basic.name}}` field
+- `{userName}`: Value from `{{.current.name}}` field
 - `{outputKey}`: Key generated by previous action
 
 **Population**: Each action can add key-value pairs to the output namespace scoped by the user-supplied name
@@ -849,32 +850,32 @@ When a bundle is submitted, users fill out the bundle's input form, and the data
 ```yaml
 # Bundle form defines all required fields (using required 'name' field = "webapp"):
 # User input becomes available via .current namespace:
-# .current.basic.name = "webapp"                    # Required bundle name field
-# .current.database.instanceName = "webapp-db"      # From database group
-# .current.database.instanceClass = "db.t3.medium"  # From database group
-# .current.secrets.secretName = "webapp-secrets"    # From secrets group  
-# .current.application.appName = "myapp"            # From application group
-# .current.application.containerImage = "nginx:latest" # From application group
+# .current.name = "webapp"                          # Required bundle name field
+# .current.basic.instanceName = "webapp-db"         # From basic group
+# .current.basic.instanceClass = "db.t3.medium"     # From basic group
+# .current.basic.secretName = "webapp-secrets"      # From basic group  
+# .current.basic.appName = "myapp"                  # From basic group
+# .current.basic.containerImage = "nginx:latest"    # From basic group
 
 # Component 1 (Database) uses database-aurora-postgresql-standard catalog item:
 # Template can access: {{.metadata.database-aurora-postgresql-standard.connectionTemplate}}
-# Template uses: {{.current.database.instanceName}}, {{.current.database.instanceClass}}
+# Template uses: {{.current.basic.instanceName}}, {{.current.basic.instanceClass}}
 # Computes and adds to .output:
-# .output.webapp.databaseUrl = "postgres://{{.current.database.instanceName}}.aws.com:5432/db"
-# .output.webapp.databaseName = "{{.current.database.instanceName}}"
+# .output.webapp.databaseUrl = "postgres://{{.current.basic.instanceName}}.aws.com:5432/db"
+# .output.webapp.databaseName = "{{.current.basic.instanceName}}"
 
 # Component 2 (EKS) uses compute-eks-containerapp catalog item:
 # Template can access: {{.metadata.compute-eks-containerapp.defaultNamespace}}
-# Template uses: {{.output.webapp.databaseUrl}} and {{.current.application.appName}}
-# Computes: .output.webapp.appUrl = "https://{{.current.application.appName}}.company.com"
+# Template uses: {{.output.webapp.databaseUrl}} and {{.current.basic.appName}}
+# Computes: .output.webapp.appUrl = "https://{{.current.basic.appName}}.company.com"
 
 # Component 3 (Secrets) uses security-parameterstore-standard catalog item:
 # Template can access: {{.metadata.security-parameterstore-standard.parameterPath}}
-# Template uses: {{.current.secrets.secretName}} and previous outputs
-# Can reference: {{.output.webapp.databaseUrl}}, {{.output.webapp.appUrl}}, {{.current.secrets.secretName}}
+# Template uses: {{.current.basic.secretName}} and previous outputs
+# Can reference: {{.output.webapp.databaseUrl}}, {{.output.webapp.appUrl}}, {{.current.basic.secretName}}
 
 # Key Point: All components share the same .current namespace since it's the same request.
-# Inter-component data sharing happens through .output variables scoped by the user-supplied name from .current.basic.name.
+# Inter-component data sharing happens through .output variables scoped by the user-supplied name from .current.name.
 ```
 
 ## Examples
@@ -912,17 +913,40 @@ components:
 
 input:
   form:
+    name: Bundle Name
+    type: string
+    required: true
+    validation:
+      pattern: "^[a-z][a-z0-9-]{2,28}[a-z0-9]$"
+    description: "Unique identifier for this bundle deployment"
     groups:
       - id: basic
         name: Basic Configuration
         fields:
-          - id: name
-            name: Bundle Name
+          - id: instanceName
+            name: Database Instance Name
             type: string
             required: true
-            validation:
-              pattern: "^[a-z][a-z0-9-]{2,28}[a-z0-9]$"
-            description: "Unique identifier for this bundle deployment"
+          - id: instanceClass
+            name: Instance Class
+            type: select
+            enum: [db.t3.micro, db.t3.small, db.t3.medium]
+          - id: secretName
+            name: Secret Name
+            type: string
+            required: true
+          - id: appName
+            name: Application Name
+            type: string
+            required: true
+          - id: containerImage
+            name: Container Image
+            type: string
+            required: true
+          - id: replicas
+            name: Replica Count
+            type: number
+            default: 2
 
 fulfillment:
   orchestration:
@@ -946,16 +970,15 @@ metadata:
 
 input:
   form:
+    name: Resource Name
+    type: string
+    required: true
+    validation:
+      pattern: "^[a-z][a-z0-9-]{2,28}[a-z0-9]$"
+    description: "Unique identifier for this EKS application"
     groups:
       - id: basic
         fields:
-          - id: name
-            name: Resource Name
-            type: string
-            required: true
-            validation:
-              pattern: "^[a-z][a-z0-9-]{2,28}[a-z0-9]$"
-            description: "Unique identifier for this EKS application"
           - id: appName
             name: Application Name
             type: string
@@ -1014,16 +1037,16 @@ metadata:
 
 input:
   form:
+    name: Database Name
+    type: string
+    required: true
+    validation:
+      pattern: "^[a-z][a-z0-9-]{2,28}[a-z0-9]$"
+    description: "Unique identifier for this database instance"
     groups:
-      - id: config
+      - id: basic
+        name: Basic Configuration
         fields:
-          - id: name
-            name: Database Name
-            type: string
-            required: true
-            validation:
-              pattern: "^[a-z][a-z0-9-]{2,28}[a-z0-9]$"
-            description: "Unique identifier for this database instance"
           - id: instanceName
             name: Database Instance Name
             type: string
@@ -1045,7 +1068,7 @@ fulfillment:
         config:
           ticket:
             project: DBA
-            summaryTemplate: "Aurora PostgreSQL: {{.current.config.instanceName}}"
+            summaryTemplate: "Aurora PostgreSQL: {{.current.basic.instanceName}}"
   automatic:
     actions:
       - type: rest-api
@@ -1057,9 +1080,9 @@ fulfillment:
             type: json
             contentTemplate: |
               {
-                "instanceName": "{{.current.config.instanceName}}",
-                "instanceClass": "{{.current.config.instanceClass}}",
-                "allocatedStorage": {{.current.config.storageSize}},
+                "instanceName": "{{.current.basic.instanceName}}",
+                "instanceClass": "{{.current.basic.instanceClass}}",
+                "allocatedStorage": {{.current.basic.storageSize}},
                 "engine": "postgres",
                 "backupRetention": 7,
                 "multiAZ": true
@@ -1083,16 +1106,16 @@ metadata:
 
 input:
   form:
+    name: Secret Store Name
+    type: string
+    required: true
+    validation:
+      pattern: "^[a-z][a-z0-9-]{2,28}[a-z0-9]$"
+    description: "Unique identifier for this parameter store"
     groups:
-      - id: config
+      - id: basic
+        name: Basic Configuration
         fields:
-          - id: name
-            name: Secret Store Name
-            type: string
-            required: true
-            validation:
-              pattern: "^[a-z][a-z0-9-]{2,28}[a-z0-9]$"
-            description: "Unique identifier for this parameter store"
           - id: secretName
             name: Secret Name
             type: string
@@ -1111,7 +1134,7 @@ fulfillment:
         config:
           ticket:
             project: SECURITY
-            summaryTemplate: "Create secrets: {{.current.config.secretName}}"
+            summaryTemplate: "Create secrets: {{.current.basic.secretName}}"
   automatic:
     actions:
       - type: rest-api
@@ -1123,8 +1146,8 @@ fulfillment:
             type: json
             contentTemplate: |
               {
-                "parameterPath": "/{{.current.config.secretName}}",
-                "secrets": "{{.current.config.secrets}}",
+                "parameterPath": "/{{.current.basic.secretName}}",
+                "secrets": "{{.current.basic.secrets}}",
                 "type": "SecureString"
               }
 ```
@@ -1165,8 +1188,8 @@ All catalog documents must comply with the following validation rules:
 
 - **Document Structure**: Must include `schemaVersion` and `kind` fields at root level
 - **Metadata Requirements**: All items require `id`, `name`, `description`, `version`, `category`, and `owner` fields
-- **Input Form Structure**: CatalogItems must contain `input.form.groups` array with at least one group containing fields. CatalogBundles do not define input forms (they are generated dynamically)
-- **Required Name Field**: All CatalogItems must include a required `name` field in their input form with kebab-case validation pattern: `"^[a-z][a-z0-9-]{2,28}[a-z0-9]$"`. Bundle forms automatically inherit this requirement
+- **Input Form Structure**: All catalog items and bundles must contain `input.form` with at least the required `name` field. CatalogItems must also include `input.form.groups` array with at least one group containing fields
+- **Required Name Field**: All CatalogItems and CatalogBundles must include a required `name` field as the top-level field in their input form with kebab-case validation pattern: `"^[a-z][a-z0-9-]{2,28}[a-z0-9]$"`
 - **Fulfillment Configuration**: Must specify `fulfillment.strategy.mode` and include corresponding action configurations
 
 **What Gets Validated:**
@@ -1214,7 +1237,7 @@ Example error output:
 ✗ catalog/databases/aurora-postgresql-invalid.yaml
   Line 15: Field 'instanceClass' should use camelCase (found: instance_class)
   Line 22: Missing required field 'manual.actions'
-  Line 38: Invalid variable reference '{{field.name}}' (should be '{{.current.config.name}}')
+  Line 38: Invalid variable reference '{{field.name}}' (should be '{{.current.basic.name}}')
 ```
 
 ### CI/CD Integration
@@ -1396,7 +1419,7 @@ This section provides technical implementation details for teams setting up and 
 ### JSON Schema Files
 - Use JSON Schema Draft-07
 - `catalog-item.json`: Require metadata (id, name, description, version, category, owner), input.form.groups, fulfillment.strategy.mode, fulfillment.manual.actions
-- `catalog-bundle.json`: Require metadata, components array with catalogItem references, fulfillment.orchestration (no input section - forms are dynamically generated)
+- `catalog-bundle.json`: Require metadata, components array with catalogItem references, input.form with required name field, fulfillment.orchestration
 - `common-types.json`: Define enums for categories (compute, databases, security, etc.), field types (string, number, select, etc.), action types (jira-ticket, rest-api); patterns for IDs (kebab-case), variable syntax (`^\{\{\.[a-zA-Z][a-zA-Z0-9]*(\.[a-zA-Z][a-zA-Z0-9]*)*\}\}$`)
 
 ### Ruby Validation Scripts
@@ -1444,7 +1467,7 @@ Validates only files changed in a Git pull request. Should:
 ### Templates
 - Include minimal valid structure with TODO comments
 - `catalog-item-template.yaml`: Basic metadata, one field, one JIRA action
-- `catalog-bundle-template.yaml`: Basic metadata, component references, orchestration (no input section - forms are auto-generated)
+- `catalog-bundle-template.yaml`: Basic metadata, component references, input form with required name field, orchestration
 - `jira-action-template.yaml`: Project, issueType, summaryTemplate with variable examples
 
 ### Other Files
