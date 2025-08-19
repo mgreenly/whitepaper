@@ -78,46 +78,18 @@ platform-automation-repository/
 
 ### CODEOWNERS Configuration
 
-The `platform-automation-repository` repository uses GitHub's CODEOWNERS file to enforce team-based access control. Platform teams own and maintain their domain-specific services, while the Developer Experience team requires access across all domains to assist with catalog integration and troubleshooting.
+Use GitHub's CODEOWNERS file to enforce team-based access control and ensure appropriate review processes for catalog changes.
 
-**Access Control Strategy:**
-- **Platform Teams**: Own their specific domain folders and service definitions
-- **Developer Experience Team**: Requires access across all domains for catalog integration support
-- **Architecture Team**: Owns the schema specifications and overall catalog design
+**Recommended Access Control Strategy:**
+- **Platform Teams**: Own their specific domain folders (e.g., `/catalog/databases/`, `/catalog/compute/`)
+- **Developer Experience Team**: Provide cross-domain support for catalog integration
+- **Architecture Team**: Own schema specifications and overall catalog design patterns
 
-Example `.github/CODEOWNERS` file:
-```
-# Default owners for everything in the repo
-# Developer Experience team needs access to help all teams with catalog integration
-*                                   @company/devx-team
-
-# Schema and templates are owned by architecture team
-/schema/                            @company/platform-architecture @company/devx-team
-/templates/                         @company/platform-architecture @company/devx-team
-
-# Platform teams own their respective catalog folders
-# Each team can only modify services in their domain
-/catalog/compute/                   @company/platform-compute-team @company/devx-team
-/catalog/databases/                 @company/platform-database-team @company/devx-team
-/catalog/messaging/                 @company/platform-messaging-team @company/devx-team
-/catalog/networking/                @company/platform-networking-team @company/devx-team
-/catalog/storage/                   @company/platform-storage-team @company/devx-team
-/catalog/security/                  @company/platform-security-team @company/devx-team
-/catalog/monitoring/                @company/platform-observability-team @company/devx-team
-
-# Bundle definitions require architecture review
-/catalog/bundles/                   @company/platform-architecture @company/devx-team
-
-# CI/CD and validation scripts
-/scripts/                           @company/devx-team
-/.github/                           @company/devx-team
-```
-
-This configuration ensures:
-1. Platform teams have autonomy over their services
-2. DevX team can provide support across all domains
-3. Schema changes require architecture review
-4. No single team can accidentally break another team's services
+**Key Considerations:**
+- Ensure platform teams have autonomy over their service definitions
+- Provide support teams access across domains for troubleshooting and integration assistance  
+- Require architecture review for schema changes and bundle definitions
+- Prevent accidental cross-team service modifications through proper path-based ownership
 
 ## Naming Conventions
 

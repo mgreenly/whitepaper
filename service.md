@@ -4,6 +4,10 @@
 
 This document contains no proprietary, confidential, or sensitive organizational information and represents generalized industry practices and publicly available methodologies. The content was created with the assistance of agentic AI systems, with human oversight and review applied throughout the process. Users should verify all technical recommendations and adapt them to their specific requirements and constraints.
 
+## Note on Implementation
+
+This document focuses exclusively on architectural design patterns and service specifications. Implementation details, code samples, and concrete technology implementations are intentionally excluded to maintain focus on system design and integration patterns.
+
 ## Table of Contents
 
 - [Overview](#overview)
