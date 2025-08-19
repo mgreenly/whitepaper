@@ -228,8 +228,8 @@ metadata:
   owner:
     team: platform-{category}-team
     contact: team@company.com
-  connectionTemplate: "host={{.input.config.instanceName}}.cluster-xyz.us-west-2.rds.amazonaws.com;port=5432;database=postgres"
-  parameterPath: "/{{.input.config.secretName}}"
+  connectionTemplate: "host={{.output.config.instanceName}}.cluster-xyz.us-west-2.rds.amazonaws.com;port=5432;database=postgres"
+  parameterPath: "/{{.output.config.secretName}}"
 
 presentation:
   form:
@@ -255,7 +255,7 @@ fulfillment:
           ticket:
             project: PLATFORM
             issueType: Task
-            summaryTemplate: "Provision {{.input.config.name}}"
+            summaryTemplate: "Provision {{.output.config.name}}"
   
   automatic:
     actions:
@@ -268,8 +268,8 @@ fulfillment:
             type: json
             contentTemplate: |
               {
-                "service": "{{.output.database.metadata.id}}",
-                "name": "{{.input.config.name}}"
+                "service": "{{.metadata.database.id}}",
+                "name": "{{.output.config.name}}"
               }
 ```
 
@@ -339,22 +339,22 @@ type: jira-ticket
 config:
   ticket:
     project: PLATFORM
-    summaryTemplate: "{{.input.config.name}} request"
+    summaryTemplate: "{{.output.config.name}} request"
     descriptionTemplate: |
-      Requesting: {{.input.config.name}}
-      Type: {{.output.database.metadata.name}}
+      Requesting: {{.output.config.name}}
+      Type: {{.metadata.database.name}}
       User: {{.system.user.email}}
       Request ID: {{.system.requestId}}
       
       Configuration details provided in request form.
     issueType: Task
-    priority: "{{.input.config.priority}}"
+    priority: "{{.output.config.priority}}"
     labels:
       - platform-automation
-      - "{{.output.database.metadata.category}}"
+      - "{{.metadata.database.category}}"
     customFields:
-      customfield_10001: "{{.input.config.costCenter}}"
-      customfield_10002: "{{.input.config.environment}}"
+      customfield_10001: "{{.output.config.costCenter}}"
+      customfield_10002: "{{.output.config.environment}}"
 ```
 
 **Variable Substitution in JIRA:**
@@ -399,8 +399,8 @@ config:
     type: json
     contentTemplate: |
       {
-        "name": "{{.input.basic.name}}",
-        "type": "{{.input.basic.instanceType}}",
+        "name": "{{.output.basic.name}}",
+        "type": "{{.output.basic.instanceType}}",
         "owner": "{{.system.user.email}}"
       }
   retry:
@@ -439,20 +439,20 @@ type: git-commit
 config:
   repository: "company/infrastructure"
   branch: "main"
-  commitMessage: "Deploy {{.input.application.appName}} to {{.input.application.environment}}"
+  commitMessage: "Deploy {{.output.application.appName}} to {{.output.application.environment}}"
   mergeStrategy: "squash"
   createPullRequest: false
   files:
-    - path: "apps/{{.input.application.appName}}/config.yaml"
+    - path: "apps/{{.output.application.appName}}/config.yaml"
       operation: "update"
       contentTemplate: |
         apiVersion: v1
         kind: ConfigMap
         metadata:
-          name: {{.input.application.appName}}-config
+          name: {{.output.application.appName}}-config
         data:
-          environment: {{.input.application.environment}}
-          replicas: "{{.input.application.replicas}}"
+          environment: {{.output.application.environment}}
+          replicas: "{{.output.application.replicas}}"
 ```
 
 **Git Operations:**
@@ -486,10 +486,10 @@ config:
   waitForCompletion: true
   timeout: 1800
   inputs:
-    app_name: "{{.input.application.appName}}"
-    environment: "{{.input.application.environment}}"
-    image_tag: "{{.input.application.imageTag}}"
-    replicas: "{{.input.application.replicas}}"
+    app_name: "{{.output.application.appName}}"
+    environment: "{{.output.application.environment}}"
+    image_tag: "{{.output.application.imageTag}}"
+    replicas: "{{.output.application.replicas}}"
 ```
 
 **Workflow Integration:**
@@ -515,37 +515,37 @@ The orchestrator maintains a map of named values organized by dot-separated path
 
 | Namespace | Purpose | Population Timing | Access Pattern |
 |-----------|---------|-------------------|----------------|
-| `.input` | User form data | Request submission | `{{.input.groupId.fieldId}}` |
-| `.output` | Static metadata from catalog items | Catalog loading | `{{.output.{userSuppliedName}.metadata.path}}` |
+| `.output` | User form data | Request submission | `{{.output.groupId.fieldId}}` |
+| `.metadata` | Static metadata from catalog items | Catalog loading | `{{.metadata.{userSuppliedName}.path}}` |
 | `.system` | Platform context & environment | Request processing | `{{.system.timestamp}}` |
 
-**Note**: `{userSuppliedName}` in `.output` patterns represents:
+**Note**: `{userSuppliedName}` in `.metadata` patterns represents:
 - **Individual Items**: The required `name` field value from the user form
 - **Bundle Components**: The component `id` defined in the bundle configuration
 
-### Output Namespace Organization
+### Metadata Namespace Organization
 
-The `.output` namespace contains static metadata from catalog items. For bundles, each component's metadata becomes available using the component's `id` as the namespace key.
+The `.metadata` namespace contains static metadata from catalog items. For bundles, each component's metadata becomes available using the component's `id` as the namespace key.
 
-**Output Namespace Population Rules**:
-- **Individual CatalogItems**: User-supplied `name` field → available as `{{.output.{name}.metadata.*}}`
-- **Bundle Components**: Component with `id: database` → available as `{{.output.database.metadata.*}}`
-- **Component ID Mapping**: The component `id` field directly maps to the output namespace key for bundles
+**Metadata Namespace Population Rules**:
+- **Individual CatalogItems**: User-supplied `name` field → available as `{{.metadata.{name}.*}}`
+- **Bundle Components**: Component with `id: database` → available as `{{.metadata.database.*}}`
+- **Component ID Mapping**: The component `id` field directly maps to the metadata namespace key for bundles
 - **Name Field Requirement**: All catalog items must include a required `name` field in their presentation form
 
 **Example Bundle Component Mapping**:
 ```yaml
 # Bundle component definition:
 components:
-  - id: database                    # → {{.output.database.metadata.*}}
+  - id: database                    # → {{.metadata.database.*}}
     catalogItem: database-aurora-postgresql-standard
-  - id: secrets                     # → {{.output.secrets.metadata.*}}
+  - id: secrets                     # → {{.metadata.secrets.*}}
     catalogItem: security-parameterstore-standard
-  - id: app                         # → {{.output.app.metadata.*}}
+  - id: app                         # → {{.metadata.app.*}}
     catalogItem: compute-eks-containerapp
 
 # Individual CatalogItem usage:
-# User supplies name="myapp" → {{.output.myapp.metadata.*}}
+# User supplies name="myapp" → {{.metadata.myapp.*}}
 ```
 
 **Output Namespace Structure**:
@@ -572,17 +572,17 @@ components:
 
 ### Path Examples
 
-**Input Paths** (user form data):
+**Output Paths** (user form data):
 ```
-{{.input.application.appName}}          # From application form group
-{{.input.database.dbSize}}              # From database form group  
-{{.input.config.instanceName}}          # From config form group
+{{.output.application.appName}}          # From application form group
+{{.output.database.dbSize}}              # From database form group  
+{{.output.config.instanceName}}          # From config form group
 ```
 
-**Output Paths** (static metadata):
+**Metadata Paths** (static metadata):
 ```
-{{.output.database.metadata.connectionTemplate}}  # Bundle component: database
-{{.output.myapp.metadata.defaultNamespace}}       # Individual item: user name "myapp"
+{{.metadata.database.connectionTemplate}}  # Bundle component: database
+{{.metadata.myapp.defaultNamespace}}       # Individual item: user name "myapp"
 ```
 
 **System Paths** (platform context):
@@ -599,11 +599,11 @@ components:
 
 Access to namespace paths is strictly controlled by component type:
 
-- **CatalogItem Fulfillment**: Can reference `.input.*`, `.system.*`, and `.output.{name}.metadata.*` where `{name}` is the user-supplied name field
+- **CatalogItem Fulfillment**: Can reference `.output.*`, `.system.*`, and `.metadata.{name}.*` where `{name}` is the user-supplied name field
 - **CatalogBundle Components**: No variable interpretation - only catalog item references and dependencies
 - **Action Templates**: Can reference all paths available in their execution context
 
-**Important**: Only static metadata can be referenced via `.output.*.metadata.*` paths. No dynamic runtime values are available. All variable substitution occurs exclusively within fulfillment action templates.
+**Important**: Only static metadata can be referenced via `.metadata.*` paths. No dynamic runtime values are available. All variable substitution occurs exclusively within fulfillment action templates.
 
 **Name Field Usage**: The user-supplied `name` field serves dual purposes:
 1. **Resource Identification**: Becomes the basis for AWS resource names, Kubernetes namespaces, etc.
@@ -625,17 +625,17 @@ When a bundle is submitted, the bundle's presentation form collects user input t
 **Example Data Flow**:
 ```yaml
 # Bundle presentation form collects:
-# .input.application.appName = "myapp"  
-# .input.database.dbSize = "db.t3.medium"
+# .output.application.appName = "myapp"  
+# .output.database.dbSize = "db.t3.medium"
 
 # Component fulfillment templates can reference:
-# Database component: {{.input.application.appName}}-db
-# EKS component: {{.input.application.appName}} 
-# Secrets component: {{.input.database.dbSize}}
+# Database component: {{.output.application.appName}}-db
+# EKS component: {{.output.application.appName}} 
+# Secrets component: {{.output.database.dbSize}}
 
 # Individual item usage (user supplies name="myapp-db"):
-# Item metadata available as: {{.output.myapp-db.metadata.*}}
-# User form data: {{.input.config.instanceClass}}
+# Item metadata available as: {{.metadata.myapp-db.*}}
+# User form data: {{.output.config.instanceClass}}
 ```
 
 ## Examples
@@ -764,7 +764,7 @@ fulfillment:
         config:
           ticket:
             project: COMPUTE
-            summaryTemplate: "Deploy {{.input.basic.appName}} to EKS"
+            summaryTemplate: "Deploy {{.output.basic.appName}} to EKS"
   automatic:
     actions:
       - type: rest-api
@@ -776,10 +776,10 @@ fulfillment:
             type: json
             contentTemplate: |
               {
-                "applicationName": "{{.input.basic.appName}}",
-                "containerImage": "{{.input.basic.containerImage}}",
-                "replicas": {{.input.basic.replicas}},
-                "namespace": "{{.output.{{.input.basic.name}}.metadata.defaultNamespace}}"
+                "applicationName": "{{.output.basic.appName}}",
+                "containerImage": "{{.output.basic.containerImage}}",
+                "replicas": {{.output.basic.replicas}},
+                "namespace": "{{.metadata.{{.output.basic.name}}.defaultNamespace}}"
               }
 ```
 
@@ -828,7 +828,7 @@ fulfillment:
         config:
           ticket:
             project: DBA
-            summaryTemplate: "Aurora PostgreSQL: {{.input.config.instanceName}}"
+            summaryTemplate: "Aurora PostgreSQL: {{.output.config.instanceName}}"
   automatic:
     actions:
       - type: rest-api
@@ -840,9 +840,9 @@ fulfillment:
             type: json
             contentTemplate: |
               {
-                "instanceName": "{{.input.config.instanceName}}",
-                "instanceClass": "{{.input.config.instanceClass}}",
-                "allocatedStorage": {{.input.config.storageSize}},
+                "instanceName": "{{.output.config.instanceName}}",
+                "instanceClass": "{{.output.config.instanceClass}}",
+                "allocatedStorage": {{.output.config.storageSize}},
                 "engine": "postgres",
                 "backupRetention": 7,
                 "multiAZ": true
@@ -861,7 +861,7 @@ metadata:
   description: Secure secret storage in AWS Parameter Store
   version: 1.0.0
   category: security
-  parameterPath: "/{{.input.config.secretName}}"
+  parameterPath: "/{{.output.config.secretName}}"
   kmsKeyId: "alias/parameter-store-key"
 
 presentation:
@@ -892,7 +892,7 @@ fulfillment:
         config:
           ticket:
             project: SECURITY
-            summaryTemplate: "Create secrets: {{.input.config.secretName}}"
+            summaryTemplate: "Create secrets: {{.output.config.secretName}}"
   automatic:
     actions:
       - type: rest-api
@@ -904,8 +904,8 @@ fulfillment:
             type: json
             contentTemplate: |
               {
-                "parameterPath": "/{{.input.config.secretName}}",
-                "secrets": "{{.input.config.secrets}}",
+                "parameterPath": "/{{.output.config.secretName}}",
+                "secrets": "{{.output.config.secrets}}",
                 "type": "SecureString"
               }
 ```
