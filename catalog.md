@@ -27,7 +27,7 @@ This document contains no proprietary, confidential, or sensitive organizational
 - [Examples](#examples)
   - [Complete Bundle Example](#complete-bundle-example)
   - [EKS Container Application](#eks-container-application)
-  - [PostgreSQL Database](#postgresql-database)
+  - [Aurora PostgreSQL Database](#aurora-postgresql-database)
   - [AWS Parameter Store](#aws-parameter-store)
 - [Validation and Testing](#validation-and-testing)
   - [Validation System](#validation-system)
@@ -63,12 +63,12 @@ platform-automation-repository/
 ├── catalog/                     # Service definitions by category
 │   ├── compute/                 # Compute services (EKS containers)
 │   │   └── *.yaml               # Service definitions
-│   ├── databases/               # Database services (PostgreSQL)
+│   ├── databases/               # Database services (Aurora PostgreSQL)
 │   │   └── *.yaml               # Service definitions
 │   ├── security/                # Security services (Parameter Store)
 │   │   └── *.yaml               # Service definitions
-│   └── solutions/               # Multi-service bundles
-│       └── *.yaml               # Bundle definitions
+│   └── bundles/                 # Composite service bundles (CatalogBundles)
+│       └── *.yaml               # CatalogBundle definitions
 ├── schema/                      # JSON Schema specifications
 │   ├── catalog-item.json        # CatalogItem schema definition
 │   ├── catalog-bundle.json      # CatalogBundle schema definition
@@ -131,7 +131,7 @@ Example `.github/CODEOWNERS` file:
 /catalog/monitoring/                @company/platform-observability-team @company/devx-team
 
 # Bundle definitions require architecture review
-/catalog/solutions/                 @company/platform-architecture @company/devx-team
+/catalog/bundles/                   @company/platform-architecture @company/devx-team
 
 # CI/CD and validation scripts
 /scripts/                           @company/devx-team
@@ -157,10 +157,10 @@ The catalog enforces specific naming conventions to ensure consistency and compa
   - Examples: `catalogItem`, `instanceClass`, `contentTemplate`, `issueType`
   
 - **File Names**: Use **kebab-case**
-  - Examples: `database-postgresql-standard.yaml`, `compute-eks-containerapp.yaml`
+  - Examples: `database-aurora-postgresql-standard.yaml`, `compute-eks-containerapp.yaml`
   
 - **IDs and References**: Use **kebab-case**
-  - Examples: `database-postgresql-standard`, `bundle-webapp-production`
+  - Examples: `database-aurora-postgresql-standard`, `bundle-webapp-production`
 
 - **Terraform Module Names**: Use **snake_case** for HCL compatibility
   - Transform field values when creating Terraform module identifiers
@@ -191,7 +191,7 @@ kind: CatalogItem
 
 ## Schema Reference
 
-The catalog schema defines two primary document types that platform teams use to define their service offerings. The schema follows a hierarchical structure where CatalogBundles orchestrate multiple CatalogItems into complete solutions.
+The catalog schema defines two primary document types that platform teams use to define their service offerings. The schema follows a hierarchical structure where CatalogBundles orchestrate multiple CatalogItems into complete bundles.
 
 **Important Note on Error Handling**: The catalog documents do not specify error handling behavior. All error handling, retry logic, and recovery mechanisms are the responsibility of the orchestrator service. When any action fails during execution, the service stops and requires manual intervention. Future phases may introduce automated recovery, but this is not part of the catalog specification.
 
@@ -199,7 +199,7 @@ The catalog schema defines two primary document types that platform teams use to
 
 ### CatalogBundle - Composite Service
 
-A CatalogBundle combines multiple CatalogItems into a single deployable solution. It orchestrates the provisioning of multiple services with proper dependency management and variable passing between components.
+A CatalogBundle combines multiple CatalogItems into a single deployable bundle. It orchestrates the provisioning of multiple services with proper dependency management and variable passing between components.
 
 **Q3 Bundle Behavior:**
 In Q3, bundles create multiple JIRA tickets (one per component) and establish JIRA linking relationships based on the `dependsOn` configuration. The orchestrator:
@@ -212,18 +212,18 @@ version: catalog/v1
 kind: CatalogBundle
 
 metadata:
-  id: bundle-{solution}-{variant}  # e.g., bundle-webapp-standard
+  id: bundle-{bundle}-{variant}  # e.g., bundle-webapp-standard
   name: Display Name
-  description: Complete solution description
+  description: Complete bundle description
   version: 1.0.0
-  category: solutions
+  category: bundles
   owner:
     team: platform-architecture-team
     contact: architecture@company.com
 
 components:
   - id: database
-    catalogItem: database-postgresql-standard  # References existing CatalogItem
+    catalogItem: database-aurora-postgresql-standard  # References existing CatalogItem
     config:
       # Override default field values from the referenced CatalogItem
       instanceClass: "{{fields.dbSize}}"
@@ -290,7 +290,7 @@ version: catalog/v1
 kind: CatalogItem
 
 metadata:
-  id: {category}-{service}-{variant}  # e.g., database-postgresql-standard
+  id: {category}-{service}-{variant}  # e.g., database-aurora-postgresql-standard
   name: Display Name
   description: 50-500 character description
   version: 1.0.0
@@ -499,7 +499,7 @@ Built-in functions for data transformation:
 
 ## Examples
 
-This section provides comprehensive examples demonstrating the catalog schema in practice. Examples progress from complete bundle solutions to individual service definitions, illustrating the hierarchical structure and integration patterns.
+This section provides comprehensive examples demonstrating the catalog schema in practice. Examples progress from complete bundle examples to individual service definitions, illustrating the hierarchical structure and integration patterns.
 
 ### Complete Bundle Example
 
@@ -512,11 +512,11 @@ metadata:
   name: Production Web Application Stack
   description: Complete web application with database and secrets management
   version: 2.0.0
-  category: solutions
+  category: bundles
 
 components:
   - id: database
-    catalogItem: database-postgresql-standard
+    catalogItem: database-aurora-postgresql-standard
     config:
       instanceName: "{{fields.appName}}-db"
       instanceClass: "{{fields.dbSize}}"
@@ -646,16 +646,16 @@ fulfillment:
               }
 ```
 
-### PostgreSQL Database
+### Aurora PostgreSQL Database
 
 ```yaml
 version: catalog/v1
 kind: CatalogItem
 
 metadata:
-  id: database-postgresql-standard
-  name: PostgreSQL Database
-  description: Managed PostgreSQL instance with backups
+  id: database-aurora-postgresql-standard
+  name: Aurora PostgreSQL Database
+  description: Managed Aurora PostgreSQL instance with backups
   version: 1.0.0
   category: databases
 
@@ -682,7 +682,7 @@ fulfillment:
         config:
           ticket:
             project: DBA
-            summaryTemplate: "PostgreSQL: {{fields.instanceName}}"
+            summaryTemplate: "Aurora PostgreSQL: {{fields.instanceName}}"
   automatic:
     actions:
       - type: rest-api
@@ -804,7 +804,7 @@ Platform teams follow a structured testing process before submitting catalog cha
 
 ```bash
 # 1. Validate a single service definition
-./scripts/validate-catalog.sh catalog/databases/postgresql-standard.yaml
+./scripts/validate-catalog.sh catalog/databases/aurora-postgresql-standard.yaml
 
 # 2. Validate all services in a category
 ./scripts/validate-catalog.sh catalog/databases/
@@ -813,7 +813,7 @@ Platform teams follow a structured testing process before submitting catalog cha
 ./scripts/validate-all.sh
 
 # 4. Test with sample data (dry run)
-./scripts/test-template.sh catalog/databases/postgresql-standard.yaml sample-data.json
+./scripts/test-template.sh catalog/databases/aurora-postgresql-standard.yaml sample-data.json
 ```
 
 **Validation Output:**
@@ -826,7 +826,7 @@ The validation scripts provide clear, actionable feedback:
 
 Example error output:
 ```
-✗ catalog/databases/postgresql-invalid.yaml
+✗ catalog/databases/aurora-postgresql-invalid.yaml
   Line 15: Field 'instanceClass' should use camelCase (found: instance_class)
   Line 22: Missing required field 'manual.actions'
   Line 38: Invalid variable reference '{{field.name}}' (should be '{{fields.name}}')
@@ -959,15 +959,15 @@ The governance process establishes standards and procedures for catalog contribu
 
 **CatalogItem IDs:** `{category}-{service}-{variant}`
 - category: Must match folder name (compute, databases, etc.)
-- service: Descriptive service name (postgresql, eks, s3)
+- service: Descriptive service name (aurora-postgresql, eks, s3)
 - variant: Differentiator (standard, enterprise, dev)
-- Example: `database-postgresql-enterprise`
+- Example: `database-aurora-postgresql-enterprise`
 
 **Display Names:**
 - Use title case
 - Be descriptive but concise
 - Include key differentiator
-- Example: "PostgreSQL Database - Enterprise"
+- Example: "Aurora PostgreSQL Database - Enterprise"
 
 ### Review Checklist
 
@@ -990,7 +990,7 @@ This section provides technical implementation details for teams setting up and 
 - Use JSON Schema Draft-07
 - `catalog-item.json`: Require metadata (id, name, description, version, category, owner), presentation.form.groups, fulfillment.strategy.mode, fulfillment.manual.actions
 - `catalog-bundle.json`: Require metadata, components array with catalogItem references, presentation, fulfillment.orchestration
-- `common-types.json`: Define enums for categories (compute, databases, security, etc.), field types (string, number, select, etc.), action types (jira-ticket, rest-api); patterns for IDs (kebab-case), variable syntax (`^\{\{[a-z]+\.[a-zA-Z]+\}\}$`)
+- `common-types.json`: Define enums for categories (compute, databases, bundles, security, etc.), field types (string, number, select, etc.), action types (jira-ticket, rest-api); patterns for IDs (kebab-case), variable syntax (`^\{\{[a-z]+\.[a-zA-Z]+\}\}$`)
 
 ### Ruby Validation Scripts
 
