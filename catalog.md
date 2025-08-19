@@ -517,8 +517,8 @@ The orchestrator maintains a map of named values organized by dot-separated path
 
 | Namespace | Purpose | Population Timing | Access Pattern |
 |-----------|---------|-------------------|----------------|
-| `.input` | Raw user input form data | Request submission | `{{.input.groupId.fieldId}}` |
-| `.output` | Computed values during fulfillment | Before each action (sequential) | `{{.output.computedValue}}` |
+| `.input` | Raw user input form data | Request submission | `{{.input.NAME.groupId.fieldId}}` |
+| `.output` | Computed values during fulfillment | Before each action (sequential) | `{{.output.NAME.computedValue}}` |
 | `.metadata` | Static catalog metadata | Catalog loading | `{{.metadata.{catalogItemId}.path}}` |
 | `.system` | Platform context & environment | Request processing | `{{.system.timestamp}}` |
 
