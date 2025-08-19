@@ -503,7 +503,9 @@ config:
 
 The orchestrator maintains a map of named values organized by dot-separated paths. Catalog definitions reference these values using `{{.namespace.path.to.value}}` syntax for content generation.
 
-**How it works**: User form data populates `.input` paths, system context populates `.system` paths, and static metadata from catalog items populates `.output` paths. Components can only reference constant metadata values, not runtime-generated data.
+**How it works**: User form data populates `.input` paths, system context populates `.system` paths, and static metadata from catalog items populates `.output` paths using either the user-supplied `name` field (individual items) or component `id` (bundles). Components can only reference constant metadata values, not runtime-generated data.
+
+**Required Name Field**: All catalog items must include a required `name` field in their presentation form. This user-supplied name becomes the namespace key for accessing that item's metadata via `.output.{name}.metadata.*` paths.
 
 **Variable Syntax**: `{{.namespace.path.to.value}}`
 
@@ -593,11 +595,15 @@ components:
 
 Access to namespace paths is strictly controlled by component type:
 
-- **CatalogItem Fulfillment**: Can reference `.input.*` and `.system.*` for user data and platform context
+- **CatalogItem Fulfillment**: Can reference `.input.*`, `.system.*`, and `.output.{name}.metadata.*` where `{name}` is the user-supplied name field
 - **CatalogBundle Components**: No variable interpretation - only catalog item references and dependencies
 - **Action Templates**: Can reference all paths available in their execution context
 
 **Important**: Only static metadata can be referenced via `.output.*.metadata.*` paths. No dynamic runtime values are available. All variable substitution occurs exclusively within fulfillment action templates.
+
+**Name Field Usage**: The user-supplied `name` field serves dual purposes:
+1. **Resource Identification**: Becomes the basis for AWS resource names, Kubernetes namespaces, etc.
+2. **Variable Namespacing**: Creates the `.output.{name}.metadata.*` namespace for accessing item metadata
 
 ## Bundle-to-Component Data Flow
 
@@ -622,6 +628,10 @@ When a bundle is submitted, the bundle's presentation form collects user input t
 # Database component: {{.input.application.appName}}-db
 # EKS component: {{.input.application.appName}} 
 # Secrets component: {{.input.database.dbSize}}
+
+# Individual item usage (user supplies name="myapp-db"):
+# Item metadata available as: {{.output.myapp-db.metadata.*}}
+# User form data: {{.input.config.instanceClass}}
 ```
 
 ## Examples
