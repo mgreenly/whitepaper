@@ -61,24 +61,52 @@ The Platform Automation Orchestrator catalog repository (`platform-automation-re
 ```
 platform-automation-repository/
 ├── catalog/                     # Service definitions by category
-│   ├── {category}/              # compute, databases, etc.
-│   │   └── {service}.yaml       # Your service definition
+│   ├── compute/                 # Compute services (EKS, containers, serverless)
+│   │   └── *.yaml               # Service definitions
+│   ├── databases/               # Database services (PostgreSQL, MySQL, Redis)
+│   │   └── *.yaml               # Service definitions
+│   ├── messaging/               # Messaging services (SQS, SNS, Kafka)
+│   │   └── *.yaml               # Service definitions
+│   ├── networking/              # Network services (VPC, Load Balancers)
+│   │   └── *.yaml               # Service definitions
+│   ├── storage/                 # Storage services (S3, EFS, EBS)
+│   │   └── *.yaml               # Service definitions
+│   ├── security/                # Security services (Secrets, IAM, KMS)
+│   │   └── *.yaml               # Service definitions
+│   ├── monitoring/              # Observability services (CloudWatch, Grafana)
+│   │   └── *.yaml               # Service definitions
+│   └── solutions/               # Multi-service bundles
+│       └── *.yaml               # Bundle definitions
 ├── schema/                      # JSON Schema specifications
-│   ├── catalog-item.json        # CatalogItem schema
-│   ├── catalog-bundle.json      # CatalogBundle schema
-│   └── common-types.json        # Shared type definitions
+│   ├── catalog-item.json        # CatalogItem schema definition
+│   ├── catalog-bundle.json      # CatalogBundle schema definition
+│   └── common-types.json        # Shared type definitions and patterns
 ├── templates/                   # Starter templates for new services
+│   ├── catalog-item-template.yaml    # Basic CatalogItem template
+│   ├── catalog-bundle-template.yaml  # Basic CatalogBundle template
+│   └── jira-action-template.yaml     # JIRA action configuration template
 ├── scripts/                     # Validation and testing tools
-│   ├── validate-catalog.sh      # Main validation script
-│   ├── validate-all.sh          # Batch validation
-│   └── test-template.sh         # Template testing
+│   ├── validate-catalog.sh      # Main validation script (Ruby)
+│   ├── validate-single.sh       # Single file validation
+│   ├── validate-all.sh          # Batch validation for directories
+│   ├── validate-changed.sh      # Validate only changed files in PR
+│   ├── test-template.sh         # Test template with sample data
+│   └── integration-test.sh      # End-to-end integration testing
 ├── tests/                       # Test fixtures and examples
-│   ├── valid/                   # Valid examples
+│   ├── valid/                   # Valid examples for testing
+│   │   ├── example-catalog-item.yaml
+│   │   ├── example-catalog-bundle.yaml
+│   │   └── cross-component-references.yaml
 │   └── invalid/                 # Invalid examples with expected errors
-└── .github/
-    ├── workflows/               # CI/CD pipelines
-    │   └── validate-catalog.yml # PR validation workflow
-    └── CODEOWNERS               # Team ownership mapping
+│       ├── missing-required-fields.yaml
+│       ├── invalid-naming-conventions.yaml
+│       └── circular-dependencies.yaml
+├── .github/                     # GitHub configuration
+│   ├── workflows/               # CI/CD pipelines
+│   │   └── validate-catalog.yml # PR validation workflow
+│   └── CODEOWNERS               # Team ownership and access control
+├── README.md                    # Repository overview and quick start
+└── .gitignore                   # Git ignore patterns for temp files
 ```
 
 ### CODEOWNERS Configuration
