@@ -175,7 +175,7 @@ schemaVersion: catalog/v1
 kind: CatalogBundle
 
 metadata:
-  id: bundle-{name}-{variant}  # e.g., bundle-webapp-standard
+  id: bundle-{name}-{variant}  # e.g., bundle-webapp-production
   name: Display Name
   description: Complete bundle description
   version: 1.0.0
@@ -256,8 +256,8 @@ metadata:
   owner:
     team: platform-{category}-team
     contact: team@company.com
-  connectionTemplate: "host=INSTANCENAME.cluster-xyz.us-west-2.rds.amazonaws.com;port=5432;database=postgres"
-  parameterPath: "/SECRETNAME"
+  defaultPort: "5432"
+  engineType: "postgres"
 
 input:
   form:
@@ -651,9 +651,10 @@ The `.output` namespace is completely flat with no nested structure. Fulfillment
 
 **Current Request Input Paths**:
 ```
-{{.current.basic.appName}}                     # From basic group (current request)
-{{.current.basic.instanceName}}                # From basic group (current request)
-{{.current.basic.secretName}}                  # From basic group (current request)
+{{.current.name}}                        # Top-level name field (always available)
+{{.current.basic.appName}}               # From basic group (current request)
+{{.current.basic.instanceName}}          # From basic group (current request)
+{{.current.basic.secretName}}            # From basic group (current request)
 ```
 
 **Output Paths** (computed during fulfillment):
@@ -666,7 +667,7 @@ The `.output` namespace is completely flat with no nested structure. Fulfillment
 
 **Metadata Paths** (static catalog metadata):
 ```
-{{.metadata.database-aurora-postgresql-standard.connectionTemplate}}  # Bundle component
+{{.metadata.database-aurora-postgresql-standard.defaultPort}}         # Bundle component
 {{.metadata.compute-eks-containerapp.defaultNamespace}}               # Individual item
 ```
 
@@ -688,11 +689,13 @@ This section provides a comprehensive reference for all available variables in e
 
 The `.current` namespace contains all user input from the current request's form submission.
 
-**Structure**: `{{.current.groupId.fieldId}}`
+**Structure**: 
+- Top-level name field: `{{.current.name}}`
+- Grouped fields: `{{.current.groupId.fieldId}}`
 
 **Available Variables**: Dynamic based on catalog item input form definition
-- All field values from user form submission
-- Organized by group ID and field ID as defined in the catalog item
+- Top-level `name` field always available as `{{.current.name}}`
+- All other field values from user form submission organized by group ID and field ID
 - Field values match their declared types (string, number, boolean, arrays for multiselect)
 
 **Examples**:
@@ -744,12 +747,12 @@ The `.metadata` namespace contains static metadata from catalog item definitions
 
 **Custom Metadata Fields** (defined by catalog item author):
 ```
-{{.metadata.database-aurora-postgresql-standard.connectionTemplate}}  # string
 {{.metadata.database-aurora-postgresql-standard.defaultPort}}          # string
+{{.metadata.database-aurora-postgresql-standard.engineType}}           # string
 {{.metadata.compute-eks-containerapp.defaultNamespace}}               # string
 {{.metadata.compute-eks-containerapp.clusterEndpoint}}                # string
-{{.metadata.security-parameterstore-standard.parameterPath}}          # string
-{{.metadata.security-parameterstore-standard.kmsKeyId}}               # string
+{{.metadata.security-parameterstore-standard.defaultKmsKeyId}}        # string
+{{.metadata.security-parameterstore-standard.parameterType}}          # string
 ```
 
 ### .system Namespace
@@ -855,7 +858,7 @@ When a bundle is submitted, users fill out the bundle's input form, and the data
 # .current.basic.containerImage = "nginx:latest"    # From basic group
 
 # Component 1 (Database) uses database-aurora-postgresql-standard catalog item:
-# Template can access: {{.metadata.database-aurora-postgresql-standard.connectionTemplate}}
+# Template can access: {{.metadata.database-aurora-postgresql-standard.defaultPort}}
 # Template uses: {{.current.basic.instanceName}}, {{.current.basic.instanceClass}}
 # Computes and adds to .output:
 # .output.databaseUrl = "postgres://{{.current.basic.instanceName}}.aws.com:5432/db"
@@ -867,7 +870,7 @@ When a bundle is submitted, users fill out the bundle's input form, and the data
 # Computes: .output.appUrl = "https://{{.current.basic.appName}}.company.com"
 
 # Component 3 (Secrets) uses security-parameterstore-standard catalog item:
-# Template can access: {{.metadata.security-parameterstore-standard.parameterPath}}
+# Template can access: {{.metadata.security-parameterstore-standard.defaultKmsKeyId}}
 # Template uses: {{.current.basic.secretName}} and previous outputs
 # Can reference: {{.output.databaseUrl}}, {{.output.appUrl}}, {{.current.basic.secretName}}
 
@@ -1029,8 +1032,8 @@ metadata:
   description: Managed Aurora PostgreSQL instance with backups
   version: 1.0.0
   category: databases
-  connectionTemplate: "host=INSTANCENAME.cluster-xyz.us-west-2.rds.amazonaws.com;port=5432;database=postgres"
   defaultPort: "5432"
+  engineType: "postgres"
 
 input:
   form:
@@ -1098,8 +1101,8 @@ metadata:
   description: Secure secret storage in AWS Parameter Store
   version: 1.0.0
   category: security
-  parameterPath: "/SECRETNAME"
-  kmsKeyId: "alias/parameter-store-key"
+  defaultKmsKeyId: "alias/parameter-store-key"
+  parameterType: "SecureString"
 
 input:
   form:
@@ -1168,11 +1171,11 @@ The `platform-automation-repository` repository includes a comprehensive validat
    - `catalog-bundle.json` - Schema for composite service bundles
    - `common-types.json` - Shared type definitions and constraints
 
-2. **Validation Scripts** (`/scripts/` directory) - **Core validation in Ruby**
+2. **Validation Scripts** (`/scripts/` directory) - **Ruby for complex validation, Bash for simple orchestration**
    - `validate-catalog.rb` - Main validation script (Ruby)
    - `validate-single.rb` - Validates individual YAML files (Ruby)
-   - `validate-all.sh` - Batch validation wrapper script (Shell)
-   - `validate-changed.sh` - Validates only changed files in PR (Shell)
+   - `validate-all.sh` - Batch validation wrapper script (Bash)
+   - `validate-changed.sh` - Validates only changed files in PR (Bash)
 
 3. **Test Fixtures** (`/tests/` directory)
    - Valid examples that should pass validation
