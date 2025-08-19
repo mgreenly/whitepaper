@@ -540,37 +540,80 @@ config:
 
 ## Templates and Variables
 
-The template and variable system enables dynamic content generation within catalog definitions. Platform teams use variables to create flexible service definitions that adapt to user input, request context, and system state.
+The template and variable system enables dynamic content generation within catalog definitions using path-based variable substitution. Platform teams use variables to create flexible service definitions that adapt to user input and execution context.
 
-- [Variable System](#variable-system)
-- [Functions](#functions)
+### How It Works (Conceptual Overview)
+
+When a request is submitted, the orchestrator builds up a collection of named values organized by slash-separated paths. User form data gets stored under `input/`, system information under `runtime/`, and as catalog items and bundles execute, their results get stored under `output/`. 
+
+Throughout catalog definitions, you can reference these values using `{{path/to/value}}` syntax. The orchestrator simply looks up the path in its collection and substitutes the value. This allows later-executing components to use results from earlier components, and enables dynamic configuration based on user choices and runtime context.
 
 ### Variable System
 
-Variables allow dynamic content insertion throughout catalog definitions. Variables are replaced at runtime when requests are processed.
+Variables are implemented as a runtime map where keys are slash-separated paths and values are resolved data. During request processing, this map is populated progressively and variables are substituted by path key lookup.
 
-| Scope | Example | Description |
-|-------|---------|-------------|
-| **User Input** | `{{fields.name}}` | Form field values submitted by users |
-| **Metadata** | `{{metadata.id}}` | Service metadata from catalog definition |
-| **Request** | `{{request.user.email}}` | Request context information |
-| **System** | `{{system.date}}` | System-generated variables |
-| **Environment** | `{{env.API_KEY}}` | Environment variables from orchestrator |
-| **Secrets** | `{{secrets.DB_PASSWORD}}` | Secret values from vault |
-| **Output** | `{{output.actionId.field}}` | Previous action outputs |
-| **Components** | `{{components.database.outputs.host}}` | Bundle component outputs |
+**Variable Syntax**: `{{namespace/path/to/value}}`
 
-### Functions
+### Namespace Structure
 
-Built-in functions for data transformation:
+**Three Top-Level Namespaces**:
 
-- `{{uuid()}}` - Generate UUID
-- `{{timestamp()}}` - Current timestamp
-- `{{upper(string)}}` - Uppercase conversion
-- `{{concat(str1, str2)}}` - String concatenation
-- `{{replace(string, old, new)}}` - String replacement (useful for Terraform names)
-- `{{json(object)}}` - JSON encoding
-- `{{base64(string)}}` - Base64 encoding
+| Namespace | Purpose | Population Timing | Access Pattern |
+|-----------|---------|-------------------|----------------|
+| `input/` | User form data | Request submission | `{{input/group-id/field-id}}` |
+| `output/` | Execution results | After item/bundle completion | `{{output/name/result-path}}` |
+| `runtime/` | System context | Request processing | `{{runtime/timestamp}}` |
+
+### Output Namespace Organization
+
+The `output/` namespace contains results from catalog items and bundles:
+
+```
+output/
+├── item-name/                    # Standalone catalog item results
+│   ├── connectionString
+│   └── endpoint/
+│       ├── host
+│       └── port
+├── bundle-name/                  # Bundle-level results
+│   ├── publicUrl
+│   └── item-name/               # Results from items within bundle
+│       ├── connectionString
+│       └── metadata/
+│           └── version
+```
+
+### Path Examples
+
+**Input Paths** (user form data):
+```
+{{input/database/instanceClass}}
+{{input/application/replicas}} 
+{{input/networking/vpc/cidrBlock}}
+```
+
+**Output Paths** (execution results):
+```
+{{output/database/connectionString}}              # From standalone item
+{{output/webapp-stack/publicUrl}}                 # From bundle
+{{output/webapp-stack/database/host}}             # From item within bundle
+```
+
+**Runtime Paths** (system context):
+```
+{{runtime/timestamp}}
+{{runtime/requestId}} 
+{{runtime/user/email}}
+{{runtime/correlation/id}}
+```
+
+### Scoping Rules
+
+Access to namespace paths is strictly controlled by component type:
+
+- **CatalogItem**: Can reference `input/*` and `runtime/*` only
+- **CatalogBundle**: Can reference `input/*`, `runtime/*`, and `output/*` from its components
+- **Action Types**: Can reference all paths available in their execution context
 
 ## Examples
 
