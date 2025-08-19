@@ -516,8 +516,12 @@ The orchestrator maintains a map of named values organized by dot-separated path
 | Namespace | Purpose | Population Timing | Access Pattern |
 |-----------|---------|-------------------|----------------|
 | `.input` | User form data | Request submission | `{{.input.groupId.fieldId}}` |
-| `.output` | Static metadata from catalog items | Catalog loading | `{{.output.itemName.metadata.path}}` |
+| `.output` | Static metadata from catalog items | Catalog loading | `{{.output.{userSuppliedName}.metadata.path}}` |
 | `.system` | Platform context & environment | Request processing | `{{.system.timestamp}}` |
+
+**Note**: `{userSuppliedName}` in `.output` patterns represents:
+- **Individual Items**: The required `name` field value from the user form
+- **Bundle Components**: The component `id` defined in the bundle configuration
 
 ### Output Namespace Organization
 
@@ -1168,95 +1172,38 @@ This section provides technical implementation details for teams setting up and 
 ### Ruby Validation Scripts
 
 **Core Requirements:**
-- Use `json_schemer` gem for JSON Schema validation
-- Use `psych` for YAML parsing with safe loading
+- Use JSON Schema validation library for structural validation
+- Parse YAML files safely without executing arbitrary code
 - Exit codes: 0 (success), 1 (validation error), 2 (system error)
 - Output format: `filename:line:column: error message`
 
-**validate-single.rb Implementation:**
-```ruby
-#!/usr/bin/env ruby
-require 'json_schemer'
-require 'psych'
-require 'pathname'
+**validate-single.rb Purpose:**
+Validates a single catalog YAML file against the appropriate JSON schema. Should:
+- Load and parse the YAML file safely
+- Determine document type from `kind` field (CatalogItem or CatalogBundle)
+- Map document type to correct schema file (`catalog-item.json` or `catalog-bundle.json`)
+- Validate document structure against schema
+- Report validation errors with file location details
+- Handle file not found, invalid YAML, and unknown document types
 
-file_path = ARGV[0]
-begin
-  content = Psych.safe_load_file(file_path)
-  kind = content['kind']
-  
-  # Map kind values to schema filenames
-  schema_mapping = {
-    'CatalogItem' => 'catalog-item.json',
-    'CatalogBundle' => 'catalog-bundle.json'
-  }
-  
-  schema_filename = schema_mapping[kind]
-  if schema_filename.nil?
-    puts "✗ #{file_path}: Unknown kind '#{kind}'. Expected: CatalogItem or CatalogBundle"
-    exit 1
-  end
-  
-  schema_file = "schema/#{schema_filename}"
-  unless File.exist?(schema_file)
-    puts "✗ #{file_path}: Schema file not found: #{schema_file}"
-    exit 2
-  end
-  
-  schema = JSON.parse(File.read(schema_file))
-  schemer = JSONSchemer.schema(schema)
-  
-  errors = schemer.validate(content).to_a
-  if errors.empty?
-    puts "✓ #{file_path}: Valid"
-    exit 0
-  else
-    errors.each do |error|
-      puts "✗ #{file_path}:#{error['data_pointer']}: #{error['error']}"
-    end
-    exit 1
-  end
-rescue => e
-  puts "✗ #{file_path}: #{e.message}"
-  exit 2
-end
-```
+**validate-changed.sh Purpose:**
+Validates only files changed in a Git pull request. Should:
+- Accept base Git SHA as parameter (defaults to HEAD~1)
+- Find changed files in `catalog/` and `bundles/` directories
+- Call validate-single.rb for each changed YAML file
+- Aggregate results and report total error count
+- Exit with error code if any validations fail
 
-**validate-changed.sh Implementation:**
-```bash
-#!/bin/bash
-BASE_SHA=${1:-HEAD~1}
-CHANGED_FILES=$(git diff --name-only $BASE_SHA -- 'catalog/**/*.yaml' 'bundles/**/*.yaml')
-
-if [ -z "$CHANGED_FILES" ]; then
-  echo "No catalog files changed"
-  exit 0
-fi
-
-ERRORS=0
-for file in $CHANGED_FILES; do
-  if [ -f "$file" ]; then
-    ./scripts/validate-single.rb "$file"
-    if [ $? -ne 0 ]; then
-      ERRORS=$((ERRORS + 1))
-    fi
-  fi
-done
-
-if [ $ERRORS -gt 0 ]; then
-  echo "Validation failed for $ERRORS file(s)"
-  exit 1
-fi
-```
-
-**Additional Validations:**
-- **Bundle Component References**: Bundle components must reference existing CatalogItems in the repository
-- **Variable Syntax**: Variable references must use valid scopes and syntax (`{{.namespace.path.field}}`)
-- **JIRA Projects**: JIRA project keys must be uppercase (PLATFORM, DBA, COMPUTE)
-- **Field Uniqueness**: Field IDs must be unique within each form group
-- **Required Name Field**: All CatalogItems must include a required `name` field with kebab-case validation pattern
-- **Circular Dependencies**: Bundle component dependencies cannot create cycles
-- **Component ID Uniqueness**: Component IDs must be unique within each bundle
+**Additional Validations Beyond Schema:**
+- **Bundle Component References**: Verify bundle components reference existing CatalogItems in the repository
+- **Variable Syntax**: Validate variable references use correct scopes and syntax (`{{.namespace.path.field}}`)
+- **JIRA Projects**: Ensure JIRA project keys are uppercase (PLATFORM, DBA, COMPUTE)
+- **Field Uniqueness**: Check field IDs are unique within each form group
+- **Required Name Field**: Verify all CatalogItems include a required `name` field with kebab-case validation pattern
+- **Circular Dependencies**: Detect and prevent circular dependencies in bundle components
+- **Component ID Uniqueness**: Ensure component IDs are unique within each bundle
+- **Custom Metadata Fields**: Validate custom metadata fields follow naming conventions
+- **Template Variable References**: Verify all template variables reference valid scopes
 
 ### Test Files
 - `valid/`: Include examples with all field types, both action types (jira-ticket, rest-api), cross-component references
