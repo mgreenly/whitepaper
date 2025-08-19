@@ -61,19 +61,19 @@ The Platform Automation Orchestrator catalog repository (`platform-automation-re
 ```
 platform-automation-repository/
 ├── catalog/                     # Service definitions by category
-│   ├── compute/                 # Compute services (EKS, containers, serverless)
+│   ├── compute/                 # Compute services (EKS containers)
 │   │   └── *.yaml               # Service definitions
-│   ├── databases/               # Database services (PostgreSQL, MySQL, Redis)
+│   ├── databases/               # Database services (PostgreSQL)
 │   │   └── *.yaml               # Service definitions
-│   ├── messaging/               # Messaging services (SQS, SNS, Kafka)
+│   ├── messaging/               # Messaging services
 │   │   └── *.yaml               # Service definitions
-│   ├── networking/              # Network services (VPC, Load Balancers)
+│   ├── networking/              # Network services
 │   │   └── *.yaml               # Service definitions
-│   ├── storage/                 # Storage services (S3, EFS, EBS)
+│   ├── storage/                 # Storage services
 │   │   └── *.yaml               # Service definitions
-│   ├── security/                # Security services (Secrets, IAM, KMS)
+│   ├── security/                # Security services (Parameter Store)
 │   │   └── *.yaml               # Service definitions
-│   ├── monitoring/              # Observability services (CloudWatch, Grafana)
+│   ├── monitoring/              # Observability services
 │   │   └── *.yaml               # Service definitions
 │   └── solutions/               # Multi-service bundles
 │       └── *.yaml               # Bundle definitions

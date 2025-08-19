@@ -16,7 +16,6 @@ You own the schema and design of these documents.
 
 You own the governance of the processes around these documents.
 
-In short you own this catalog and everyone else just plays in it.
 
 ## Guidance
 
@@ -24,6 +23,7 @@ In short you own this catalog and everyone else just plays in it.
   * CatalogBundle comes before CatalogItem (composite before individual)
   * Examples are grouped together after the schema definitions
   * This logical flow helps readers understand the hierarchy
+  * Do not add information about services or cloud resource types unless explicitly asked to.
   * when I reference "this document" or "the document" I am refering to catalog.md
 
 ## Critical Restrictions
