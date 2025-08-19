@@ -147,6 +147,10 @@ A CatalogBundle combines multiple CatalogItems into a single deployable bundle. 
 
 **Design Note**: This simplified model eliminates dynamic output generation between components for clarity and maintainability. All computed values (connection strings, generated IDs, etc.) are created within the final fulfillment template rather than being passed between components. This design choice could be reconsidered in future versions if complex inter-component data flows become necessary.
 
+**Metadata Constants**: The metadata section can only contain constant data - no variable interpretation occurs. Any placeholder syntax (like `{instanceName}`) in metadata values are literal strings that can be processed by consuming applications, not by the orchestrator itself.
+
+**Component Configuration**: Components only specify catalog item references and dependencies. All field values and variable substitution occur exclusively within the fulfillment templates of the referenced catalog items, not in the component configuration.
+
 **Bundle Behavior:**
 Bundles create multiple JIRA tickets (one per component) and establish JIRA linking relationships based on the `dependsOn` configuration. The orchestrator:
 1. Creates all component JIRA tickets using each CatalogItem's template
@@ -170,31 +174,15 @@ metadata:
 components:
   - id: database
     catalogItem: database-aurora-postgresql-standard  # References existing CatalogItem
-    config:
-      # Override default field values from the referenced CatalogItem
-      instanceClass: "{{fields.dbSize}}"
-      storageSize: "{{fields.dbStorage}}"
+    dependsOn: []
   
   - id: secrets
     catalogItem: security-parameterstore-standard
     dependsOn: [database]  # JIRA ticket will be linked as "blocked by" database ticket
-    config:
-      secretName: "{{fields.appName}}-secrets"
-      secrets:
-        # References static metadata from database component
-        - key: dbConnectionTemplate
-          value: "{{output/database/metadata/connectionTemplate}}"
   
   - id: application
     catalogItem: compute-eks-containerapp
     dependsOn: [database, secrets]  # Creates JIRA blocking links to both
-    config:
-      appName: "{{fields.appName}}"
-      containerImage: "{{fields.containerImage}}"
-      replicas: "{{fields.replicas}}"
-      environmentVariables:
-        - name: PARAM_STORE_PATH
-          value: "{{output/secrets/metadata/parameterPath}}"
 
 presentation:
   form:
@@ -239,8 +227,8 @@ metadata:
     team: platform-{category}-team
     contact: team@company.com
   # Additional constant metadata that can be referenced
-  connectionTemplate: "host={{fields.instanceName}}.cluster-xyz.us-west-2.rds.amazonaws.com;port=5432;database=postgres"
-  parameterPath: "/{{fields.secretName}}"
+  connectionTemplate: "host={instanceName}.cluster-xyz.us-west-2.rds.amazonaws.com;port=5432;database=postgres"
+  parameterPath: "/{secretName}"
 
 presentation:
   form:
@@ -576,11 +564,11 @@ output/
 
 Access to namespace paths is strictly controlled by component type:
 
-- **CatalogItem**: Can reference `input/*` and `system/*` only
-- **CatalogBundle**: Can reference `input/*`, `system/*`, and `output/*/metadata/*` from referenced items
-- **Action Types**: Can reference all paths available in their execution context
+- **CatalogItem Fulfillment**: Can reference `input/*` and `system/*` for user data and platform context
+- **CatalogBundle Components**: No variable interpretation - only catalog item references and dependencies
+- **Action Templates**: Can reference all paths available in their execution context
 
-**Important**: Only static metadata can be referenced via `output/` paths. No dynamic runtime values are available.
+**Important**: Only static metadata can be referenced via `output/*/metadata/*` paths. No dynamic runtime values are available. All variable substitution occurs exclusively within fulfillment action templates.
 
 ## Examples
 
@@ -607,29 +595,14 @@ metadata:
 components:
   - id: database
     catalogItem: database-aurora-postgresql-standard
-    config:
-      instanceName: "{{fields.appName}}-db"
-      instanceClass: "{{fields.dbSize}}"
-      storageSize: "{{fields.dbStorage}}"
     
   - id: secrets
     catalogItem: security-parameterstore-standard
-    config:
-      secretName: "{{fields.appName}}/secrets"
-      secrets:
-        - key: dbConnectionTemplate
-          value: "{{output/database/metadata/connectionTemplate}}"
+    dependsOn: [database]
     
   - id: app
     catalogItem: compute-eks-containerapp
     dependsOn: [database, secrets]
-    config:
-      appName: "{{fields.appName}}"
-      containerImage: "{{fields.containerImage}}"
-      replicas: "{{fields.replicas}}"
-      environmentVariables:
-        - name: PARAM_STORE_PATH
-          value: "{{output/secrets/metadata/parameterPath}}"
 
 presentation:
   form:
@@ -750,7 +723,7 @@ metadata:
   version: 1.0.0
   category: databases
   # Static metadata that can be referenced
-  connectionTemplate: "host={{fields.instanceName}}.cluster-xyz.us-west-2.rds.amazonaws.com;port=5432;database=postgres"
+  connectionTemplate: "host={instanceName}.cluster-xyz.us-west-2.rds.amazonaws.com;port=5432;database=postgres"
   defaultPort: "5432"
 
 presentation:
@@ -810,7 +783,7 @@ metadata:
   version: 1.0.0
   category: security
   # Static metadata that can be referenced
-  parameterPath: "/{{fields.secretName}}"
+  parameterPath: "/{secretName}"
   kmsKeyId: "alias/parameter-store-key"
 
 presentation:
