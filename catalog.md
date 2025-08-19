@@ -139,14 +139,16 @@ The catalog schema defines two primary document types that platform teams use to
 
 **Important Note on Error Handling**: The catalog documents do not specify error handling behavior. All error handling, retry logic, and recovery mechanisms are the responsibility of the orchestrator service. When any action fails during execution, the service stops and requires manual intervention. Future phases may introduce automated recovery, but this is not part of the catalog specification.
 
-**Q3 2025 Scope**: In Q3, all services use manual fulfillment via JIRA tickets. The `automatic` fulfillment sections shown in examples are for Q4 and beyond.
+**Current Scope**: Initially, all services use manual fulfillment via JIRA tickets. The `automatic` fulfillment sections shown in examples are for future automated provisioning capabilities.
 
 ### CatalogBundle - Composite Service
 
-A CatalogBundle combines multiple CatalogItems into a single deployable bundle. It orchestrates the provisioning of multiple services with proper dependency management and variable passing between components.
+A CatalogBundle combines multiple CatalogItems into a single deployable bundle. It orchestrates the provisioning of multiple services with proper dependency management and metadata reference between components.
 
-**Q3 Bundle Behavior:**
-In Q3, bundles create multiple JIRA tickets (one per component) and establish JIRA linking relationships based on the `dependsOn` configuration. The orchestrator:
+**Design Note**: This simplified model eliminates dynamic output generation between components for clarity and maintainability. All computed values (connection strings, generated IDs, etc.) are created within the final fulfillment template rather than being passed between components. This design choice could be reconsidered in future versions if complex inter-component data flows become necessary.
+
+**Bundle Behavior:**
+Bundles create multiple JIRA tickets (one per component) and establish JIRA linking relationships based on the `dependsOn` configuration. The orchestrator:
 1. Creates all component JIRA tickets using each CatalogItem's template
 2. Adds JIRA issue links of type "blocks/is blocked by" based on dependencies
 3. Returns a bundle request with links to all created tickets
@@ -172,10 +174,6 @@ components:
       # Override default field values from the referenced CatalogItem
       instanceClass: "{{fields.dbSize}}"
       storageSize: "{{fields.dbStorage}}"
-    outputs:  # Q4: Outputs for automated provisioning
-      - connectionString
-      - host
-      - port
   
   - id: secrets
     catalogItem: security-parameterstore-standard
@@ -183,11 +181,9 @@ components:
     config:
       secretName: "{{fields.appName}}-secrets"
       secrets:
-        # Q4: Will reference outputs; Q3: Manual instructions in JIRA
-        - key: dbConnectionString
-          value: "{{components.database.outputs.connectionString}}"
-    outputs:
-      - secretArn
+        # References static metadata from database component
+        - key: dbConnectionTemplate
+          value: "{{output/database/metadata/connectionTemplate}}"
   
   - id: application
     catalogItem: compute-eks-containerapp
@@ -197,8 +193,8 @@ components:
       containerImage: "{{fields.containerImage}}"
       replicas: "{{fields.replicas}}"
       environmentVariables:
-        - name: DB_CONNECTION_SECRET
-          value: "{{components.secrets.outputs.secretArn}}"
+        - name: PARAM_STORE_PATH
+          value: "{{output/secrets/metadata/parameterPath}}"
 
 presentation:
   form:
@@ -224,7 +220,7 @@ fulfillment:
     mode: sequential  # Components are processed in order
     jiraLinking:
       linkType: blocks  # JIRA link type for dependencies
-      parentTicket: false  # Q3: No parent epic; Q4: Optional epic creation
+      parentTicket: false  # Currently: No parent epic; Future: Optional epic creation
 ```
 
 ### CatalogItem - Individual Service
@@ -242,6 +238,9 @@ metadata:
   owner:
     team: platform-{category}-team
     contact: team@company.com
+  # Additional constant metadata that can be referenced
+  connectionTemplate: "host={{fields.instanceName}}.cluster-xyz.us-west-2.rds.amazonaws.com;port=5432;database=postgres"
+  parameterPath: "/{{fields.secretName}}"
 
 presentation:
   form:
@@ -322,7 +321,7 @@ fields:
 
 Action types define how the orchestrator fulfills service requests. Each action type represents a different integration method that platform teams can use to automate or manage their service provisioning workflows.
 
-**Current Implementation**: The Q3 2025 Foundation Epic supports JIRA and REST API action types. Additional action types (Terraform, GitHub Workflows) are planned for future releases.
+**Current Implementation**: The initial implementation supports JIRA action types only. REST API action types will be introduced in future releases. Additional action types (Terraform, GitHub Workflows) are also planned for future releases.
 
 **Important Note on Error Handling**: Action type configurations do not specify error handling, retry logic, timeouts, or recovery mechanisms. All error handling is the responsibility of the orchestrator service implementation. When actions fail, the service determines the appropriate response (retry, abort, escalate, etc.).
 
@@ -428,12 +427,12 @@ config:
 - Success responses (2xx) mark the action as completed
 - Client errors (4xx) mark the action as failed without retry
 - Server errors (5xx) trigger retry logic if configured
-- Response body can be captured as action outputs for variable substitution
-- Content-Type header determines response parsing (JSON, XML, text)
+- Response data is not captured or stored for variable substitution
+- Content-Type header determines response parsing for logging purposes only
 
 ### Git Commit
 
-**Status**: Planned for Q4 2025 and beyond
+**Status**: Planned for future release
 
 **Required Fields:**
 - `repository`: Repository identifier (e.g., owner/repo)
@@ -479,7 +478,7 @@ config:
 
 ### GitHub Workflow
 
-**Status**: Planned for Q4 2025 and beyond
+**Status**: Planned for future release
 
 **Required Fields:**
 - `repository`: Repository identifier
@@ -516,9 +515,9 @@ config:
 
 ## Templates and Variables
 
-The orchestrator maintains a map of named values organized by slash-separated paths. Catalog definitions reference these values using `{{path/to/value}}` syntax for dynamic content generation.
+The orchestrator maintains a map of named values organized by slash-separated paths. Catalog definitions reference these values using `{{path/to/value}}` syntax for content generation.
 
-**How it works**: User form data populates `input/` paths, system context populates `system/` paths, and execution results populate `output/` paths. Components can reference values from earlier execution stages.
+**How it works**: User form data populates `input/` paths, system context populates `system/` paths, and static metadata from catalog items populates `output/` paths. Components can only reference constant metadata values, not runtime-generated data.
 
 **Variable Syntax**: `{{namespace/path/to/value}}`
 
@@ -529,26 +528,23 @@ The orchestrator maintains a map of named values organized by slash-separated pa
 | Namespace | Purpose | Population Timing | Access Pattern |
 |-----------|---------|-------------------|----------------|
 | `input/` | User form data | Request submission | `{{input/group-id/field-id}}` |
-| `output/` | Execution results | After item/bundle completion | `{{output/name/result-path}}` |
+| `output/` | Static metadata from catalog items | Catalog loading | `{{output/name/metadata/path}}` |
 | `system/` | Platform context | Request processing | `{{system/timestamp}}` |
 
 ### Output Namespace Organization
 
-The `output/` namespace contains results from catalog items and bundles:
+The `output/` namespace contains static metadata from catalog items:
 
 ```
 output/
-├── item-name/                    # Standalone catalog item results
-│   ├── connectionString
-│   └── endpoint/
-│       ├── host
-│       └── port
-├── bundle-name/                  # Bundle-level results
-│   ├── publicUrl
-│   └── item-name/               # Results from items within bundle
-│       ├── connectionString
-│       └── metadata/
-│           └── version
+├── item-name/                    # Catalog item metadata
+│   └── metadata/                 # Static metadata section
+│       ├── connectionTemplate    # Template strings
+│       ├── parameterPath         # Static paths
+│       └── version               # Version info
+├── bundle-name/                  # Bundle metadata (if any)
+│   └── metadata/
+│       └── description           # Bundle-level static data
 ```
 
 ### Path Examples
@@ -560,11 +556,11 @@ output/
 {{input/networking/vpc/cidrBlock}}
 ```
 
-**Output Paths** (execution results):
+**Output Paths** (static metadata):
 ```
-{{output/database/connectionString}}              # From standalone item
-{{output/webapp-stack/publicUrl}}                 # From bundle
-{{output/webapp-stack/database/host}}             # From item within bundle
+{{output/database/metadata/connectionTemplate}}   # Static template from item
+{{output/webapp-stack/metadata/description}}      # Static data from bundle
+{{output/secrets/metadata/parameterPath}}         # Static path template
 ```
 
 **System Paths** (platform context):
@@ -581,8 +577,10 @@ output/
 Access to namespace paths is strictly controlled by component type:
 
 - **CatalogItem**: Can reference `input/*` and `system/*` only
-- **CatalogBundle**: Can reference `input/*`, `system/*`, and `output/*` from its components
+- **CatalogBundle**: Can reference `input/*`, `system/*`, and `output/*/metadata/*` from referenced items
 - **Action Types**: Can reference all paths available in their execution context
+
+**Important**: Only static metadata can be referenced via `output/` paths. No dynamic runtime values are available.
 
 ## Examples
 
@@ -619,10 +617,8 @@ components:
     config:
       secretName: "{{fields.appName}}/secrets"
       secrets:
-        - key: dbHost
-          value: "{{components.database.outputs.host}}"
-        - key: dbPort
-          value: "{{components.database.outputs.port}}"
+        - key: dbConnectionTemplate
+          value: "{{output/database/metadata/connectionTemplate}}"
     
   - id: app
     catalogItem: compute-eks-containerapp
@@ -633,7 +629,7 @@ components:
       replicas: "{{fields.replicas}}"
       environmentVariables:
         - name: PARAM_STORE_PATH
-          value: "{{components.secrets.outputs.secretArn}}"
+          value: "{{output/secrets/metadata/parameterPath}}"
 
 presentation:
   form:
@@ -694,6 +690,9 @@ metadata:
   description: Deploy containerized application to EKS cluster
   version: 1.0.0
   category: compute
+  # Static metadata that can be referenced
+  defaultNamespace: "applications"
+  clusterEndpoint: "https://k8s.company.internal"
 
 presentation:
   form:
@@ -750,6 +749,9 @@ metadata:
   description: Managed Aurora PostgreSQL instance with backups
   version: 1.0.0
   category: databases
+  # Static metadata that can be referenced
+  connectionTemplate: "host={{fields.instanceName}}.cluster-xyz.us-west-2.rds.amazonaws.com;port=5432;database=postgres"
+  defaultPort: "5432"
 
 presentation:
   form:
@@ -793,9 +795,6 @@ fulfillment:
                 "backupRetention": 7,
                 "multiAZ": true
               }
-          outputs:
-            - connectionString
-            - endpoint
 ```
 
 ### AWS Parameter Store
@@ -810,6 +809,9 @@ metadata:
   description: Secure secret storage in AWS Parameter Store
   version: 1.0.0
   category: security
+  # Static metadata that can be referenced
+  parameterPath: "/{{fields.secretName}}"
+  kmsKeyId: "alias/parameter-store-key"
 
 presentation:
   form:
@@ -848,8 +850,6 @@ fulfillment:
                 "secrets": {{json(fields.secrets)}},
                 "type": "SecureString"
               }
-          outputs:
-            - secretArn
 ```
 
 ## Validation and Testing
@@ -1032,7 +1032,7 @@ Before a platform team can contribute to the catalog, they must:
 4. **Iteration and Expansion** (Ongoing)
    - Add more services incrementally
    - Evolve from simple to complex offerings
-   - Q3: JIRA-only; Q4: Add automation
+   - Initial: JIRA-only; Future: Add automation
 
 ### Support Resources
 - Slack: #platform-catalog-help
@@ -1191,7 +1191,7 @@ fi
 
 ## Future Enhancements
 
-This section outlines potential catalog capabilities and enhancements planned beyond the initial Q3/Q4 2025 implementation. These enhancements represent the evolution path for the catalog system as the platform matures and adoption grows.
+This section outlines potential catalog capabilities and enhancements for future releases. These enhancements represent the evolution path for the catalog system as the platform matures and adoption grows.
 
 - [Advanced Action Types](#advanced-action-types)
 - [Enhanced Bundle Capabilities](#enhanced-bundle-capabilities)
@@ -1199,7 +1199,7 @@ This section outlines potential catalog capabilities and enhancements planned be
 - [Developer Experience Improvements](#developer-experience-improvements)
 - [Platform Intelligence](#platform-intelligence)
 
-The following catalog capabilities are potential future enhancements beyond the Q3/Q4 2025 roadmap:
+The following catalog capabilities are potential future enhancements:
 
 ### Advanced Action Types
 - **Webhook Action**: Generic outbound webhook invocation for external system notifications
