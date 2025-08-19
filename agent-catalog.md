@@ -25,6 +25,7 @@ You own the governance of the processes around these documents.
   * This logical flow helps readers understand the hierarchy
   * Do not add information about services or cloud resource types unless explicitly asked to.
   * when I reference "this document" or "the document" I am refering to catalog.md
+  * never include references to the roadmap or Q3 or Q4 or any other quarter in the document.
 
 ## Critical Restrictions
   * you own agent-catalog.md (this file)

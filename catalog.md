@@ -53,11 +53,11 @@ platform-automation-repository/
 │   ├── catalog-bundle-template.yaml  # Basic CatalogBundle template
 │   └── jira-action-template.yaml     # JIRA action configuration template
 ├── scripts/                          # Validation and testing tools
-│   ├── validate-catalog.sh           # Main validation script (Ruby)
-│   ├── validate-single.sh            # Single file validation
-│   ├── validate-all.sh               # Batch validation for directories
+│   ├── validate-catalog.rb           # Main validation script (Ruby)
+│   ├── validate-single.rb            # Single file validation
+│   ├── validate-all.sh               # Batch validation wrapper script
 │   ├── validate-changed.sh           # Validate only changed files in PR
-│   ├── test-template.sh              # Test template with sample data
+│   ├── test-template.rb              # Test template with sample data
 │   └── integration-test.sh           # End-to-end integration testing
 ├── tests/                            # Test fixtures and examples
 │   ├── valid/                        # Valid examples for testing
@@ -88,8 +88,9 @@ Use GitHub's CODEOWNERS file to enforce team-based access control and ensure app
 **Key Considerations:**
 - Ensure platform teams have autonomy over their service definitions
 - Provide support teams access across domains for troubleshooting and integration assistance  
-- Require architecture review for schema changes and bundle definitions
+- Require architecture review for schema changes, bundle definitions, and new category creation
 - Prevent accidental cross-team service modifications through proper path-based ownership
+
 
 ## Naming Conventions
 
@@ -139,7 +140,7 @@ The catalog schema defines two primary document types that platform teams use to
 
 **Important Note on Error Handling**: The catalog documents do not specify error handling behavior. All error handling, retry logic, and recovery mechanisms are the responsibility of the orchestrator service. When any action fails during execution, the service stops and requires manual intervention.
 
-**Current Scope**: All services use manual fulfillment via JIRA tickets. The `automatic` fulfillment sections shown in examples are for automated provisioning capabilities.
+**Current Scope**: All services use manual fulfillment via JIRA tickets. The `automatic` fulfillment sections shown in examples are for future automated provisioning capabilities.
 
 ### CatalogBundle - Composite Service
 
@@ -208,7 +209,7 @@ fulfillment:
     mode: sequential  # Components are processed in order
     jiraLinking:
       linkType: blocks  # JIRA link type for dependencies
-      parentTicket: false  # Currently: No parent epic; Future: Optional epic creation
+      parentTicket: false  # No parent epic; Optional epic creation in future versions
 ```
 
 ### CatalogItem - Individual Service
@@ -308,7 +309,7 @@ fields:
 
 Action types define how the orchestrator fulfills service requests. Each action type represents a different integration method that platform teams can use to automate or manage their service provisioning workflows.
 
-**Current Implementation**: The implementation supports JIRA action types. REST API action types and additional action types (Terraform, GitHub Workflows) are also planned.
+**Current Implementation**: The implementation supports JIRA action types. REST API action types and additional action types (Terraform, GitHub Workflows) are planned for future releases.
 
 **Important Note on Error Handling**: Action type configurations do not specify error handling, retry logic, timeouts, or recovery mechanisms. All error handling is the responsibility of the orchestrator service implementation. When actions fail, the service determines the appropriate response (retry, abort, escalate, etc.).
 
@@ -416,7 +417,7 @@ config:
 
 ### Git Commit
 
-**Status**: Planned
+**Status**: Future Enhancement
 
 **Required Fields:**
 - `repository`: Repository identifier (e.g., owner/repo)
@@ -462,7 +463,7 @@ config:
 
 ### GitHub Workflow
 
-**Status**: Planned
+**Status**: Future Enhancement
 
 **Required Fields:**
 - `repository`: Repository identifier
@@ -517,22 +518,45 @@ The orchestrator maintains a map of named values organized by dot-separated path
 
 ### Output Namespace Organization
 
-The `.output` namespace contains static metadata from catalog items:
+The `.output` namespace contains static metadata from catalog items. For bundles, each component's metadata becomes available using the component's `id` as the namespace key.
 
+**Output Namespace Population Rules**:
+- **Individual CatalogItems**: Available as `{{.output.serviceItem.metadata.*}}`
+- **Bundle Components**: Component with `id: database` → available as `{{.output.database.metadata.*}}`
+- **Component ID Mapping**: The component `id` field directly maps to the output namespace key
+
+**Example Bundle Component Mapping**:
+```yaml
+# Bundle component definition:
+components:
+  - id: database                    # → {{.output.database.metadata.*}}
+    catalogItem: database-aurora-postgresql-standard
+  - id: secrets                     # → {{.output.secrets.metadata.*}}
+    catalogItem: security-parameterstore-standard
+  - id: app                         # → {{.output.app.metadata.*}}
+    catalogItem: compute-eks-containerapp
+```
+
+**Output Namespace Structure**:
 ```
 .output
-├── serviceItem                   # Current catalog item metadata
+├── serviceItem                   # Current catalog item (individual items only)
 │   └── metadata                  # Static metadata section
 │       ├── connectionTemplate    # Template strings
 │       ├── parameterPath         # Static paths
-│       ├── defaultNamespace      # Service-specific metadata
 │       └── version               # Version info
-├── eksItem                       # EKS-specific item metadata (example)
+├── database                      # Component id: database (bundles only)
 │   └── metadata
-│       └── defaultNamespace      # EKS namespace configuration
-├── databaseItem                  # Database-specific item metadata (example)
+│       ├── connectionTemplate    # From database-aurora-postgresql-standard
+│       └── defaultPort           # Static metadata from component item
+├── secrets                       # Component id: secrets (bundles only)
 │   └── metadata
-│       └── connectionTemplate    # Database connection details
+│       ├── parameterPath         # From security-parameterstore-standard
+│       └── kmsKeyId              # Static metadata from component item
+├── app                          # Component id: app (bundles only)
+│   └── metadata
+│       ├── defaultNamespace      # From compute-eks-containerapp
+│       └── clusterEndpoint       # Static metadata from component item
 ```
 
 ### Path Examples
@@ -570,6 +594,31 @@ Access to namespace paths is strictly controlled by component type:
 - **Action Templates**: Can reference all paths available in their execution context
 
 **Important**: Only static metadata can be referenced via `.output.*.metadata.*` paths. No dynamic runtime values are available. All variable substitution occurs exclusively within fulfillment action templates.
+
+## Bundle-to-Component Data Flow
+
+When a bundle is submitted, the bundle's presentation form collects user input that becomes available to all component fulfillment templates through the `.input` namespace. This creates a unified data flow where bundle-level configuration drives component provisioning.
+
+**Data Flow Process**:
+1. User fills out bundle presentation form
+2. Bundle form data populates the `.input` namespace with structure `{{.input.groupId.fieldId}}`
+3. Each component's fulfillment templates can reference any bundle form field through `.input` paths
+4. Component presentation forms are ignored when the component is used within a bundle
+5. All components in the bundle share the same `.input` data scope
+
+**Bundle Form Priority**: When catalog items are used within bundles, the bundle's presentation form takes complete precedence. Individual component presentation forms are not shown to users and their field definitions are not used for validation.
+
+**Example Data Flow**:
+```yaml
+# Bundle presentation form collects:
+# .input.application.appName = "myapp"  
+# .input.database.dbSize = "db.t3.medium"
+
+# Component fulfillment templates can reference:
+# Database component: {{.input.application.appName}}-db
+# EKS component: {{.input.application.appName}} 
+# Secrets component: {{.input.database.dbSize}}
+```
 
 ## Examples
 
@@ -842,11 +891,11 @@ The `platform-automation-repository` repository includes a comprehensive validat
    - `catalog-bundle.json` - Schema for composite service bundles
    - `common-types.json` - Shared type definitions and constraints
 
-2. **Validation Scripts** (`/scripts/` directory) - **All scripts written in Ruby**
-   - `validate-catalog.sh` - Main validation script
-   - `validate-single.sh` - Validates individual YAML files
-   - `validate-all.sh` - Batch validation for entire directories
-   - `validate-changed.sh` - Validates only changed files in PR
+2. **Validation Scripts** (`/scripts/` directory) - **Core validation in Ruby**
+   - `validate-catalog.rb` - Main validation script (Ruby)
+   - `validate-single.rb` - Validates individual YAML files (Ruby)
+   - `validate-all.sh` - Batch validation wrapper script (Shell)
+   - `validate-changed.sh` - Validates only changed files in PR (Shell)
 
 3. **Test Fixtures** (`/tests/` directory)
    - Valid examples that should pass validation
@@ -859,6 +908,7 @@ The `platform-automation-repository` repository includes a comprehensive validat
 - **Naming Conventions**: All identifiers follow specified patterns (camelCase, kebab-case, etc.)
 - **Required Fields**: All mandatory fields are present with valid values
 - **Type Constraints**: Field values match their declared types
+- **Enum Validation**: Select and multiselect field values match their enum constraints
 - **Template Syntax**: Variable references use correct scope and syntax
 - **Cross-References**: Bundle components reference existing CatalogItems
 - **Action Configurations**: Each action type has required parameters
@@ -871,16 +921,16 @@ Platform teams follow a structured testing process before submitting catalog cha
 
 ```bash
 # 1. Validate a single service definition
-./scripts/validate-catalog.sh catalog/databases/aurora-postgresql-standard.yaml
+./scripts/validate-single.rb catalog/databases/aurora-postgresql-standard.yaml
 
 # 2. Validate all services in a category
-./scripts/validate-catalog.sh catalog/databases/
+./scripts/validate-catalog.rb catalog/databases/
 
 # 3. Run comprehensive validation before commit
 ./scripts/validate-all.sh
 
 # 4. Test with sample data (dry run)
-./scripts/test-template.sh catalog/databases/aurora-postgresql-standard.yaml sample-data.json
+./scripts/test-template.rb catalog/databases/aurora-postgresql-standard.yaml sample-data.json
 ```
 
 **Validation Output:**
@@ -991,7 +1041,7 @@ Before a platform team can contribute to the catalog, they must:
 2. **First Service Definition** (Days 2-3)
    - Copy template from `/templates/catalog-item-template.yaml`
    - Modify for team's first service (typically simplest offering)
-   - Run local validation: `./scripts/validate-single.sh my-service.yaml`
+   - Run local validation: `./scripts/validate-single.rb my-service.yaml`
    - Submit PR for review
 
 3. **Review Process**
@@ -1081,7 +1131,7 @@ This section provides technical implementation details for teams setting up and 
 - Exit codes: 0 (success), 1 (validation error), 2 (system error)
 - Output format: `filename:line:column: error message`
 
-**validate-single.sh Implementation:**
+**validate-single.rb Implementation:**
 ```ruby
 #!/usr/bin/env ruby
 require 'json_schemer'
@@ -1126,7 +1176,7 @@ fi
 ERRORS=0
 for file in $CHANGED_FILES; do
   if [ -f "$file" ]; then
-    ./scripts/validate-single.sh "$file"
+    ./scripts/validate-single.rb "$file"
     if [ $? -ne 0 ]; then
       ERRORS=$((ERRORS + 1))
     fi
@@ -1140,16 +1190,18 @@ fi
 ```
 
 **Additional Validations:**
-- Bundle components must reference existing CatalogItems
-- Variable references must use valid scopes and syntax
-- JIRA project keys must be uppercase
-- Field IDs must be unique within a form group
-- Circular dependencies in bundles are prohibited
+- **Bundle Component References**: Bundle components must reference existing CatalogItems in the repository
+- **Variable Syntax**: Variable references must use valid scopes and syntax (`{{.namespace.path.field}}`)
+- **JIRA Projects**: JIRA project keys must be uppercase (PLATFORM, DBA, COMPUTE)
+- **Field Uniqueness**: Field IDs must be unique within each form group
+- **Circular Dependencies**: Bundle component dependencies cannot create cycles
+- **Component ID Uniqueness**: Component IDs must be unique within each bundle
 
 ### Test Files
 - `valid/`: Include examples with all field types, both action types (jira-ticket, rest-api), cross-component references
 - `invalid/missing-required-fields.yaml`: Omit metadata.id, fulfillment.manual.actions
 - `invalid/invalid-naming-conventions.yaml`: Use snake_case for fields, PascalCase for IDs
+- `invalid/enum-validation-failure.yaml`: Select field with value not in enum list
 
 ### Templates
 - Include minimal valid structure with TODO comments
