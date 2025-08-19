@@ -186,7 +186,7 @@ components:
     catalogItem: compute-eks-containerapp
     dependsOn: [database, secrets]  # Creates JIRA blocking links to both
 
-presentation:
+input:
   form:
     groups:
       - id: appConfig
@@ -228,10 +228,10 @@ metadata:
   owner:
     team: platform-{category}-team
     contact: team@company.com
-  connectionTemplate: "host={{.output.config.instanceName}}.cluster-xyz.us-west-2.rds.amazonaws.com;port=5432;database=postgres"
-  parameterPath: "/{{.output.config.secretName}}"
+  connectionTemplate: "host={{.input.config.instanceName}}.cluster-xyz.us-west-2.rds.amazonaws.com;port=5432;database=postgres"
+  parameterPath: "/{{.input.config.secretName}}"
 
-presentation:
+input:
   form:
     groups:
       - id: config
@@ -255,7 +255,7 @@ fulfillment:
           ticket:
             project: PLATFORM
             issueType: Task
-            summaryTemplate: "Provision {{.output.config.name}}"
+            summaryTemplate: "Provision {{.input.config.name}}"
   
   automatic:
     actions:
@@ -269,13 +269,13 @@ fulfillment:
             contentTemplate: |
               {
                 "service": "{{.metadata.database.id}}",
-                "name": "{{.output.config.name}}"
+                "name": "{{.input.config.name}}"
               }
 ```
 
 ## Field Types
 
-Fields define the user input interface for catalog items and bundles. Each field type provides specific validation rules and generates corresponding UI elements in the developer portal. Platform teams use these field types to create dynamic forms that collect the necessary information for service provisioning.
+Fields define the user input interface for catalog items and bundles. Each field type provides specific validation rules and generates corresponding UI elements in the developer portal. Platform teams use these field types to create dynamic input forms that collect the necessary information for service provisioning.
 
 | Type | Use Case | Validation | UI Element |
 |------|----------|------------|------------|
@@ -297,7 +297,7 @@ fields:
     name: Display Name      # User-friendly label
     type: string           # Field type from table above
     required: true         # Optional, default false
-    default: "value"       # Optional default value
+    default: "value"       # Optional static default value (no variables allowed)
     description: "Help"    # Optional help text
     enum: [a, b, c]        # Allowed values for select/multiselect types (top-level)
     validation:            # Optional validation rules
@@ -339,22 +339,22 @@ type: jira-ticket
 config:
   ticket:
     project: PLATFORM
-    summaryTemplate: "{{.output.config.name}} request"
+    summaryTemplate: "{{.input.config.name}} request"
     descriptionTemplate: |
-      Requesting: {{.output.config.name}}
+      Requesting: {{.input.config.name}}
       Type: {{.metadata.database.name}}
       User: {{.system.user.email}}
       Request ID: {{.system.requestId}}
       
       Configuration details provided in request form.
     issueType: Task
-    priority: "{{.output.config.priority}}"
+    priority: "{{.input.config.priority}}"
     labels:
       - platform-automation
       - "{{.metadata.database.category}}"
     customFields:
-      customfield_10001: "{{.output.config.costCenter}}"
-      customfield_10002: "{{.output.config.environment}}"
+      customfield_10001: "{{.input.config.costCenter}}"
+      customfield_10002: "{{.input.config.environment}}"
 ```
 
 **Variable Substitution in JIRA:**
@@ -399,8 +399,8 @@ config:
     type: json
     contentTemplate: |
       {
-        "name": "{{.output.basic.name}}",
-        "type": "{{.output.basic.instanceType}}",
+        "name": "{{.input.basic.name}}",
+        "type": "{{.input.basic.instanceType}}",
         "owner": "{{.system.user.email}}"
       }
   retry:
@@ -439,20 +439,20 @@ type: git-commit
 config:
   repository: "company/infrastructure"
   branch: "main"
-  commitMessage: "Deploy {{.output.application.appName}} to {{.output.application.environment}}"
+  commitMessage: "Deploy {{.input.application.appName}} to {{.input.application.environment}}"
   mergeStrategy: "squash"
   createPullRequest: false
   files:
-    - path: "apps/{{.output.application.appName}}/config.yaml"
+    - path: "apps/{{.input.application.appName}}/config.yaml"
       operation: "update"
       contentTemplate: |
         apiVersion: v1
         kind: ConfigMap
         metadata:
-          name: {{.output.application.appName}}-config
+          name: {{.input.application.appName}}-config
         data:
-          environment: {{.output.application.environment}}
-          replicas: "{{.output.application.replicas}}"
+          environment: {{.input.application.environment}}
+          replicas: "{{.input.application.replicas}}"
 ```
 
 **Git Operations:**
@@ -486,10 +486,10 @@ config:
   waitForCompletion: true
   timeout: 1800
   inputs:
-    app_name: "{{.output.application.appName}}"
-    environment: "{{.output.application.environment}}"
-    image_tag: "{{.output.application.imageTag}}"
-    replicas: "{{.output.application.replicas}}"
+    app_name: "{{.input.application.appName}}"
+    environment: "{{.input.application.environment}}"
+    image_tag: "{{.input.application.imageTag}}"
+    replicas: "{{.input.application.replicas}}"
 ```
 
 **Workflow Integration:**
@@ -503,11 +503,13 @@ config:
 
 The orchestrator maintains a map of named values organized by dot-separated paths. Catalog definitions reference these values using `{{.namespace.path.to.value}}` syntax for content generation.
 
-**How it works**: User form data populates `.input` paths, system context populates `.system` paths, and static metadata from catalog items populates `.output` paths using either the user-supplied `name` field (individual items) or component `id` (bundles). Components can only reference constant metadata values, not runtime-generated data.
+**How it works**: User form data populates `.input` paths, computed values during fulfillment populate `.output` paths sequentially, and static metadata from catalog items populates `.metadata` paths using catalog item IDs. The `.output` namespace accumulates computed values that are available to subsequent fulfillment actions.
 
-**Required Name Field**: All catalog items must include a required `name` field in their presentation form. This user-supplied name becomes the namespace key for accessing that item's metadata via `.output.{name}.metadata.*` paths.
+**Required Name Field**: All catalog items and bundles must include a required `name` field in their input form for resource identification and naming. This field is always required regardless of other field configurations.
 
 **Variable Syntax**: `{{.namespace.path.to.value}}`
+
+**Input Section Restrictions**: Variables cannot be accessed or used within the input section of catalog documents. The input section only supports static values for defaults, enums, and validation patterns. All variable substitution occurs exclusively during fulfillment processing.
 
 ### Namespace Structure
 
@@ -515,23 +517,35 @@ The orchestrator maintains a map of named values organized by dot-separated path
 
 | Namespace | Purpose | Population Timing | Access Pattern |
 |-----------|---------|-------------------|----------------|
-| `.output` | User form data | Request submission | `{{.output.groupId.fieldId}}` |
-| `.metadata` | Static metadata from catalog items | Catalog loading | `{{.metadata.{userSuppliedName}.path}}` |
+| `.input` | Raw user input form data | Request submission | `{{.input.groupId.fieldId}}` |
+| `.output` | Computed values during fulfillment | Before each action (sequential) | `{{.output.computedValue}}` |
+| `.metadata` | Static catalog metadata | Catalog loading | `{{.metadata.{catalogItemId}.path}}` |
 | `.system` | Platform context & environment | Request processing | `{{.system.timestamp}}` |
 
-**Note**: `{userSuppliedName}` in `.metadata` patterns represents:
-- **Individual Items**: The required `name` field value from the user form
-- **Bundle Components**: The component `id` defined in the bundle configuration
+**Sequential Fulfillment Processing**: During fulfillment, actions are processed sequentially in the order they appear in the actions array. The orchestrator builds up the variable namespace progressively:
+
+1. **Initial State**: Only `.input.*`, `.metadata.*`, and `.system.*` namespaces are available
+2. **Action Processing**: Each action is processed in sequence, with each action having access to:
+   - All original `.input.*` values from the input form
+   - All `.metadata.*` values from catalog definitions  
+   - All `.system.*` platform context values
+   - All `.output.*` values computed by previous actions in the sequence
+3. **Output Generation**: Before each action's template is processed, any new output variables defined for that action are computed and added to the `.output.*` namespace
+4. **Template Access**: Each action's template can reference the entire variable namespace built up to that point
+
+**Note**: `{catalogItemId}` in `.metadata` patterns represents:
+- **Individual Items**: The catalog item ID being requested (e.g., `compute-eks-containerapp`)
+- **Bundle Components**: The catalog item ID referenced by the component (e.g., `database-aurora-postgresql-standard`)
 
 ### Metadata Namespace Organization
 
 The `.metadata` namespace contains static metadata from catalog items. For bundles, each component's metadata becomes available using the component's `id` as the namespace key.
 
 **Metadata Namespace Population Rules**:
-- **Individual CatalogItems**: User-supplied `name` field → available as `{{.metadata.{name}.*}}`
-- **Bundle Components**: Component with `id: database` → available as `{{.metadata.database.*}}`
-- **Component ID Mapping**: The component `id` field directly maps to the metadata namespace key for bundles
-- **Name Field Requirement**: All catalog items must include a required `name` field in their presentation form
+- **Individual CatalogItems**: Catalog item ID → available as `{{.metadata.{catalogItemId}.*}}`
+- **Bundle Components**: Referenced catalog item ID → available as `{{.metadata.{catalogItemId}.*}}`
+- **Catalog Item Reference**: Both individual items and bundle components use the catalog item ID as the metadata key
+- **Static Population**: Metadata is loaded from catalog definitions at system startup, before any user input
 
 **Example Bundle Component Mapping**:
 ```yaml
@@ -549,40 +563,58 @@ components:
 ```
 
 **Output Namespace Structure**:
+
+The `.output` namespace is organized by the user-supplied `name` field value. Each fulfillment action generates outputs under this user-provided namespace:
+
 ```
 .output
-├── database                      # Component id: database (bundles)
-│   └── metadata                  # Static metadata section
-│       ├── connectionTemplate    # Template strings
-│       ├── parameterPath         # Static paths
-│       └── version               # Version info
-├── secrets                       # Component id: secrets (bundles)
-│   └── metadata
-│       ├── parameterPath         # From security-parameterstore-standard
-│       └── kmsKeyId              # Static metadata from component item
-├── app                          # Component id: app (bundles)
-│   └── metadata
-│       ├── defaultNamespace      # From compute-eks-containerapp
-│       └── clusterEndpoint       # Static metadata from component item
-├── myapp                        # User-supplied name (individual items)
-│   └── metadata                  # Static metadata from the individual catalog item
-│       ├── defaultNamespace      # Custom metadata fields
-│       └── clusterEndpoint       # Available for variable substitution
+├── {userSuppliedName}            # From the required 'name' field in input form
+│   ├── key1                      # Output values computed during fulfillment
+│   ├── key2                      # Each action can add keys under this namespace
+│   └── keyN                      # Sequential actions build up this namespace
+```
+
+**Examples for Different Scenarios**:
+
+**Individual CatalogItem** (user provides name="myapp"):
+```
+.output
+└── myapp                         # User-supplied name becomes the namespace
+    ├── databaseUrl               # Output from database provisioning action
+    ├── resourceTags              # Output from tagging action
+    └── connectionString          # Output from connection setup action
+```
+
+**Bundle Components** (user provides name="webapp"):
+```
+.output
+└── webapp                        # User-supplied bundle name becomes the namespace
+    ├── databaseEndpoint          # Output from database component action
+    ├── secretsArn                # Output from secrets component action
+    └── applicationUrl            # Output from application component action
 ```
 
 ### Path Examples
 
-**Output Paths** (user form data):
+**Input Paths** (raw user input form data):
 ```
-{{.output.application.appName}}          # From application form group
-{{.output.database.dbSize}}              # From database form group  
-{{.output.config.instanceName}}          # From config form group
+{{.input.application.appName}}          # From application form group
+{{.input.database.dbSize}}              # From database form group  
+{{.input.config.instanceName}}          # From config form group
 ```
 
-**Metadata Paths** (static metadata):
+**Output Paths** (computed during fulfillment):
 ```
-{{.metadata.database.connectionTemplate}}  # Bundle component: database
-{{.metadata.myapp.defaultNamespace}}       # Individual item: user name "myapp"
+{{.output.myapp.databaseUrl}}           # Computed connection string (user name: myapp)
+{{.output.myapp.resourceTags}}          # Computed resource tags
+{{.output.myapp.secretArn}}             # ARN from previous action
+{{.output.webapp.applicationUrl}}       # Bundle output (user name: webapp)
+```
+
+**Metadata Paths** (static catalog metadata):
+```
+{{.metadata.database-aurora-postgresql-standard.connectionTemplate}}  # Bundle component
+{{.metadata.compute-eks-containerapp.defaultNamespace}}               # Individual item
 ```
 
 **System Paths** (platform context):
@@ -599,7 +631,7 @@ components:
 
 Access to namespace paths is strictly controlled by component type:
 
-- **CatalogItem Fulfillment**: Can reference `.output.*`, `.system.*`, and `.metadata.{name}.*` where `{name}` is the user-supplied name field
+- **CatalogItem Fulfillment**: Can reference `.input.*`, `.output.*`, `.system.*`, and `.metadata.{catalogItemId}.*` where `{catalogItemId}` is the catalog item being requested
 - **CatalogBundle Components**: No variable interpretation - only catalog item references and dependencies
 - **Action Templates**: Can reference all paths available in their execution context
 
@@ -607,35 +639,39 @@ Access to namespace paths is strictly controlled by component type:
 
 **Name Field Usage**: The user-supplied `name` field serves dual purposes:
 1. **Resource Identification**: Becomes the basis for AWS resource names, Kubernetes namespaces, etc.
-2. **Variable Namespacing**: Creates the `.output.{name}.metadata.*` namespace for accessing item metadata
+2. **Output Variable Namespacing**: Creates the `.output.{name}.*` namespace where all computed fulfillment outputs are stored
 
 ## Bundle-to-Component Data Flow
 
-When a bundle is submitted, the bundle's presentation form collects user input that becomes available to all component fulfillment templates through the `.input` namespace. This creates a unified data flow where bundle-level configuration drives component provisioning.
+When a bundle is submitted, the bundle's input form collects user input that becomes available to all component fulfillment templates through the `.input` namespace. The `.output` namespace accumulates computed values as each component is processed sequentially.
 
 **Data Flow Process**:
-1. User fills out bundle presentation form
+1. User fills out bundle input form
 2. Bundle form data populates the `.input` namespace with structure `{{.input.groupId.fieldId}}`
-3. Each component's fulfillment templates can reference any bundle form field through `.input` paths
-4. Component presentation forms are ignored when the component is used within a bundle
-5. All components in the bundle share the same `.input` data scope
+3. **Component 1**: Computes outputs, populates `.output.*` namespace
+4. **Component 2**: Can reference previous `.output.*` values plus `.input.*` and `.metadata.*`
+5. **Sequential Processing**: Each component builds upon previous computed outputs
+6. Component input forms are ignored when the component is used within a bundle
 
-**Bundle Form Priority**: When catalog items are used within bundles, the bundle's presentation form takes complete precedence. Individual component presentation forms are not shown to users and their field definitions are not used for validation.
+**Bundle Form Priority**: When catalog items are used within bundles, the bundle's input form takes complete precedence. Individual component input forms are not shown to users and their field definitions are not used for validation.
 
 **Example Data Flow**:
 ```yaml
-# Bundle presentation form collects:
-# .output.application.appName = "myapp"  
-# .output.database.dbSize = "db.t3.medium"
+# Bundle input form collects:
+# .input.application.appName = "myapp"  
+# .input.database.dbSize = "db.t3.medium"
+# Required name field = "webapp" (user supplies this)
 
-# Component fulfillment templates can reference:
-# Database component: {{.output.application.appName}}-db
-# EKS component: {{.output.application.appName}} 
-# Secrets component: {{.output.database.dbSize}}
+# Component 1 (Database) computes and adds to .output:
+# .output.webapp.databaseUrl = "postgres://{{.input.application.appName}}-db.aws.com:5432/db"
+# .output.webapp.databaseName = "{{.input.application.appName}}-db"
 
-# Individual item usage (user supplies name="myapp-db"):
-# Item metadata available as: {{.metadata.myapp-db.*}}
-# User form data: {{.output.config.instanceClass}}
+# Component 2 (EKS) can reference accumulated outputs:
+# Template uses: {{.output.webapp.databaseUrl}} and {{.input.application.appName}}
+# Computes: .output.webapp.appUrl = "https://{{.input.application.appName}}.company.com"
+
+# Component 3 (Secrets) has access to all previous outputs:
+# Can reference: {{.output.webapp.databaseUrl}}, {{.output.webapp.appUrl}}, {{.input.*}}
 ```
 
 ## Examples
@@ -671,7 +707,7 @@ components:
     catalogItem: compute-eks-containerapp
     dependsOn: [database, secrets]
 
-presentation:
+input:
   form:
     groups:
       - id: application
@@ -733,7 +769,7 @@ metadata:
   defaultNamespace: "applications"
   clusterEndpoint: "https://k8s.company.internal"
 
-presentation:
+input:
   form:
     groups:
       - id: basic
@@ -764,7 +800,7 @@ fulfillment:
         config:
           ticket:
             project: COMPUTE
-            summaryTemplate: "Deploy {{.output.basic.appName}} to EKS"
+            summaryTemplate: "Deploy {{.input.basic.appName}} to EKS"
   automatic:
     actions:
       - type: rest-api
@@ -776,10 +812,10 @@ fulfillment:
             type: json
             contentTemplate: |
               {
-                "applicationName": "{{.output.basic.appName}}",
-                "containerImage": "{{.output.basic.containerImage}}",
-                "replicas": {{.output.basic.replicas}},
-                "namespace": "{{.metadata.{{.output.basic.name}}.defaultNamespace}}"
+                "applicationName": "{{.input.basic.appName}}",
+                "containerImage": "{{.input.basic.containerImage}}",
+                "replicas": {{.input.basic.replicas}},
+                "namespace": "{{.metadata.compute-eks-containerapp.defaultNamespace}}"
               }
 ```
 
@@ -798,7 +834,7 @@ metadata:
   connectionTemplate: "host={{.input.config.instanceName}}.cluster-xyz.us-west-2.rds.amazonaws.com;port=5432;database=postgres"
   defaultPort: "5432"
 
-presentation:
+input:
   form:
     groups:
       - id: config
@@ -828,7 +864,7 @@ fulfillment:
         config:
           ticket:
             project: DBA
-            summaryTemplate: "Aurora PostgreSQL: {{.output.config.instanceName}}"
+            summaryTemplate: "Aurora PostgreSQL: {{.input.config.instanceName}}"
   automatic:
     actions:
       - type: rest-api
@@ -840,9 +876,9 @@ fulfillment:
             type: json
             contentTemplate: |
               {
-                "instanceName": "{{.output.config.instanceName}}",
-                "instanceClass": "{{.output.config.instanceClass}}",
-                "allocatedStorage": {{.output.config.storageSize}},
+                "instanceName": "{{.input.config.instanceName}}",
+                "instanceClass": "{{.input.config.instanceClass}}",
+                "allocatedStorage": {{.input.config.storageSize}},
                 "engine": "postgres",
                 "backupRetention": 7,
                 "multiAZ": true
@@ -861,10 +897,10 @@ metadata:
   description: Secure secret storage in AWS Parameter Store
   version: 1.0.0
   category: security
-  parameterPath: "/{{.output.config.secretName}}"
+  parameterPath: "/{{.input.config.secretName}}"
   kmsKeyId: "alias/parameter-store-key"
 
-presentation:
+input:
   form:
     groups:
       - id: config
@@ -892,7 +928,7 @@ fulfillment:
         config:
           ticket:
             project: SECURITY
-            summaryTemplate: "Create secrets: {{.output.config.secretName}}"
+            summaryTemplate: "Create secrets: {{.input.config.secretName}}"
   automatic:
     actions:
       - type: rest-api
@@ -904,8 +940,8 @@ fulfillment:
             type: json
             contentTemplate: |
               {
-                "parameterPath": "/{{.output.config.secretName}}",
-                "secrets": "{{.output.config.secrets}}",
+                "parameterPath": "/{{.input.config.secretName}}",
+                "secrets": "{{.input.config.secrets}}",
                 "type": "SecureString"
               }
 ```
@@ -1165,8 +1201,8 @@ This section provides technical implementation details for teams setting up and 
 
 ### JSON Schema Files
 - Use JSON Schema Draft-07
-- `catalog-item.json`: Require metadata (id, name, description, version, category, owner), presentation.form.groups, fulfillment.strategy.mode, fulfillment.manual.actions
-- `catalog-bundle.json`: Require metadata, components array with catalogItem references, presentation, fulfillment.orchestration
+- `catalog-item.json`: Require metadata (id, name, description, version, category, owner), input.form.groups, fulfillment.strategy.mode, fulfillment.manual.actions
+- `catalog-bundle.json`: Require metadata, components array with catalogItem references, input, fulfillment.orchestration
 - `common-types.json`: Define enums for categories (compute, databases, security, etc.), field types (string, number, select, etc.), action types (jira-ticket, rest-api); patterns for IDs (kebab-case), variable syntax (`^\{\{\.[a-zA-Z][a-zA-Z0-9]*(\.[a-zA-Z][a-zA-Z0-9]*)*\}\}$`)
 
 ### Ruby Validation Scripts
