@@ -352,7 +352,8 @@ Action types define how the orchestrator fulfills service requests. Each action 
 
 - [JIRA Ticket](#jira-ticket)
 - [REST API](#rest-api)
-- [Future Action Types](#future-action-types)
+- [Git Commit](#git-commit)
+- [GitHub Workflow](#github-workflow)
 
 ### JIRA Ticket
 
@@ -410,6 +411,20 @@ config:
 - No polling or caching of JIRA status occurs
 
 ### REST API
+
+**Required Fields:**
+- `endpoint.url`: Target API endpoint URL
+- `endpoint.method`: HTTP method (GET, POST, PUT, DELETE, PATCH)
+
+**Optional Fields:**
+- `headers`: HTTP headers with variable substitution support
+- `body.type`: Request body format (json, form-data, text)
+- `body.contentTemplate`: Template for request body with variable substitution
+- `retry.attempts`: Number of retry attempts (default: 0)
+- `retry.backoff`: Backoff strategy (linear, exponential)
+- `timeout`: Request timeout in seconds
+- `authentication`: Authentication configuration (bearer, basic, api-key)
+
 ```yaml
 type: rest-api
 config:
@@ -430,20 +445,33 @@ config:
   retry:
     attempts: 3
     backoff: exponential
+  timeout: 30
 ```
 
-### Future Action Types
+**Response Handling:**
+- Success responses (2xx) mark the action as completed
+- Client errors (4xx) mark the action as failed without retry
+- Server errors (5xx) trigger retry logic if configured
+- Response body can be captured as action outputs for variable substitution
+- Content-Type header determines response parsing (JSON, XML, text)
 
-The following action types are planned for Q4 2025 and beyond:
+### Git Commit
 
-#### Git Commit
+**Status**: Planned for Q4 2025 and beyond
 
 **Required Fields:**
 - `repository`: Repository identifier (e.g., owner/repo)
 - `branch`: Target branch for the commit
 - `files`: Array of file modifications with path, contentTemplate, and operation (create/update/delete)
 - `commitMessage`: Template for the commit message
-- `mergeStrategy`: How to handle the merge (fast-forward, merge-commit, squash)
+
+**Optional Fields:**
+- `mergeStrategy`: How to handle the merge (fast-forward, merge-commit, squash) - defaults to fast-forward
+- `createPullRequest`: Create pull request instead of direct commit (boolean)
+- `pullRequestTitle`: Template for pull request title
+- `pullRequestBody`: Template for pull request description
+- `assignees`: Array of GitHub usernames to assign
+- `reviewers`: Array of GitHub usernames to request review from
 
 ```yaml
 type: git-commit
@@ -452,6 +480,7 @@ config:
   branch: "main"
   commitMessage: "Deploy {{fields.appName}} to {{fields.environment}}"
   mergeStrategy: "squash"
+  createPullRequest: false
   files:
     - path: "apps/{{fields.appName}}/config.yaml"
       operation: "update"
@@ -465,13 +494,27 @@ config:
           replicas: "{{fields.replicas}}"
 ```
 
-#### GitHub Workflow
+**Git Operations:**
+- File operations support create, update, and delete operations
+- Content templates support full variable substitution
+- Atomic commits ensure all file changes succeed or fail together
+- Branch protection rules are respected and may cause action failure
+- Pull request mode enables approval workflows for sensitive changes
+
+### GitHub Workflow
+
+**Status**: Planned for Q4 2025 and beyond
 
 **Required Fields:**
 - `repository`: Repository identifier
 - `workflowFile`: Workflow file path (e.g., .github/workflows/deploy.yml)
 - `ref`: Git reference to trigger on (branch/tag)
+
+**Optional Fields:**
 - `inputs`: Key-value pairs for workflow inputs with variable substitution
+- `waitForCompletion`: Wait for workflow completion (boolean) - defaults to false
+- `timeout`: Maximum wait time for workflow completion in seconds
+- `failOnWorkflowFailure`: Mark action as failed if workflow fails (boolean) - defaults to true
 
 ```yaml
 type: github-workflow
@@ -479,6 +522,8 @@ config:
   repository: "company/deployment-workflows"
   workflowFile: ".github/workflows/deploy-app.yml"
   ref: "main"
+  waitForCompletion: true
+  timeout: 1800
   inputs:
     app_name: "{{fields.appName}}"
     environment: "{{fields.environment}}"
@@ -486,11 +531,12 @@ config:
     replicas: "{{fields.replicas}}"
 ```
 
-#### Other Planned Types
-
-- **Terraform**: Infrastructure provisioning via `.tf` template generation
-- **AWS Lambda**: Direct Lambda function invocation
-- **CloudFormation**: AWS stack provisioning
+**Workflow Integration:**
+- Workflows must be configured to accept `workflow_dispatch` triggers
+- Input parameters are validated against workflow input schema
+- Workflow run URLs are captured for status tracking and debugging
+- Failed workflows provide detailed error information and logs
+- Long-running workflows can optionally be tracked to completion
 
 ## Templates and Variables
 
