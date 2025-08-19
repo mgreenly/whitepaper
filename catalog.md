@@ -598,9 +598,9 @@ The `.output` namespace is organized by the user-supplied `name` field value. Ea
 
 **Input Paths** (raw user input form data):
 ```
-{{.input.application.appName}}          # From application form group
-{{.input.database.dbSize}}              # From database form group  
-{{.input.config.instanceName}}          # From config form group
+{{.input.myapp.application.appName}}    # From application form group (user name: myapp)
+{{.input.webapp.database.dbSize}}       # From database form group (user name: webapp)  
+{{.input.mydb.config.instanceName}}     # From config form group (user name: mydb)
 ```
 
 **Output Paths** (computed during fulfillment):
@@ -647,7 +647,7 @@ When a bundle is submitted, the bundle's input form collects user input that bec
 
 **Data Flow Process**:
 1. User fills out bundle input form
-2. Bundle form data populates the `.input` namespace with structure `{{.input.groupId.fieldId}}`
+2. Bundle form data populates the `.input` namespace with structure `{{.input.NAME.groupId.fieldId}}`
 3. **Component 1**: Computes outputs, populates `.output.*` namespace
 4. **Component 2**: Can reference previous `.output.*` values plus `.input.*` and `.metadata.*`
 5. **Sequential Processing**: Each component builds upon previous computed outputs
@@ -658,20 +658,20 @@ When a bundle is submitted, the bundle's input form collects user input that bec
 **Example Data Flow**:
 ```yaml
 # Bundle input form collects:
-# .input.application.appName = "myapp"  
-# .input.database.dbSize = "db.t3.medium"
+# .input.webapp.application.appName = "myapp"  
+# .input.webapp.database.dbSize = "db.t3.medium"
 # Required name field = "webapp" (user supplies this)
 
 # Component 1 (Database) computes and adds to .output:
-# .output.webapp.databaseUrl = "postgres://{{.input.application.appName}}-db.aws.com:5432/db"
-# .output.webapp.databaseName = "{{.input.application.appName}}-db"
+# .output.webapp.databaseUrl = "postgres://{{.input.webapp.application.appName}}-db.aws.com:5432/db"
+# .output.webapp.databaseName = "{{.input.webapp.application.appName}}-db"
 
 # Component 2 (EKS) can reference accumulated outputs:
-# Template uses: {{.output.webapp.databaseUrl}} and {{.input.application.appName}}
-# Computes: .output.webapp.appUrl = "https://{{.input.application.appName}}.company.com"
+# Template uses: {{.output.webapp.databaseUrl}} and {{.input.webapp.application.appName}}
+# Computes: .output.webapp.appUrl = "https://{{.input.webapp.application.appName}}.company.com"
 
 # Component 3 (Secrets) has access to all previous outputs:
-# Can reference: {{.output.webapp.databaseUrl}}, {{.output.webapp.appUrl}}, {{.input.*}}
+# Can reference: {{.output.webapp.databaseUrl}}, {{.output.webapp.appUrl}}, {{.input.webapp.*}}
 ```
 
 ## Examples
