@@ -544,9 +544,9 @@ The template and variable system enables dynamic content generation within catal
 
 ### How It Works (Conceptual Overview)
 
-When a request is submitted, the orchestrator builds up a collection of named values organized by slash-separated paths. User form data gets stored under `input/`, system information under `runtime/`, and as catalog items and bundles execute, their results get stored under `output/`. 
+When a request is submitted, the orchestrator builds up a collection of named values organized by slash-separated paths. User form data gets stored under `input/`, system information under `system/`, and as catalog items and bundles execute, their results get stored under `output/`. 
 
-Throughout catalog definitions, you can reference these values using `{{path/to/value}}` syntax. The orchestrator simply looks up the path in its collection and substitutes the value. This allows later-executing components to use results from earlier components, and enables dynamic configuration based on user choices and runtime context.
+Throughout catalog definitions, you can reference these values using `{{path/to/value}}` syntax. The orchestrator simply looks up the path in its collection and substitutes the value. This allows later-executing components to use results from earlier components, and enables dynamic configuration based on user choices and system context.
 
 ### Variable System
 
@@ -562,7 +562,7 @@ Variables are implemented as a runtime map where keys are slash-separated paths 
 |-----------|---------|-------------------|----------------|
 | `input/` | User form data | Request submission | `{{input/group-id/field-id}}` |
 | `output/` | Execution results | After item/bundle completion | `{{output/name/result-path}}` |
-| `runtime/` | System context | Request processing | `{{runtime/timestamp}}` |
+| `system/` | Platform context | Request processing | `{{system/timestamp}}` |
 
 ### Output Namespace Organization
 
@@ -599,12 +599,13 @@ output/
 {{output/webapp-stack/database/host}}             # From item within bundle
 ```
 
-**Runtime Paths** (system context):
+**System Paths** (platform context):
 ```
-{{runtime/timestamp}}
-{{runtime/requestId}} 
-{{runtime/user/email}}
-{{runtime/correlation/id}}
+{{system/timestamp}}
+{{system/requestId}} 
+{{system/user/email}}
+{{system/platform/account}}
+{{system/platform/region}}
 ```
 
 ### Scoping Rules
