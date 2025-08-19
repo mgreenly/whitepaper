@@ -253,7 +253,7 @@ fulfillment:
           ticket:
             project: PLATFORM
             issueType: Task
-            summaryTemplate: "Provision {{input/config/name}}"
+            summaryTemplate: "Provision {{.input.config.name}}"
   
   automatic:
     actions:
@@ -266,8 +266,8 @@ fulfillment:
             type: json
             contentTemplate: |
               {
-                "service": "{{output/current-item/metadata/id}}",
-                "name": "{{input/config/name}}"
+                "service": "{{.output.currentItem.metadata.id}}",
+                "name": "{{.input.config.name}}"
               }
 ```
 
@@ -337,25 +337,25 @@ type: jira-ticket
 config:
   ticket:
     project: PLATFORM
-    summaryTemplate: "{{input/config/name}} request"
+    summaryTemplate: "{{.input.config.name}} request"
     descriptionTemplate: |
-      Requesting: {{input/config/name}}
-      Type: {{output/current-item/metadata/name}}
-      User: {{system/user/email}}
-      Request ID: {{system/requestId}}
+      Requesting: {{.input.config.name}}
+      Type: {{.output.currentItem.metadata.name}}
+      User: {{.system.user.email}}
+      Request ID: {{.system.requestId}}
       
       Configuration:
-      {{#each input/config}}
+      {{#each .input.config}}
       - {{@key}}: {{this}}
       {{/each}}
     issueType: Task
-    priority: "{{input/config/priority}}"
+    priority: "{{.input.config.priority}}"
     labels:
       - platform-automation
-      - "{{output/current-item/metadata/category}}"
+      - "{{.output.currentItem.metadata.category}}"
     customFields:
-      customfield_10001: "{{input/config/costCenter}}"
-      customfield_10002: "{{input/config/environment}}"
+      customfield_10001: "{{.input.config.costCenter}}"
+      customfield_10002: "{{.input.config.environment}}"
 ```
 
 **Variable Substitution in JIRA:**
@@ -395,14 +395,14 @@ config:
     method: POST
   headers:
     Content-Type: application/json
-    X-API-Key: "{{system/environment/API_KEY}}"
+    X-API-Key: "{{.system.environment.apiKey}}"
   body:
     type: json
     contentTemplate: |
       {
-        "name": "{{input/basic/name}}",
-        "type": "{{input/basic/instanceType}}",
-        "owner": "{{system/user/email}}"
+        "name": "{{.input.basic.name}}",
+        "type": "{{.input.basic.instanceType}}",
+        "owner": "{{.system.user.email}}"
       }
   retry:
     attempts: 3
@@ -440,20 +440,20 @@ type: git-commit
 config:
   repository: "company/infrastructure"
   branch: "main"
-  commitMessage: "Deploy {{input/application/appName}} to {{input/application/environment}}"
+  commitMessage: "Deploy {{.input.application.appName}} to {{.input.application.environment}}"
   mergeStrategy: "squash"
   createPullRequest: false
   files:
-    - path: "apps/{{input/application/appName}}/config.yaml"
+    - path: "apps/{{.input.application.appName}}/config.yaml"
       operation: "update"
       contentTemplate: |
         apiVersion: v1
         kind: ConfigMap
         metadata:
-          name: {{input/application/appName}}-config
+          name: {{.input.application.appName}}-config
         data:
-          environment: {{input/application/environment}}
-          replicas: "{{input/application/replicas}}"
+          environment: {{.input.application.environment}}
+          replicas: "{{.input.application.replicas}}"
 ```
 
 **Git Operations:**
@@ -487,10 +487,10 @@ config:
   waitForCompletion: true
   timeout: 1800
   inputs:
-    app_name: "{{input/application/appName}}"
-    environment: "{{input/application/environment}}"
-    image_tag: "{{input/application/imageTag}}"
-    replicas: "{{input/application/replicas}}"
+    app_name: "{{.input.application.appName}}"
+    environment: "{{.input.application.environment}}"
+    image_tag: "{{.input.application.imageTag}}"
+    replicas: "{{.input.application.replicas}}"
 ```
 
 **Workflow Integration:**
@@ -514,23 +514,23 @@ The orchestrator maintains a map of named values organized by dot-separated path
 
 | Namespace | Purpose | Population Timing | Access Pattern |
 |-----------|---------|-------------------|----------------|
-| `input/` | User form data | Request submission | `{{input/group-id/field-id}}` |
-| `output/` | Static metadata from catalog items | Catalog loading | `{{output/item-name/metadata/path}}` |
-| `system/` | Platform context & environment | Request processing | `{{system/timestamp}}` |
+| `.input` | User form data | Request submission | `{{.input.groupId.fieldId}}` |
+| `.output` | Static metadata from catalog items | Catalog loading | `{{.output.itemName.metadata.path}}` |
+| `.system` | Platform context & environment | Request processing | `{{.system.timestamp}}` |
 
 ### Output Namespace Organization
 
-The `output/` namespace contains static metadata from catalog items:
+The `.output` namespace contains static metadata from catalog items:
 
 ```
-output/
-├── item-name/                    # Catalog item metadata
-│   └── metadata/                 # Static metadata section
+.output
+├── itemName                      # Catalog item metadata
+│   └── metadata                  # Static metadata section
 │       ├── connectionTemplate    # Template strings
 │       ├── parameterPath         # Static paths
 │       └── version               # Version info
-├── bundle-name/                  # Bundle metadata (if any)
-│   └── metadata/
+├── bundleName                    # Bundle metadata (if any)
+│   └── metadata
 │       └── description           # Bundle-level static data
 ```
 
@@ -538,36 +538,36 @@ output/
 
 **Input Paths** (user form data):
 ```
-{{input/application/appName}}           # From application form group
-{{input/database/dbSize}}               # From database form group  
-{{input/config/instanceName}}           # From config form group
+{{.input.application.appName}}          # From application form group
+{{.input.database.dbSize}}              # From database form group  
+{{.input.config.instanceName}}          # From config form group
 ```
 
 **Output Paths** (static metadata):
 ```
-{{output/database/metadata/connectionTemplate}}   # Static template from item
-{{output/webapp-stack/metadata/description}}      # Static data from bundle
-{{output/secrets/metadata/parameterPath}}         # Static path template
+{{.output.database.metadata.connectionTemplate}}   # Static template from item
+{{.output.webappStack.metadata.description}}       # Static data from bundle
+{{.output.secrets.metadata.parameterPath}}         # Static path template
 ```
 
 **System Paths** (platform context):
 ```
-{{system/timestamp}}
-{{system/requestId}} 
-{{system/user/email}}
-{{system/platform/account}}
-{{system/platform/region}}
+{{.system.timestamp}}
+{{.system.requestId}} 
+{{.system.user.email}}
+{{.system.platform.account}}
+{{.system.platform.region}}
 ```
 
 ### Scoping Rules
 
 Access to namespace paths is strictly controlled by component type:
 
-- **CatalogItem Fulfillment**: Can reference `input/*` and `system/*` for user data and platform context
+- **CatalogItem Fulfillment**: Can reference `.input.*` and `.system.*` for user data and platform context
 - **CatalogBundle Components**: No variable interpretation - only catalog item references and dependencies
 - **Action Templates**: Can reference all paths available in their execution context
 
-**Important**: Only static metadata can be referenced via `output/*/metadata/*` paths. No dynamic runtime values are available. All variable substitution occurs exclusively within fulfillment action templates.
+**Important**: Only static metadata can be referenced via `.output.*.metadata.*` paths. No dynamic runtime values are available. All variable substitution occurs exclusively within fulfillment action templates.
 
 ## Examples
 
@@ -689,7 +689,7 @@ fulfillment:
         config:
           ticket:
             project: COMPUTE
-            summaryTemplate: "Deploy {{input/basic/appName}} to EKS"
+            summaryTemplate: "Deploy {{.input.basic.appName}} to EKS"
   automatic:
     actions:
       - type: rest-api
@@ -701,10 +701,10 @@ fulfillment:
             type: json
             contentTemplate: |
               {
-                "applicationName": "{{input/basic/appName}}",
-                "containerImage": "{{input/basic/containerImage}}",
-                "replicas": {{input/basic/replicas}},
-                "namespace": "{{output/current-item/metadata/defaultNamespace}}"
+                "applicationName": "{{.input.basic.appName}}",
+                "containerImage": "{{.input.basic.containerImage}}",
+                "replicas": {{.input.basic.replicas}},
+                "namespace": "{{.output.currentItem.metadata.defaultNamespace}}"
               }
 ```
 
@@ -746,7 +746,7 @@ fulfillment:
         config:
           ticket:
             project: DBA
-            summaryTemplate: "Aurora PostgreSQL: {{input/config/instanceName}}"
+            summaryTemplate: "Aurora PostgreSQL: {{.input.config.instanceName}}"
   automatic:
     actions:
       - type: rest-api
@@ -758,9 +758,9 @@ fulfillment:
             type: json
             contentTemplate: |
               {
-                "instanceName": "{{input/config/instanceName}}",
-                "instanceClass": "{{input/config/instanceClass}}",
-                "allocatedStorage": {{input/config/storageSize}},
+                "instanceName": "{{.input.config.instanceName}}",
+                "instanceClass": "{{.input.config.instanceClass}}",
+                "allocatedStorage": {{.input.config.storageSize}},
                 "engine": "postgres",
                 "backupRetention": 7,
                 "multiAZ": true
@@ -803,7 +803,7 @@ fulfillment:
         config:
           ticket:
             project: SECURITY
-            summaryTemplate: "Create secrets: {{input/config/secretName}}"
+            summaryTemplate: "Create secrets: {{.input.config.secretName}}"
   automatic:
     actions:
       - type: rest-api
@@ -815,8 +815,8 @@ fulfillment:
             type: json
             contentTemplate: |
               {
-                "parameterPath": "/{{input/config/secretName}}",
-                "secrets": {{json(input/config/secrets)}},
+                "parameterPath": "/{{.input.config.secretName}}",
+                "secrets": {{json(.input.config.secrets)}},
                 "type": "SecureString"
               }
 ```
@@ -894,7 +894,7 @@ Example error output:
 ✗ catalog/databases/aurora-postgresql-invalid.yaml
   Line 15: Field 'instanceClass' should use camelCase (found: instance_class)
   Line 22: Missing required field 'manual.actions'
-  Line 38: Invalid variable reference '{{field.name}}' (should be '{{fields.name}}')
+  Line 38: Invalid variable reference '{{field.name}}' (should be '{{.input.config.name}}')
 ```
 
 ### CI/CD Integration
@@ -1069,7 +1069,7 @@ This section provides technical implementation details for teams setting up and 
 - Use JSON Schema Draft-07
 - `catalog-item.json`: Require metadata (id, name, description, version, category, owner), presentation.form.groups, fulfillment.strategy.mode, fulfillment.manual.actions
 - `catalog-bundle.json`: Require metadata, components array with catalogItem references, presentation, fulfillment.orchestration
-- `common-types.json`: Define enums for categories (compute, databases, bundles, security, etc.), field types (string, number, select, etc.), action types (jira-ticket, rest-api); patterns for IDs (kebab-case), variable syntax (`^\{\{[a-z]+\.[a-zA-Z]+\}\}$`)
+- `common-types.json`: Define enums for categories (compute, databases, bundles, security, etc.), field types (string, number, select, etc.), action types (jira-ticket, rest-api); patterns for IDs (kebab-case), variable syntax (`^\{\{\.[a-zA-Z]+(\.[a-zA-Z]+)*\}\}$`)
 
 ### Ruby Validation Scripts
 
