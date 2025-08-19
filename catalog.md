@@ -128,7 +128,7 @@ kind: CatalogItem
 - `v2pre2` - Later development version, closer to stable
 - `v2` - Next stable version
 
-**Version Support**: We support the current stable version plus one previous version during transitions. Deprecation processes will be defined in future phases as needed.
+**Version Support**: We support the current stable version plus one previous version during transitions. Deprecation processes will be defined as needed.
 
 ## Schema Reference
 
@@ -137,9 +137,9 @@ The catalog schema defines two primary document types that platform teams use to
 - [CatalogBundle - Composite Service](#catalogbundle---composite-service)
 - [CatalogItem - Individual Service](#catalogitem---individual-service)
 
-**Important Note on Error Handling**: The catalog documents do not specify error handling behavior. All error handling, retry logic, and recovery mechanisms are the responsibility of the orchestrator service. When any action fails during execution, the service stops and requires manual intervention. Future phases may introduce automated recovery, but this is not part of the catalog specification.
+**Important Note on Error Handling**: The catalog documents do not specify error handling behavior. All error handling, retry logic, and recovery mechanisms are the responsibility of the orchestrator service. When any action fails during execution, the service stops and requires manual intervention.
 
-**Current Scope**: Initially, all services use manual fulfillment via JIRA tickets. The `automatic` fulfillment sections shown in examples are for future automated provisioning capabilities.
+**Current Scope**: All services use manual fulfillment via JIRA tickets. The `automatic` fulfillment sections shown in examples are for automated provisioning capabilities.
 
 ### CatalogBundle - Composite Service
 
@@ -308,7 +308,7 @@ fields:
 
 Action types define how the orchestrator fulfills service requests. Each action type represents a different integration method that platform teams can use to automate or manage their service provisioning workflows.
 
-**Current Implementation**: The initial implementation supports JIRA action types only. REST API action types will be introduced in future releases. Additional action types (Terraform, GitHub Workflows) are also planned for future releases.
+**Current Implementation**: The implementation supports JIRA action types. REST API action types and additional action types (Terraform, GitHub Workflows) are also planned.
 
 **Important Note on Error Handling**: Action type configurations do not specify error handling, retry logic, timeouts, or recovery mechanisms. All error handling is the responsibility of the orchestrator service implementation. When actions fail, the service determines the appropriate response (retry, abort, escalate, etc.).
 
@@ -419,7 +419,7 @@ config:
 
 ### Git Commit
 
-**Status**: Planned for future release
+**Status**: Planned
 
 **Required Fields:**
 - `repository`: Repository identifier (e.g., owner/repo)
@@ -465,7 +465,7 @@ config:
 
 ### GitHub Workflow
 
-**Status**: Planned for future release
+**Status**: Planned
 
 **Required Fields:**
 - `repository`: Repository identifier
@@ -1001,7 +1001,7 @@ Before a platform team can contribute to the catalog, they must:
 4. **Iteration and Expansion** (Ongoing)
    - Add more services incrementally
    - Evolve from simple to complex offerings
-   - Initial: JIRA-only; Future: Add automation
+   - Start with JIRA-only fulfillment, evolve to add automation
 
 ### Support Resources
 - Slack: #platform-catalog-help
@@ -1069,7 +1069,7 @@ This section provides technical implementation details for teams setting up and 
 - Use JSON Schema Draft-07
 - `catalog-item.json`: Require metadata (id, name, description, version, category, owner), presentation.form.groups, fulfillment.strategy.mode, fulfillment.manual.actions
 - `catalog-bundle.json`: Require metadata, components array with catalogItem references, presentation, fulfillment.orchestration
-- `common-types.json`: Define enums for categories (compute, databases, bundles, security, etc.), field types (string, number, select, etc.), action types (jira-ticket, rest-api); patterns for IDs (kebab-case), variable syntax (`^\{\{\.[a-zA-Z]+(\.[a-zA-Z]+)*\}\}$`)
+- `common-types.json`: Define enums for categories (compute, databases, bundles, security, etc.), field types (string, number, select, etc.), action types (jira-ticket, rest-api); patterns for IDs (kebab-case), variable syntax (`^\{\{\.[a-zA-Z][a-zA-Z0-9]*(\.[a-zA-Z][a-zA-Z0-9]*)*\}\}$`)
 
 ### Ruby Validation Scripts
 
@@ -1152,6 +1152,7 @@ fi
 ### Templates
 - Include minimal valid structure with TODO comments
 - `catalog-item-template.yaml`: Basic metadata, one field, one JIRA action
+- `catalog-bundle-template.yaml`: Basic metadata, component references, orchestration
 - `jira-action-template.yaml`: Project, issueType, summaryTemplate with variable examples
 
 ### Other Files
@@ -1160,7 +1161,7 @@ fi
 
 ## Future Enhancements
 
-This section outlines potential catalog capabilities and enhancements for future releases. These enhancements represent the evolution path for the catalog system as the platform matures and adoption grows.
+This section outlines potential catalog capabilities and enhancements. These enhancements represent the evolution path for the catalog system as the platform matures and adoption grows.
 
 - [Advanced Action Types](#advanced-action-types)
 - [Enhanced Bundle Capabilities](#enhanced-bundle-capabilities)
