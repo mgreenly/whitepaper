@@ -154,11 +154,11 @@ A CatalogBundle combines multiple CatalogItems into a single deployable bundle. 
 
 **Bundle Behavior:**
 Bundles create multiple JIRA tickets (one per component) and establish JIRA linking relationships based on the `dependsOn` configuration. The orchestrator:
-1. Creates all component JIRA tickets using each CatalogItem's template
+1. Creates component JIRA tickets in dependency order using each CatalogItem's template
 2. Adds JIRA issue links of type "blocks/is blocked by" based on dependencies
 3. Returns a bundle request with links to all created tickets
 
-**Important Note on Dependencies**: The `dependsOn` field is purely declarative metadata that creates JIRA issue links for visibility and coordination. It does not control execution order or enforce sequential processing. All JIRA tickets are created simultaneously, then linked based on dependency declarations. This approach allows platform teams to see relationships in JIRA and coordinate their work while keeping the orchestrator simple. Teams can optionally configure JIRA workflow automation to enforce blocking behavior if strict dependency ordering is required for their specific services.
+**Important Note on Dependencies**: The `dependsOn` field controls both execution order and JIRA issue linking. Components are processed in dependency order, with JIRA tickets created sequentially according to the dependency graph. JIRA issue links of type "blocks/is blocked by" are added based on dependency declarations. This approach allows platform teams to see relationships in JIRA and coordinate their work in the proper sequence. Teams can optionally configure JIRA workflow automation to enforce additional blocking behavior if needed for their specific services.
 
 ```yaml
 schemaVersion: catalog/v1
@@ -522,9 +522,10 @@ The orchestrator maintains a map of named values organized by dot-separated path
 The `.output` namespace contains static metadata from catalog items. For bundles, each component's metadata becomes available using the component's `id` as the namespace key.
 
 **Output Namespace Population Rules**:
-- **Individual CatalogItems**: Variable names are defined in the catalog item's presentation section and referenced accordingly
+- **Individual CatalogItems**: User-supplied `name` field → available as `{{.output.{name}.metadata.*}}`
 - **Bundle Components**: Component with `id: database` → available as `{{.output.database.metadata.*}}`
-- **Component ID Mapping**: The component `id` field directly maps to the output namespace key
+- **Component ID Mapping**: The component `id` field directly maps to the output namespace key for bundles
+- **Name Field Requirement**: All catalog items must include a required `name` field in their presentation form
 
 **Example Bundle Component Mapping**:
 ```yaml
@@ -536,24 +537,31 @@ components:
     catalogItem: security-parameterstore-standard
   - id: app                         # → {{.output.app.metadata.*}}
     catalogItem: compute-eks-containerapp
+
+# Individual CatalogItem usage:
+# User supplies name="myapp" → {{.output.myapp.metadata.*}}
 ```
 
 **Output Namespace Structure**:
 ```
 .output
-├── database                      # Component id: database (bundles) or explicit name (individual items)
+├── database                      # Component id: database (bundles)
 │   └── metadata                  # Static metadata section
 │       ├── connectionTemplate    # Template strings
 │       ├── parameterPath         # Static paths
 │       └── version               # Version info
-├── secrets                       # Component id: secrets (bundles only)
+├── secrets                       # Component id: secrets (bundles)
 │   └── metadata
 │       ├── parameterPath         # From security-parameterstore-standard
 │       └── kmsKeyId              # Static metadata from component item
-├── app                          # Component id: app (bundles only)
+├── app                          # Component id: app (bundles)
 │   └── metadata
 │       ├── defaultNamespace      # From compute-eks-containerapp
 │       └── clusterEndpoint       # Static metadata from component item
+├── myapp                        # User-supplied name (individual items)
+│   └── metadata                  # Static metadata from the individual catalog item
+│       ├── defaultNamespace      # Custom metadata fields
+│       └── clusterEndpoint       # Available for variable substitution
 ```
 
 ### Path Examples
@@ -567,8 +575,8 @@ components:
 
 **Output Paths** (static metadata):
 ```
-{{.output.database.metadata.connectionTemplate}}  # Static template from database item
-{{.output.compute.metadata.defaultNamespace}}     # Compute service metadata
+{{.output.database.metadata.connectionTemplate}}  # Bundle component: database
+{{.output.myapp.metadata.defaultNamespace}}       # Individual item: user name "myapp"
 ```
 
 **System Paths** (platform context):
@@ -716,6 +724,13 @@ presentation:
     groups:
       - id: basic
         fields:
+          - id: name
+            name: Resource Name
+            type: string
+            required: true
+            validation:
+              pattern: "^[a-z][a-z0-9-]{2,28}[a-z0-9]$"
+            description: "Unique identifier for this EKS application"
           - id: appName
             type: string
             required: true
@@ -750,7 +765,7 @@ fulfillment:
                 "applicationName": "{{.input.basic.appName}}",
                 "containerImage": "{{.input.basic.containerImage}}",
                 "replicas": {{.input.basic.replicas}},
-                "namespace": "{{.output.compute.metadata.defaultNamespace}}"
+                "namespace": "{{.output.{{.input.basic.name}}.metadata.defaultNamespace}}"
               }
 ```
 
@@ -774,6 +789,13 @@ presentation:
     groups:
       - id: config
         fields:
+          - id: name
+            name: Database Name
+            type: string
+            required: true
+            validation:
+              pattern: "^[a-z][a-z0-9-]{2,28}[a-z0-9]$"
+            description: "Unique identifier for this database instance"
           - id: instanceName
             type: string
             required: true
@@ -833,6 +855,13 @@ presentation:
     groups:
       - id: config
         fields:
+          - id: name
+            name: Secret Store Name
+            type: string
+            required: true
+            validation:
+              pattern: "^[a-z][a-z0-9-]{2,28}[a-z0-9]$"
+            description: "Unique identifier for this parameter store"
           - id: secretName
             type: string
             required: true
@@ -1145,7 +1174,25 @@ file_path = ARGV[0]
 begin
   content = Psych.safe_load_file(file_path)
   kind = content['kind']
-  schema_file = "schema/catalog-#{kind.downcase}.json"
+  
+  # Map kind values to schema filenames
+  schema_mapping = {
+    'CatalogItem' => 'catalog-item.json',
+    'CatalogBundle' => 'catalog-bundle.json'
+  }
+  
+  schema_filename = schema_mapping[kind]
+  if schema_filename.nil?
+    puts "✗ #{file_path}: Unknown kind '#{kind}'. Expected: CatalogItem or CatalogBundle"
+    exit 1
+  end
+  
+  schema_file = "schema/#{schema_filename}"
+  unless File.exist?(schema_file)
+    puts "✗ #{file_path}: Schema file not found: #{schema_file}"
+    exit 2
+  end
+  
   schema = JSON.parse(File.read(schema_file))
   schemer = JSONSchemer.schema(schema)
   
@@ -1197,6 +1244,7 @@ fi
 - **Variable Syntax**: Variable references must use valid scopes and syntax (`{{.namespace.path.field}}`)
 - **JIRA Projects**: JIRA project keys must be uppercase (PLATFORM, DBA, COMPUTE)
 - **Field Uniqueness**: Field IDs must be unique within each form group
+- **Required Name Field**: All CatalogItems must include a required `name` field with kebab-case validation pattern
 - **Circular Dependencies**: Bundle component dependencies cannot create cycles
 - **Component ID Uniqueness**: Component IDs must be unique within each bundle
 
@@ -1235,7 +1283,7 @@ The following catalog capabilities are potential future enhancements:
 - **Email Notifications**: SMTP-based email actions for approvals and notifications
 
 ### Enhanced Bundle Capabilities
-- **Parallel Execution**: Execute independent components simultaneously
+- **Parallel Execution**: Execute independent components in parallel when no dependencies exist
 - **Conditional Components**: Components that only deploy based on field values or conditions
 - **Rollback Support**: Automatic rollback of all components if any fail
 - **Cross-Bundle Dependencies**: Reference outputs from other bundle deployments
