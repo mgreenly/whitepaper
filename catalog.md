@@ -40,10 +40,10 @@ platform-automation-repository/
 │   │   └── *.yaml                    # Service definitions
 │   ├── databases/                    # Database services (Aurora PostgreSQL)
 │   │   └── *.yaml                    # Service definitions
-│   ├── security/                     # Security services (Parameter Store)
-│   │   └── *.yaml                    # Service definitions
-│   └── bundles/                      # Composite service bundles (CatalogBundles)
-│       └── *.yaml                    # CatalogBundle definitions
+│   └── security/                     # Security services (Parameter Store)
+│       └── *.yaml                    # Service definitions
+├── bundles/                          # Composite service bundles (CatalogBundles)
+│   └── *.yaml                        # CatalogBundle definitions
 ├── schema/                           # JSON Schema specifications
 │   ├── catalog-item.json             # CatalogItem schema definition
 │   ├── catalog-bundle.json           # CatalogBundle schema definition
@@ -82,7 +82,7 @@ Use GitHub's CODEOWNERS file to enforce team-based access control and ensure app
 
 **Recommended Access Control Strategy:**
 - **Platform Teams**: Own their specific domain folders (e.g., `/catalog/databases/`, `/catalog/compute/`)
-- **Developer Experience Team**: Provide cross-domain support for catalog integration
+- **Developer Experience Team**: Own `/bundles/` folder and provide cross-domain support for catalog integration
 - **Architecture Team**: Own schema specifications and overall catalog design patterns
 
 **Key Considerations:**
@@ -169,7 +169,6 @@ metadata:
   name: Display Name
   description: Complete bundle description
   version: 1.0.0
-  category: bundles
   owner:
     team: platform-architecture-team
     contact: architecture@company.com
@@ -269,7 +268,7 @@ fulfillment:
             type: json
             contentTemplate: |
               {
-                "service": "{{.output.databaseItem.metadata.id}}",
+                "service": "{{.output.database.metadata.id}}",
                 "name": "{{.input.config.name}}"
               }
 ```
@@ -343,7 +342,7 @@ config:
     summaryTemplate: "{{.input.config.name}} request"
     descriptionTemplate: |
       Requesting: {{.input.config.name}}
-      Type: {{.output.databaseItem.metadata.name}}
+      Type: {{.output.database.metadata.name}}
       User: {{.system.user.email}}
       Request ID: {{.system.requestId}}
       
@@ -352,7 +351,7 @@ config:
     priority: "{{.input.config.priority}}"
     labels:
       - platform-automation
-      - "{{.output.databaseItem.metadata.category}}"
+      - "{{.output.database.metadata.category}}"
     customFields:
       customfield_10001: "{{.input.config.costCenter}}"
       customfield_10002: "{{.input.config.environment}}"
@@ -523,7 +522,7 @@ The orchestrator maintains a map of named values organized by dot-separated path
 The `.output` namespace contains static metadata from catalog items. For bundles, each component's metadata becomes available using the component's `id` as the namespace key.
 
 **Output Namespace Population Rules**:
-- **Individual CatalogItems**: Use `{category}Item` as namespace key, e.g., `{{.output.databaseItem.metadata.*}}` for database services, `{{.output.computeItem.metadata.*}}` for compute services
+- **Individual CatalogItems**: Variable names are defined in the catalog item's presentation section and referenced accordingly
 - **Bundle Components**: Component with `id: database` → available as `{{.output.database.metadata.*}}`
 - **Component ID Mapping**: The component `id` field directly maps to the output namespace key
 
@@ -542,15 +541,11 @@ components:
 **Output Namespace Structure**:
 ```
 .output
-├── databaseItem                  # Individual database service (individual items only)
+├── database                      # Component id: database (bundles) or explicit name (individual items)
 │   └── metadata                  # Static metadata section
 │       ├── connectionTemplate    # Template strings
 │       ├── parameterPath         # Static paths
 │       └── version               # Version info
-├── database                      # Component id: database (bundles only)
-│   └── metadata
-│       ├── connectionTemplate    # From database-aurora-postgresql-standard
-│       └── defaultPort           # Static metadata from component item
 ├── secrets                       # Component id: secrets (bundles only)
 │   └── metadata
 │       ├── parameterPath         # From security-parameterstore-standard
@@ -572,9 +567,8 @@ components:
 
 **Output Paths** (static metadata):
 ```
-{{.output.databaseItem.metadata.connectionTemplate}}  # Static template from database item
-{{.output.databaseItem.metadata.connectionTemplate}}  # Database-specific metadata
-{{.output.eksItem.metadata.defaultNamespace}}         # EKS-specific metadata
+{{.output.database.metadata.connectionTemplate}}  # Static template from database item
+{{.output.compute.metadata.defaultNamespace}}     # Compute service metadata
 ```
 
 **System Paths** (platform context):
@@ -642,7 +636,6 @@ metadata:
   name: Production Web Application Stack
   description: Complete web application with database and secrets management
   version: 2.0.0
-  category: bundles
 
 components:
   - id: database
@@ -757,7 +750,7 @@ fulfillment:
                 "applicationName": "{{.input.basic.appName}}",
                 "containerImage": "{{.input.basic.containerImage}}",
                 "replicas": {{.input.basic.replicas}},
-                "namespace": "{{.output.eksItem.metadata.defaultNamespace}}"
+                "namespace": "{{.output.compute.metadata.defaultNamespace}}"
               }
 ```
 
@@ -963,6 +956,7 @@ on:
   pull_request:
     paths:
       - 'catalog/**'
+      - 'bundles/**'
       - 'schema/**'
 
 jobs:
@@ -1030,7 +1024,8 @@ Before a platform team can contribute to the catalog, they must:
 
 2. **GitHub Access**
    - Request addition to appropriate GitHub team for the `platform-automation-repository` repository
-   - Team lead submits PR to add team to CODEOWNERS for their category folder in `platform-automation-repository`
+   - Team lead submits PR to add team to CODEOWNERS for their category folder in `/catalog/` of `platform-automation-repository`
+   - For bundles: Collaborate with Developer Experience Team who owns `/bundles/` folder
    - Complete catalog training (self-paced documentation review)
 
 ### Onboarding Process
@@ -1090,6 +1085,12 @@ The governance process establishes standards and procedures for catalog contribu
 - variant: Differentiator (standard, enterprise, dev)
 - Example: `database-aurora-postgresql-enterprise`
 
+**CatalogBundle IDs:** `bundle-{name}-{variant}`
+- name: Descriptive bundle name (webapp, microservice, etc.)
+- variant: Differentiator (standard, enterprise, dev)
+- Example: `bundle-webapp-production`
+- Note: Bundles don't follow category-service-variant pattern since they're cross-domain
+
 **Display Names:**
 - Use title case
 - Be descriptive but concise
@@ -1123,7 +1124,7 @@ This section provides technical implementation details for teams setting up and 
 - Use JSON Schema Draft-07
 - `catalog-item.json`: Require metadata (id, name, description, version, category, owner), presentation.form.groups, fulfillment.strategy.mode, fulfillment.manual.actions
 - `catalog-bundle.json`: Require metadata, components array with catalogItem references, presentation, fulfillment.orchestration
-- `common-types.json`: Define enums for categories (compute, databases, bundles, security, etc.), field types (string, number, select, etc.), action types (jira-ticket, rest-api); patterns for IDs (kebab-case), variable syntax (`^\{\{\.[a-zA-Z][a-zA-Z0-9]*(\.[a-zA-Z][a-zA-Z0-9]*)*\}\}$`)
+- `common-types.json`: Define enums for categories (compute, databases, security, etc.), field types (string, number, select, etc.), action types (jira-ticket, rest-api); patterns for IDs (kebab-case), variable syntax (`^\{\{\.[a-zA-Z][a-zA-Z0-9]*(\.[a-zA-Z][a-zA-Z0-9]*)*\}\}$`)
 
 ### Ruby Validation Scripts
 
@@ -1168,7 +1169,7 @@ end
 ```bash
 #!/bin/bash
 BASE_SHA=${1:-HEAD~1}
-CHANGED_FILES=$(git diff --name-only $BASE_SHA -- 'catalog/**/*.yaml')
+CHANGED_FILES=$(git diff --name-only $BASE_SHA -- 'catalog/**/*.yaml' 'bundles/**/*.yaml')
 
 if [ -z "$CHANGED_FILES" ]; then
   echo "No catalog files changed"
