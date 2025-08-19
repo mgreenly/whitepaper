@@ -282,7 +282,7 @@ fulfillment:
           ticket:
             project: PLATFORM
             issueType: Task
-            summaryTemplate: "Provision {{.current.basic.name}}"
+            summaryTemplate: "Provision {{.current.name}}"
   
   automatic:
     actions:
@@ -296,7 +296,7 @@ fulfillment:
             contentTemplate: |
               {
                 "service": "{{.metadata.database-aurora-postgresql-standard.id}}",
-                "name": "{{.current.basic.name}}"
+                "name": "{{.current.name}}"
               }
 ```
 
@@ -327,7 +327,7 @@ input:
     validation:            # Name field validation rules
       pattern: "^[a-z][a-z0-9-]{2,28}[a-z0-9]$"  # Kebab-case pattern
     description: "Help"    # Optional help text for name field
-    groups:                # Optional groups for additional fields
+    groups:                # Required groups for ALL fields (except top-level name)
       - id: groupName      # Unique group identifier (camelCase)
         name: Group Label  # User-friendly group label
         fields:            # Fields within this group
@@ -377,9 +377,9 @@ type: jira-ticket
 config:
   ticket:
     project: PLATFORM
-    summaryTemplate: "{{.current.basic.name}} request"
+    summaryTemplate: "{{.current.name}} request"
     descriptionTemplate: |
-      Requesting: {{.current.basic.name}}
+      Requesting: {{.current.name}}
       Type: {{.metadata.database-aurora-postgresql-standard.name}}
       User: {{.system.user.email}}
       Request ID: {{.system.requestId}}
@@ -437,7 +437,7 @@ config:
     type: json
     contentTemplate: |
       {
-        "name": "{{.current.basic.name}}",
+        "name": "{{.current.name}}",
         "type": "{{.current.basic.instanceType}}",
         "owner": "{{.system.user.email}}"
       }
@@ -1185,7 +1185,7 @@ All catalog documents must comply with the following validation rules:
 
 - **Document Structure**: Must include `schemaVersion` and `kind` fields at root level
 - **Metadata Requirements**: All items require `id`, `name`, `description`, `version`, `category`, and `owner` fields
-- **Input Form Structure**: All catalog items and bundles must contain `input.form` with at least the required `name` field. CatalogItems must include `input.form.groups` array if they define fields beyond the required top-level name field
+- **Input Form Structure**: All catalog items and bundles must contain `input.form` with at least the required `name` field. ALL fields except the top-level `name` field must be organized into groups within the `input.form.groups` array
 - **Required Name Field**: All CatalogItems and CatalogBundles must include a required `name` field as the top-level field in their input form with kebab-case validation pattern: `"^[a-z][a-z0-9-]{2,28}[a-z0-9]$"`
 - **Fulfillment Configuration**: Must specify `fulfillment.strategy.mode` and include corresponding action configurations
 
@@ -1234,7 +1234,7 @@ Example error output:
 ✗ catalog/databases/aurora-postgresql-invalid.yaml
   Line 15: Field 'instanceClass' should use camelCase (found: instance_class)
   Line 22: Missing required field 'manual.actions'
-  Line 38: Invalid variable reference '{{field.name}}' (should be '{{.current.basic.name}}')
+  Line 38: Invalid variable reference '{{field.name}}' (should be '{{.current.name}}')
 ```
 
 ### CI/CD Integration
@@ -1415,8 +1415,8 @@ This section provides technical implementation details for teams setting up and 
 
 ### JSON Schema Files
 - Use JSON Schema Draft-07
-- `catalog-item.json`: Require metadata (id, name, description, version, category, owner), input.form with required top-level name field, fulfillment.strategy.mode, fulfillment.manual.actions. Make input.form.groups optional (only required if fields beyond top-level name are defined)
-- `catalog-bundle.json`: Require metadata, components array with catalogItem references, input.form with required top-level name field, fulfillment.orchestration. Make input.form.groups optional
+- `catalog-item.json`: Require metadata (id, name, description, version, category, owner), input.form with required top-level name field, fulfillment.strategy.mode, fulfillment.manual.actions. Require input.form.groups array if any fields beyond the top-level name field are defined (ALL fields except name must be in groups)
+- `catalog-bundle.json`: Require metadata, components array with catalogItem references, input.form with required top-level name field, fulfillment.orchestration. Require input.form.groups array if any fields beyond the top-level name field are defined (ALL fields except name must be in groups)
 - `common-types.json`: Define enums for categories (compute, databases, security, etc.), field types (string, number, select, etc.), action types (jira-ticket, rest-api); patterns for IDs (kebab-case), variable syntax (`^\{\{\.[a-zA-Z][a-zA-Z0-9]*(\.[a-zA-Z][a-zA-Z0-9]*)*\}\}$`). Ensure field IDs within groups cannot conflict with reserved top-level name field
 
 ### Ruby Validation Scripts
