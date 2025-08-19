@@ -158,6 +158,8 @@ Bundles create multiple JIRA tickets (one per component) and establish JIRA link
 2. Adds JIRA issue links of type "blocks/is blocked by" based on dependencies
 3. Returns a bundle request with links to all created tickets
 
+**Important Note on Dependencies**: The `dependsOn` field is purely declarative metadata that creates JIRA issue links for visibility and coordination. It does not control execution order or enforce sequential processing. All JIRA tickets are created simultaneously, then linked based on dependency declarations. This approach allows platform teams to see relationships in JIRA and coordinate their work while keeping the orchestrator simple. Teams can optionally configure JIRA workflow automation to enforce blocking behavior if strict dependency ordering is required for their specific services.
+
 ```yaml
 schemaVersion: catalog/v1
 kind: CatalogBundle
@@ -267,7 +269,7 @@ fulfillment:
             type: json
             contentTemplate: |
               {
-                "service": "{{.output.serviceItem.metadata.id}}",
+                "service": "{{.output.databaseItem.metadata.id}}",
                 "name": "{{.input.config.name}}"
               }
 ```
@@ -281,8 +283,8 @@ Fields define the user input interface for catalog items and bundles. Each field
 | `string` | Text input | pattern, min/max length | Text field |
 | `number` | Numeric values | min/max, step | Number input |
 | `boolean` | Yes/No choices | - | Checkbox |
-| `select` | Single choice | enum values | Dropdown |
-| `multiselect` | Multiple choices | enum values | Multi-select |
+| `select` | Single choice | enum (top-level) | Dropdown |
+| `multiselect` | Multiple choices | enum (top-level) | Multi-select |
 | `date` | Date picker | min/max date | Date picker |
 | `file` | File upload | size, type | File upload |
 | `textarea` | Multi-line text | min/max length | Text area |
@@ -298,11 +300,11 @@ fields:
     required: true         # Optional, default false
     default: "value"       # Optional default value
     description: "Help"    # Optional help text
+    enum: [a, b, c]        # Allowed values for select/multiselect types (top-level)
     validation:            # Optional validation rules
       pattern: "^[a-z]+$"  # Regex for string types
       min: 1               # Minimum for numbers
       max: 100             # Maximum for numbers
-      enum: [a, b, c]      # Allowed values for select types
 ```
 
 ## Action Types
@@ -350,7 +352,7 @@ config:
     priority: "{{.input.config.priority}}"
     labels:
       - platform-automation
-      - "{{.output.serviceItem.metadata.category}}"
+      - "{{.output.databaseItem.metadata.category}}"
     customFields:
       customfield_10001: "{{.input.config.costCenter}}"
       customfield_10002: "{{.input.config.environment}}"
@@ -521,7 +523,7 @@ The orchestrator maintains a map of named values organized by dot-separated path
 The `.output` namespace contains static metadata from catalog items. For bundles, each component's metadata becomes available using the component's `id` as the namespace key.
 
 **Output Namespace Population Rules**:
-- **Individual CatalogItems**: Available as `{{.output.serviceItem.metadata.*}}`
+- **Individual CatalogItems**: Use `{category}Item` as namespace key, e.g., `{{.output.databaseItem.metadata.*}}` for database services, `{{.output.computeItem.metadata.*}}` for compute services
 - **Bundle Components**: Component with `id: database` → available as `{{.output.database.metadata.*}}`
 - **Component ID Mapping**: The component `id` field directly maps to the output namespace key
 
@@ -540,7 +542,7 @@ components:
 **Output Namespace Structure**:
 ```
 .output
-├── serviceItem                   # Current catalog item (individual items only)
+├── databaseItem                  # Individual database service (individual items only)
 │   └── metadata                  # Static metadata section
 │       ├── connectionTemplate    # Template strings
 │       ├── parameterPath         # Static paths
@@ -570,7 +572,7 @@ components:
 
 **Output Paths** (static metadata):
 ```
-{{.output.serviceItem.metadata.connectionTemplate}}   # Static template from current item
+{{.output.databaseItem.metadata.connectionTemplate}}  # Static template from database item
 {{.output.databaseItem.metadata.connectionTemplate}}  # Database-specific metadata
 {{.output.eksItem.metadata.defaultNamespace}}         # EKS-specific metadata
 ```
