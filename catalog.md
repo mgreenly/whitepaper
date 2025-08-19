@@ -226,7 +226,6 @@ metadata:
   owner:
     team: platform-{category}-team
     contact: team@company.com
-  # Additional constant metadata that can be referenced
   connectionTemplate: "host={instanceName}.cluster-xyz.us-west-2.rds.amazonaws.com;port=5432;database=postgres"
   parameterPath: "/{secretName}"
 
@@ -254,7 +253,7 @@ fulfillment:
           ticket:
             project: PLATFORM
             issueType: Task
-            summaryTemplate: "Provision {{fields.name}}"
+            summaryTemplate: "Provision {{input/config/name}}"
   
   automatic:
     actions:
@@ -267,8 +266,8 @@ fulfillment:
             type: json
             contentTemplate: |
               {
-                "service": "{{metadata.id}}",
-                "name": "{{fields.name}}"
+                "service": "{{output/current-item/metadata/id}}",
+                "name": "{{input/config/name}}"
               }
 ```
 
@@ -338,25 +337,25 @@ type: jira-ticket
 config:
   ticket:
     project: PLATFORM
-    summaryTemplate: "{{fields.name}} request"
+    summaryTemplate: "{{input/config/name}} request"
     descriptionTemplate: |
-      Requesting: {{fields.name}}
-      Type: {{metadata.name}}
-      User: {{request.user.email}}
-      Request ID: {{request.id}}
+      Requesting: {{input/config/name}}
+      Type: {{output/current-item/metadata/name}}
+      User: {{system/user/email}}
+      Request ID: {{system/requestId}}
       
       Configuration:
-      {{#each fields}}
+      {{#each input/config}}
       - {{@key}}: {{this}}
       {{/each}}
     issueType: Task
-    priority: "{{fields.priority}}"
+    priority: "{{input/config/priority}}"
     labels:
       - platform-automation
-      - "{{metadata.category}}"
+      - "{{output/current-item/metadata/category}}"
     customFields:
-      customfield_10001: "{{fields.costCenter}}"
-      customfield_10002: "{{fields.environment}}"
+      customfield_10001: "{{input/config/costCenter}}"
+      customfield_10002: "{{input/config/environment}}"
 ```
 
 **Variable Substitution in JIRA:**
@@ -396,14 +395,14 @@ config:
     method: POST
   headers:
     Content-Type: application/json
-    X-API-Key: "{{env.API_KEY}}"
+    X-API-Key: "{{system/environment/API_KEY}}"
   body:
     type: json
     contentTemplate: |
       {
-        "name": "{{fields.name}}",
-        "type": "{{fields.instanceType}}",
-        "owner": "{{request.user.email}}"
+        "name": "{{input/basic/name}}",
+        "type": "{{input/basic/instanceType}}",
+        "owner": "{{system/user/email}}"
       }
   retry:
     attempts: 3
@@ -441,20 +440,20 @@ type: git-commit
 config:
   repository: "company/infrastructure"
   branch: "main"
-  commitMessage: "Deploy {{fields.appName}} to {{fields.environment}}"
+  commitMessage: "Deploy {{input/application/appName}} to {{input/application/environment}}"
   mergeStrategy: "squash"
   createPullRequest: false
   files:
-    - path: "apps/{{fields.appName}}/config.yaml"
+    - path: "apps/{{input/application/appName}}/config.yaml"
       operation: "update"
       contentTemplate: |
         apiVersion: v1
         kind: ConfigMap
         metadata:
-          name: {{fields.appName}}-config
+          name: {{input/application/appName}}-config
         data:
-          environment: {{fields.environment}}
-          replicas: "{{fields.replicas}}"
+          environment: {{input/application/environment}}
+          replicas: "{{input/application/replicas}}"
 ```
 
 **Git Operations:**
@@ -488,10 +487,10 @@ config:
   waitForCompletion: true
   timeout: 1800
   inputs:
-    app_name: "{{fields.appName}}"
-    environment: "{{fields.environment}}"
-    image_tag: "{{fields.imageTag}}"
-    replicas: "{{fields.replicas}}"
+    app_name: "{{input/application/appName}}"
+    environment: "{{input/application/environment}}"
+    image_tag: "{{input/application/imageTag}}"
+    replicas: "{{input/application/replicas}}"
 ```
 
 **Workflow Integration:**
@@ -503,11 +502,11 @@ config:
 
 ## Templates and Variables
 
-The orchestrator maintains a map of named values organized by slash-separated paths. Catalog definitions reference these values using `{{path/to/value}}` syntax for content generation.
+The orchestrator maintains a map of named values organized by dot-separated paths. Catalog definitions reference these values using `{{.namespace.path.to.value}}` syntax for content generation.
 
-**How it works**: User form data populates `input/` paths, system context populates `system/` paths, and static metadata from catalog items populates `output/` paths. Components can only reference constant metadata values, not runtime-generated data.
+**How it works**: User form data populates `.input` paths, system context populates `.system` paths, and static metadata from catalog items populates `.output` paths. Components can only reference constant metadata values, not runtime-generated data.
 
-**Variable Syntax**: `{{namespace/path/to/value}}`
+**Variable Syntax**: `{{.namespace.path.to.value}}`
 
 ### Namespace Structure
 
@@ -516,8 +515,8 @@ The orchestrator maintains a map of named values organized by slash-separated pa
 | Namespace | Purpose | Population Timing | Access Pattern |
 |-----------|---------|-------------------|----------------|
 | `input/` | User form data | Request submission | `{{input/group-id/field-id}}` |
-| `output/` | Static metadata from catalog items | Catalog loading | `{{output/name/metadata/path}}` |
-| `system/` | Platform context | Request processing | `{{system/timestamp}}` |
+| `output/` | Static metadata from catalog items | Catalog loading | `{{output/item-name/metadata/path}}` |
+| `system/` | Platform context & environment | Request processing | `{{system/timestamp}}` |
 
 ### Output Namespace Organization
 
@@ -539,9 +538,9 @@ output/
 
 **Input Paths** (user form data):
 ```
-{{input/database/instanceClass}}
-{{input/application/replicas}} 
-{{input/networking/vpc/cidrBlock}}
+{{input/application/appName}}           # From application form group
+{{input/database/dbSize}}               # From database form group  
+{{input/config/instanceName}}           # From config form group
 ```
 
 **Output Paths** (static metadata):
@@ -663,7 +662,6 @@ metadata:
   description: Deploy containerized application to EKS cluster
   version: 1.0.0
   category: compute
-  # Static metadata that can be referenced
   defaultNamespace: "applications"
   clusterEndpoint: "https://k8s.company.internal"
 
@@ -691,7 +689,7 @@ fulfillment:
         config:
           ticket:
             project: COMPUTE
-            summaryTemplate: "Deploy {{fields.appName}} to EKS"
+            summaryTemplate: "Deploy {{input/basic/appName}} to EKS"
   automatic:
     actions:
       - type: rest-api
@@ -703,10 +701,10 @@ fulfillment:
             type: json
             contentTemplate: |
               {
-                "applicationName": "{{fields.appName}}",
-                "containerImage": "{{fields.containerImage}}",
-                "replicas": {{fields.replicas}},
-                "namespace": "{{fields.namespace}}"
+                "applicationName": "{{input/basic/appName}}",
+                "containerImage": "{{input/basic/containerImage}}",
+                "replicas": {{input/basic/replicas}},
+                "namespace": "{{output/current-item/metadata/defaultNamespace}}"
               }
 ```
 
@@ -722,7 +720,6 @@ metadata:
   description: Managed Aurora PostgreSQL instance with backups
   version: 1.0.0
   category: databases
-  # Static metadata that can be referenced
   connectionTemplate: "host={instanceName}.cluster-xyz.us-west-2.rds.amazonaws.com;port=5432;database=postgres"
   defaultPort: "5432"
 
@@ -749,7 +746,7 @@ fulfillment:
         config:
           ticket:
             project: DBA
-            summaryTemplate: "Aurora PostgreSQL: {{fields.instanceName}}"
+            summaryTemplate: "Aurora PostgreSQL: {{input/config/instanceName}}"
   automatic:
     actions:
       - type: rest-api
@@ -761,9 +758,9 @@ fulfillment:
             type: json
             contentTemplate: |
               {
-                "instanceName": "{{fields.instanceName}}",
-                "instanceClass": "{{fields.instanceClass}}",
-                "allocatedStorage": {{fields.storageSize}},
+                "instanceName": "{{input/config/instanceName}}",
+                "instanceClass": "{{input/config/instanceClass}}",
+                "allocatedStorage": {{input/config/storageSize}},
                 "engine": "postgres",
                 "backupRetention": 7,
                 "multiAZ": true
@@ -782,7 +779,6 @@ metadata:
   description: Secure secret storage in AWS Parameter Store
   version: 1.0.0
   category: security
-  # Static metadata that can be referenced
   parameterPath: "/{secretName}"
   kmsKeyId: "alias/parameter-store-key"
 
@@ -807,7 +803,7 @@ fulfillment:
         config:
           ticket:
             project: SECURITY
-            summaryTemplate: "Create secrets: {{fields.secretName}}"
+            summaryTemplate: "Create secrets: {{input/config/secretName}}"
   automatic:
     actions:
       - type: rest-api
@@ -819,8 +815,8 @@ fulfillment:
             type: json
             contentTemplate: |
               {
-                "parameterPath": "/{{fields.secretName}}",
-                "secrets": {{json(fields.secrets)}},
+                "parameterPath": "/{{input/config/secretName}}",
+                "secrets": {{json(input/config/secrets)}},
                 "type": "SecureString"
               }
 ```
