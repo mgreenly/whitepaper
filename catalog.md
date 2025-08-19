@@ -162,7 +162,7 @@ schemaVersion: catalog/v1
 kind: CatalogBundle
 
 metadata:
-  id: bundle-{bundle}-{variant}  # e.g., bundle-webapp-standard
+  id: bundle-{name}-{variant}  # e.g., bundle-webapp-standard
   name: Display Name
   description: Complete bundle description
   version: 1.0.0
@@ -226,8 +226,8 @@ metadata:
   owner:
     team: platform-{category}-team
     contact: team@company.com
-  connectionTemplate: "host={instanceName}.cluster-xyz.us-west-2.rds.amazonaws.com;port=5432;database=postgres"
-  parameterPath: "/{secretName}"
+  connectionTemplate: "host={{.input.config.instanceName}}.cluster-xyz.us-west-2.rds.amazonaws.com;port=5432;database=postgres"
+  parameterPath: "/{{.input.config.secretName}}"
 
 presentation:
   form:
@@ -266,7 +266,7 @@ fulfillment:
             type: json
             contentTemplate: |
               {
-                "service": "{{.output.currentItem.metadata.id}}",
+                "service": "{{.output.serviceItem.metadata.id}}",
                 "name": "{{.input.config.name}}"
               }
 ```
@@ -340,19 +340,16 @@ config:
     summaryTemplate: "{{.input.config.name}} request"
     descriptionTemplate: |
       Requesting: {{.input.config.name}}
-      Type: {{.output.currentItem.metadata.name}}
+      Type: {{.output.databaseItem.metadata.name}}
       User: {{.system.user.email}}
       Request ID: {{.system.requestId}}
       
-      Configuration:
-      {{#each .input.config}}
-      - {{@key}}: {{this}}
-      {{/each}}
+      Configuration details provided in request form.
     issueType: Task
     priority: "{{.input.config.priority}}"
     labels:
       - platform-automation
-      - "{{.output.currentItem.metadata.category}}"
+      - "{{.output.serviceItem.metadata.category}}"
     customFields:
       customfield_10001: "{{.input.config.costCenter}}"
       customfield_10002: "{{.input.config.environment}}"
@@ -395,7 +392,7 @@ config:
     method: POST
   headers:
     Content-Type: application/json
-    X-API-Key: "{{.system.environment.apiKey}}"
+    X-API-Key: "{{.system.platform.apiKey}}"
   body:
     type: json
     contentTemplate: |
@@ -524,14 +521,18 @@ The `.output` namespace contains static metadata from catalog items:
 
 ```
 .output
-├── itemName                      # Catalog item metadata
+├── serviceItem                   # Current catalog item metadata
 │   └── metadata                  # Static metadata section
 │       ├── connectionTemplate    # Template strings
 │       ├── parameterPath         # Static paths
+│       ├── defaultNamespace      # Service-specific metadata
 │       └── version               # Version info
-├── bundleName                    # Bundle metadata (if any)
+├── eksItem                       # EKS-specific item metadata (example)
 │   └── metadata
-│       └── description           # Bundle-level static data
+│       └── defaultNamespace      # EKS namespace configuration
+├── databaseItem                  # Database-specific item metadata (example)
+│   └── metadata
+│       └── connectionTemplate    # Database connection details
 ```
 
 ### Path Examples
@@ -545,9 +546,9 @@ The `.output` namespace contains static metadata from catalog items:
 
 **Output Paths** (static metadata):
 ```
-{{.output.database.metadata.connectionTemplate}}   # Static template from item
-{{.output.webappStack.metadata.description}}       # Static data from bundle
-{{.output.secrets.metadata.parameterPath}}         # Static path template
+{{.output.serviceItem.metadata.connectionTemplate}}   # Static template from current item
+{{.output.databaseItem.metadata.connectionTemplate}}  # Database-specific metadata
+{{.output.eksItem.metadata.defaultNamespace}}         # EKS-specific metadata
 ```
 
 **System Paths** (platform context):
@@ -557,6 +558,7 @@ The `.output` namespace contains static metadata from catalog items:
 {{.system.user.email}}
 {{.system.platform.account}}
 {{.system.platform.region}}
+{{.system.platform.apiKey}}
 ```
 
 ### Scoping Rules
@@ -704,7 +706,7 @@ fulfillment:
                 "applicationName": "{{.input.basic.appName}}",
                 "containerImage": "{{.input.basic.containerImage}}",
                 "replicas": {{.input.basic.replicas}},
-                "namespace": "{{.output.currentItem.metadata.defaultNamespace}}"
+                "namespace": "{{.output.eksItem.metadata.defaultNamespace}}"
               }
 ```
 
@@ -720,7 +722,7 @@ metadata:
   description: Managed Aurora PostgreSQL instance with backups
   version: 1.0.0
   category: databases
-  connectionTemplate: "host={instanceName}.cluster-xyz.us-west-2.rds.amazonaws.com;port=5432;database=postgres"
+  connectionTemplate: "host={{.input.config.instanceName}}.cluster-xyz.us-west-2.rds.amazonaws.com;port=5432;database=postgres"
   defaultPort: "5432"
 
 presentation:
@@ -779,7 +781,7 @@ metadata:
   description: Secure secret storage in AWS Parameter Store
   version: 1.0.0
   category: security
-  parameterPath: "/{secretName}"
+  parameterPath: "/{{.input.config.secretName}}"
   kmsKeyId: "alias/parameter-store-key"
 
 presentation:
@@ -816,7 +818,7 @@ fulfillment:
             contentTemplate: |
               {
                 "parameterPath": "/{{.input.config.secretName}}",
-                "secrets": {{json(.input.config.secrets)}},
+                "secrets": "{{.input.config.secrets}}",
                 "type": "SecureString"
               }
 ```
