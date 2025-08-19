@@ -65,15 +65,7 @@ platform-automation-repository/
 │   │   └── *.yaml               # Service definitions
 │   ├── databases/               # Database services (PostgreSQL)
 │   │   └── *.yaml               # Service definitions
-│   ├── messaging/               # Messaging services
-│   │   └── *.yaml               # Service definitions
-│   ├── networking/              # Network services
-│   │   └── *.yaml               # Service definitions
-│   ├── storage/                 # Storage services
-│   │   └── *.yaml               # Service definitions
 │   ├── security/                # Security services (Parameter Store)
-│   │   └── *.yaml               # Service definitions
-│   ├── monitoring/              # Observability services
 │   │   └── *.yaml               # Service definitions
 │   └── solutions/               # Multi-service bundles
 │       └── *.yaml               # Bundle definitions
