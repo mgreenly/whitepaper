@@ -133,13 +133,7 @@ The catalog enforces specific naming conventions to ensure consistency and compa
 - **IDs and References**: Use **kebab-case**
   - Examples: `database-aurora-postgresql-standard`, `bundle-webapp-production`
 
-- **Terraform Module Names**: Use **snake_case** for HCL compatibility
-  - Transform field values when creating Terraform module identifiers
-  - Example: `{{fields.appName}}` → `module "app_{{replace(fields.appName, '-', '_')}}"`
-  - Module paths follow organization standards: `../modules/category/module_name`
-  - Note: Templates primarily instantiate existing modules rather than defining resources
-
-These conventions align with Go language standards and cloud-native tooling (Kubernetes, Helm, etc.) for optimal compatibility. Terraform identifiers require special handling to ensure valid HCL syntax.
+These conventions align with Go language standards and cloud-native tooling (Kubernetes, Helm, etc.) for optimal compatibility.
 
 ## Schema Versioning
 
@@ -354,6 +348,8 @@ Action types define how the orchestrator fulfills service requests. Each action 
 
 **Current Implementation**: The Q3 2025 Foundation Epic supports JIRA and REST API action types. Additional action types (Terraform, GitHub Workflows) are planned for future releases.
 
+**Important Note on Error Handling**: Action type configurations do not specify error handling, retry logic, timeouts, or recovery mechanisms. All error handling is the responsibility of the orchestrator service implementation. When actions fail, the service determines the appropriate response (retry, abort, escalate, etc.).
+
 - [JIRA Ticket](#jira-ticket)
 - [REST API](#rest-api)
 - [Future Action Types](#future-action-types)
@@ -439,8 +435,60 @@ config:
 ### Future Action Types
 
 The following action types are planned for Q4 2025 and beyond:
+
+#### Git Commit
+
+**Required Fields:**
+- `repository`: Repository identifier (e.g., owner/repo)
+- `branch`: Target branch for the commit
+- `files`: Array of file modifications with path, contentTemplate, and operation (create/update/delete)
+- `commitMessage`: Template for the commit message
+- `mergeStrategy`: How to handle the merge (fast-forward, merge-commit, squash)
+
+```yaml
+type: git-commit
+config:
+  repository: "company/infrastructure"
+  branch: "main"
+  commitMessage: "Deploy {{fields.appName}} to {{fields.environment}}"
+  mergeStrategy: "squash"
+  files:
+    - path: "apps/{{fields.appName}}/config.yaml"
+      operation: "update"
+      contentTemplate: |
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: {{fields.appName}}-config
+        data:
+          environment: {{fields.environment}}
+          replicas: "{{fields.replicas}}"
+```
+
+#### GitHub Workflow
+
+**Required Fields:**
+- `repository`: Repository identifier
+- `workflowFile`: Workflow file path (e.g., .github/workflows/deploy.yml)
+- `ref`: Git reference to trigger on (branch/tag)
+- `inputs`: Key-value pairs for workflow inputs with variable substitution
+
+```yaml
+type: github-workflow
+config:
+  repository: "company/deployment-workflows"
+  workflowFile: ".github/workflows/deploy-app.yml"
+  ref: "main"
+  inputs:
+    app_name: "{{fields.appName}}"
+    environment: "{{fields.environment}}"
+    image_tag: "{{fields.imageTag}}"
+    replicas: "{{fields.replicas}}"
+```
+
+#### Other Planned Types
+
 - **Terraform**: Infrastructure provisioning via `.tf` template generation
-- **GitHub Workflow**: Trigger GitHub Actions for complex automation
 - **AWS Lambda**: Direct Lambda function invocation
 - **CloudFormation**: AWS stack provisioning
 
