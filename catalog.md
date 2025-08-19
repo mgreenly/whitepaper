@@ -35,45 +35,45 @@ The Platform Automation Orchestrator catalog repository (`platform-automation-re
 
 ```
 platform-automation-repository/
-├── catalog/                     # Service definitions by category
-│   ├── compute/                 # Compute services (EKS containers)
-│   │   └── *.yaml               # Service definitions
-│   ├── databases/               # Database services (Aurora PostgreSQL)
-│   │   └── *.yaml               # Service definitions
-│   ├── security/                # Security services (Parameter Store)
-│   │   └── *.yaml               # Service definitions
-│   └── bundles/                 # Composite service bundles (CatalogBundles)
-│       └── *.yaml               # CatalogBundle definitions
-├── schema/                      # JSON Schema specifications
-│   ├── catalog-item.json        # CatalogItem schema definition
-│   ├── catalog-bundle.json      # CatalogBundle schema definition
-│   └── common-types.json        # Shared type definitions and patterns
-├── templates/                   # Starter templates for new services
+├── catalog/                          # Service definitions by category
+│   ├── compute/                      # Compute services (EKS containers)
+│   │   └── *.yaml                    # Service definitions
+│   ├── databases/                    # Database services (Aurora PostgreSQL)
+│   │   └── *.yaml                    # Service definitions
+│   ├── security/                     # Security services (Parameter Store)
+│   │   └── *.yaml                    # Service definitions
+│   └── bundles/                      # Composite service bundles (CatalogBundles)
+│       └── *.yaml                    # CatalogBundle definitions
+├── schema/                           # JSON Schema specifications
+│   ├── catalog-item.json             # CatalogItem schema definition
+│   ├── catalog-bundle.json           # CatalogBundle schema definition
+│   └── common-types.json             # Shared type definitions and patterns
+├── templates/                        # Starter templates for new services
 │   ├── catalog-item-template.yaml    # Basic CatalogItem template
 │   ├── catalog-bundle-template.yaml  # Basic CatalogBundle template
 │   └── jira-action-template.yaml     # JIRA action configuration template
-├── scripts/                     # Validation and testing tools
-│   ├── validate-catalog.sh      # Main validation script (Ruby)
-│   ├── validate-single.sh       # Single file validation
-│   ├── validate-all.sh          # Batch validation for directories
-│   ├── validate-changed.sh      # Validate only changed files in PR
-│   ├── test-template.sh         # Test template with sample data
-│   └── integration-test.sh      # End-to-end integration testing
-├── tests/                       # Test fixtures and examples
-│   ├── valid/                   # Valid examples for testing
+├── scripts/                          # Validation and testing tools
+│   ├── validate-catalog.sh           # Main validation script (Ruby)
+│   ├── validate-single.sh            # Single file validation
+│   ├── validate-all.sh               # Batch validation for directories
+│   ├── validate-changed.sh           # Validate only changed files in PR
+│   ├── test-template.sh              # Test template with sample data
+│   └── integration-test.sh           # End-to-end integration testing
+├── tests/                            # Test fixtures and examples
+│   ├── valid/                        # Valid examples for testing
 │   │   ├── example-catalog-item.yaml
 │   │   ├── example-catalog-bundle.yaml
 │   │   └── cross-component-references.yaml
-│   └── invalid/                 # Invalid examples with expected errors
+│   └── invalid/                      # Invalid examples with expected errors
 │       ├── missing-required-fields.yaml
 │       ├── invalid-naming-conventions.yaml
 │       └── circular-dependencies.yaml
-├── .github/                     # GitHub configuration
-│   ├── workflows/               # CI/CD pipelines
-│   │   └── validate-catalog.yml # PR validation workflow
-│   └── CODEOWNERS               # Team ownership and access control
-├── README.md                    # Repository overview and quick start
-└── .gitignore                   # Git ignore patterns for temp files
+├── .github/                          # GitHub configuration
+│   ├── workflows/                    # CI/CD pipelines
+│   │   └── validate-catalog.yml      # PR validation workflow
+│   └── CODEOWNERS                    # Team ownership and access control
+├── README.md                         # Repository overview and quick start
+└── .gitignore                        # Git ignore patterns for temp files
 ```
 
 ### CODEOWNERS Configuration
