@@ -10,53 +10,24 @@ This document contains no proprietary, confidential, or sensitive organizational
 ## Table of Contents
 
 - [Repository Structure](#repository-structure)
-  - [CODEOWNERS Configuration](#codeowners-configuration)
 - [Naming Conventions](#naming-conventions)
 - [Schema Versioning](#schema-versioning)
 - [Schema Reference](#schema-reference)
-  - [CatalogBundle - Composite Service](#catalogbundle---composite-service)
-  - [CatalogItem - Individual Service](#catalogitem---individual-service)
 - [Field Types](#field-types)
 - [Action Types](#action-types)
-  - [JIRA Ticket](#jira-ticket)
-  - [REST API](#rest-api)
-  - [Future Action Types](#future-action-types)
 - [Templates and Variables](#templates-and-variables)
-  - [Variable System](#variable-system)
-  - [Functions](#functions)
 - [Examples](#examples)
-  - [Complete Bundle Example](#complete-bundle-example)
-  - [EKS Container Application](#eks-container-application)
-  - [Aurora PostgreSQL Database](#aurora-postgresql-database)
-  - [AWS Parameter Store](#aws-parameter-store)
 - [Validation and Testing](#validation-and-testing)
-  - [Validation System](#validation-system)
-  - [Testing Process](#testing-process)
-  - [CI/CD Integration](#cicd-integration)
 - [Platform Team Onboarding](#platform-team-onboarding)
-  - [Prerequisites](#prerequisites)
-  - [Onboarding Process](#onboarding-process)
-  - [Support Resources](#support-resources)
 - [Governance Process](#governance-process)
-  - [Pull Request Requirements](#pull-request-requirements)
-  - [Service Naming Standards](#service-naming-standards)
-  - [Review Checklist](#review-checklist)
 - [Implementation Guidance](#implementation-guidance)
-  - [JSON Schema Files](#json-schema-files)
-  - [Ruby Validation Scripts](#ruby-validation-scripts)
-  - [Test Files](#test-files)
-  - [Templates](#templates)
-  - [Other Files](#other-files)
 - [Future Enhancements](#future-enhancements)
-  - [Advanced Action Types](#advanced-action-types)
-  - [Enhanced Bundle Capabilities](#enhanced-bundle-capabilities)
-  - [Advanced Governance Features](#advanced-governance-features)
-  - [Developer Experience Improvements](#developer-experience-improvements)
-  - [Platform Intelligence](#platform-intelligence)
 
 ## Repository Structure
 
 The Platform Automation Orchestrator catalog repository (`platform-automation-repository`) follows a structured layout designed to organize service definitions, validation tools, and governance processes. This structure ensures clear separation of concerns and enables effective collaboration between platform teams.
+
+- [CODEOWNERS Configuration](#codeowners-configuration)
 
 ```
 platform-automation-repository/
@@ -192,6 +163,9 @@ kind: CatalogItem
 ## Schema Reference
 
 The catalog schema defines two primary document types that platform teams use to define their service offerings. The schema follows a hierarchical structure where CatalogBundles orchestrate multiple CatalogItems into complete bundles.
+
+- [CatalogBundle - Composite Service](#catalogbundle---composite-service)
+- [CatalogItem - Individual Service](#catalogitem---individual-service)
 
 **Important Note on Error Handling**: The catalog documents do not specify error handling behavior. All error handling, retry logic, and recovery mechanisms are the responsibility of the orchestrator service. When any action fails during execution, the service stops and requires manual intervention. Future phases may introduce automated recovery, but this is not part of the catalog specification.
 
@@ -380,6 +354,10 @@ Action types define how the orchestrator fulfills service requests. Each action 
 
 **Current Implementation**: The Q3 2025 Foundation Epic supports JIRA and REST API action types. Additional action types (Terraform, GitHub Workflows) are planned for future releases.
 
+- [JIRA Ticket](#jira-ticket)
+- [REST API](#rest-api)
+- [Future Action Types](#future-action-types)
+
 ### JIRA Ticket
 
 **Required Fields:**
@@ -470,6 +448,9 @@ The following action types are planned for Q4 2025 and beyond:
 
 The template and variable system enables dynamic content generation within catalog definitions. Platform teams use variables to create flexible service definitions that adapt to user input, request context, and system state.
 
+- [Variable System](#variable-system)
+- [Functions](#functions)
+
 ### Variable System
 
 Variables allow dynamic content insertion throughout catalog definitions. Variables are replaced at runtime when requests are processed.
@@ -500,6 +481,11 @@ Built-in functions for data transformation:
 ## Examples
 
 This section provides comprehensive examples demonstrating the catalog schema in practice. Examples progress from complete bundle examples to individual service definitions, illustrating the hierarchical structure and integration patterns.
+
+- [Complete Bundle Example](#complete-bundle-example)
+- [EKS Container Application](#eks-container-application)
+- [Aurora PostgreSQL Database](#aurora-postgresql-database)
+- [AWS Parameter Store](#aws-parameter-store)
 
 ### Complete Bundle Example
 
@@ -764,6 +750,10 @@ fulfillment:
 
 The `platform-automation-repository` catalog repository implements a comprehensive validation and testing framework to ensure service definitions meet quality standards and schema requirements. This multi-layered approach catches errors early and maintains catalog integrity across all platform teams.
 
+- [Validation System](#validation-system)
+- [Testing Process](#testing-process)
+- [CI/CD Integration](#cicd-integration)
+
 ### Validation System
 
 The `platform-automation-repository` repository includes a comprehensive validation system to ensure all service definitions conform to the schema specifications. This system operates at multiple levels to catch errors before they reach the orchestrator service.
@@ -896,6 +886,10 @@ This comprehensive validation system ensures catalog integrity while allowing te
 
 The onboarding process enables platform teams to contribute services to the catalog systematically. This structured approach ensures teams understand governance requirements, validation processes, and best practices before contributing their first service definition.
 
+- [Prerequisites](#prerequisites)
+- [Onboarding Process](#onboarding-process)
+- [Support Resources](#support-resources)
+
 ### Prerequisites
 
 Before a platform team can contribute to the catalog, they must:
@@ -943,6 +937,10 @@ Before a platform team can contribute to the catalog, they must:
 
 The governance process establishes standards and procedures for catalog contributions, ensuring quality, consistency, and proper review workflows. This process balances team autonomy with architectural oversight and quality assurance.
 
+- [Pull Request Requirements](#pull-request-requirements)
+- [Service Naming Standards](#service-naming-standards)
+- [Review Checklist](#review-checklist)
+
 ### Pull Request Requirements
 
 **All Changes:**
@@ -985,6 +983,12 @@ Platform team reviewers should verify:
 ## Implementation Guidance
 
 This section provides technical implementation details for teams setting up and maintaining the `platform-automation-repository` catalog repository infrastructure. It covers schema definitions, validation scripts, test frameworks, and supporting tools necessary for a production-ready catalog.
+
+- [JSON Schema Files](#json-schema-files)
+- [Ruby Validation Scripts](#ruby-validation-scripts)
+- [Test Files](#test-files)
+- [Templates](#templates)
+- [Other Files](#other-files)
 
 ### JSON Schema Files
 - Use JSON Schema Draft-07
@@ -1082,6 +1086,12 @@ fi
 ## Future Enhancements
 
 This section outlines potential catalog capabilities and enhancements planned beyond the initial Q3/Q4 2025 implementation. These enhancements represent the evolution path for the catalog system as the platform matures and adoption grows.
+
+- [Advanced Action Types](#advanced-action-types)
+- [Enhanced Bundle Capabilities](#enhanced-bundle-capabilities)
+- [Advanced Governance Features](#advanced-governance-features)
+- [Developer Experience Improvements](#developer-experience-improvements)
+- [Platform Intelligence](#platform-intelligence)
 
 The following catalog capabilities are potential future enhancements beyond the Q3/Q4 2025 roadmap:
 
