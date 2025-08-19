@@ -540,17 +540,9 @@ config:
 
 ## Templates and Variables
 
-The template and variable system enables dynamic content generation within catalog definitions using path-based variable substitution. Platform teams use variables to create flexible service definitions that adapt to user input and execution context.
+The orchestrator maintains a map of named values organized by slash-separated paths. Catalog definitions reference these values using `{{path/to/value}}` syntax for dynamic content generation.
 
-### How It Works (Conceptual Overview)
-
-When a request is submitted, the orchestrator builds up a collection of named values organized by slash-separated paths. User form data gets stored under `input/`, system information under `system/`, and as catalog items and bundles execute, their results get stored under `output/`. 
-
-Throughout catalog definitions, you can reference these values using `{{path/to/value}}` syntax. The orchestrator simply looks up the path in its collection and substitutes the value. This allows later-executing components to use results from earlier components, and enables dynamic configuration based on user choices and system context.
-
-### Variable System
-
-Variables are implemented as a runtime map where keys are slash-separated paths and values are resolved data. During request processing, this map is populated progressively and variables are substituted by path key lookup.
+**How it works**: User form data populates `input/` paths, system context populates `system/` paths, and execution results populate `output/` paths. Components can reference values from earlier execution stages.
 
 **Variable Syntax**: `{{namespace/path/to/value}}`
 
@@ -612,8 +604,8 @@ output/
 
 Access to namespace paths is strictly controlled by component type:
 
-- **CatalogItem**: Can reference `input/*` and `runtime/*` only
-- **CatalogBundle**: Can reference `input/*`, `runtime/*`, and `output/*` from its components
+- **CatalogItem**: Can reference `input/*` and `system/*` only
+- **CatalogBundle**: Can reference `input/*`, `system/*`, and `output/*` from its components
 - **Action Types**: Can reference all paths available in their execution context
 
 ## Examples
