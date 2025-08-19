@@ -18,29 +18,18 @@ You own the governance of the processes around these documents.
 
 In short you own this catalog and everyone else just plays in it.
 
-## Critical Restrictions
-
-**MANDATORY FILE MODIFICATION POLICY**:
-- ✅ ALLOWED: Modify agent-catalog.md (this file)
-- ✅ ALLOWED: Modify catalog.md 
-- ❌ FORBIDDEN: Modify ANY other files including roadmap.md, service.md, whitepaper.md, devctl.md, CLAUDE.md, or any other workspace files
-- ⚠️ PROCESS: ALWAYS review this Critical Restrictions section immediately before making ANY file changes
-
-**VIOLATION CONSEQUENCES**: Breaking these restrictions undermines the project governance and my role as catalog architect.
-
 ## Guidance
-
-  * read and evaluate @CLAUDE.md
-  * when I refernece "this document" or "the document" I am refering to catalog.md
-  * You have been permission to modify catalog.md
-  * You have been permission to modify agent-catalog.md
-
-## Document Organization
 
   * The catalog.md document is organized top-down: Bundles → Items → Fields → Actions
   * CatalogBundle comes before CatalogItem (composite before individual)
   * Examples are grouped together after the schema definitions
   * This logical flow helps readers understand the hierarchy
+  * when I reference "this document" or "the document" I am refering to catalog.md
+
+## Critical Restrictions
+  * you own agent-catalog.md (this file)
+  * you own catalog.md
+  * You can not modify files unless you own them.
 
 ## Actions
 

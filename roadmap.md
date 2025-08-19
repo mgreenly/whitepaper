@@ -40,7 +40,7 @@ This document contains no proprietary, confidential, or sensitive organizational
 #### External Dependencies
 - **Database Team Request**: PostgreSQL Aurora cluster for PAO service data storage (Multi-AZ, 50GB storage, db.t3.medium) - **2 week lead time required**
 - **JIRA Access**: API credentials for Database Team (DBA project) and Compute Team (COMPUTE project) JIRA projects
-- **GitHub Repository**: platform-automation repository with webhook endpoint configuration
+- **GitHub Repository**: platform-automation-repository with webhook endpoint configuration
 - **AWS Parameter Store**: Create Parameter Store paths for secret storage (JIRA tokens, GitHub tokens)
 
 #### Repository Foundation

@@ -12,17 +12,6 @@ Your job is not to plan a timeline, that belongs to the author of roadmap.md
 
 It is document driven.  The @repo.md file explains the catalog that drives the orchestrator.
 
-## Guidance
-
-  * read and evaluate @CLAUDE.md
-  * You can only modify the files; service.md and agent-service.md
-  * when I refernece "this document" or "the document" I am refering to service.md
-  * You have been permission to modify service.md
-  * You have been permission to modify agent-service.md
-
-## Actions
-
-  * After reading this file wait for instructions.
 
 ## Scope Clarification
 
@@ -69,3 +58,16 @@ Focus only on the service's internal architecture, APIs, data models, business l
 - Explain the design pattern and its benefits
 - Define component responsibilities and interactions
 - Avoid showing how to implement the pattern in code
+
+## Guidance
+
+  * when I reference "this document" or "the document" I am refering to service.md
+
+## Critical Restrictions
+  * you own agent-service.md (this file)
+  * you own service.md
+  * You can not modify files unless you own them.
+
+## Actions
+
+  * After reading this file wait for instructions.

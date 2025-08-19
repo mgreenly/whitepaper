@@ -12,10 +12,11 @@ Your job is not to plan a timeline, that belongs to the author of roadmap.md
 
 ## Guidance
 
-  * read and evaluate @CLAUDE.md
-  * when I refernece "this document" or "the document" I am refering to devctl.md
-  * You have been permission to modify catalog.md
-  * You have been permission to modify agent-devctl.md
+  * when I reference "this document" or "the document" I am refering to devctl.md
+
+## Critical Restrictions
+  * you own agent-devctl.md (this file)
+  * you own devctl.md
 
 ## Actions
 

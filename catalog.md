@@ -1,7 +1,7 @@
 # Platform Automation Orchestrator - Catalog Repository
 
-**Repository Name**: `platform-automation`  
-**GitHub Location**: `github.com/company/platform-automation`
+**Repository Name**: `platform-automation-repository`  
+**GitHub Location**: `github.com/company/platform-automation-repository`
 
 ## Disclaimer
 
@@ -56,10 +56,10 @@ This document contains no proprietary, confidential, or sensitive organizational
 
 ## Repository Structure
 
-The Platform Automation Orchestrator catalog repository (`platform-automation`) follows a structured layout designed to organize service definitions, validation tools, and governance processes. This structure ensures clear separation of concerns and enables effective collaboration between platform teams.
+The Platform Automation Orchestrator catalog repository (`platform-automation-repository`) follows a structured layout designed to organize service definitions, validation tools, and governance processes. This structure ensures clear separation of concerns and enables effective collaboration between platform teams.
 
 ```
-platform-automation/
+platform-automation-repository/
 ├── catalog/                     # Service definitions by category
 │   ├── {category}/              # compute, databases, etc.
 │   │   └── {service}.yaml       # Your service definition
@@ -83,7 +83,7 @@ platform-automation/
 
 ### CODEOWNERS Configuration
 
-The `platform-automation` repository uses GitHub's CODEOWNERS file to enforce team-based access control. Platform teams own and maintain their domain-specific services, while the Developer Experience team requires access across all domains to assist with catalog integration and troubleshooting.
+The `platform-automation-repository` repository uses GitHub's CODEOWNERS file to enforce team-based access control. Platform teams own and maintain their domain-specific services, while the Developer Experience team requires access across all domains to assist with catalog integration and troubleshooting.
 
 **Access Control Strategy:**
 - **Platform Teams**: Own their specific domain folders and service definitions
@@ -742,11 +742,11 @@ fulfillment:
 
 ## Validation and Testing
 
-The `platform-automation` catalog repository implements a comprehensive validation and testing framework to ensure service definitions meet quality standards and schema requirements. This multi-layered approach catches errors early and maintains catalog integrity across all platform teams.
+The `platform-automation-repository` catalog repository implements a comprehensive validation and testing framework to ensure service definitions meet quality standards and schema requirements. This multi-layered approach catches errors early and maintains catalog integrity across all platform teams.
 
 ### Validation System
 
-The `platform-automation` repository includes a comprehensive validation system to ensure all service definitions conform to the schema specifications. This system operates at multiple levels to catch errors before they reach the orchestrator service.
+The `platform-automation-repository` repository includes a comprehensive validation system to ensure all service definitions conform to the schema specifications. This system operates at multiple levels to catch errors before they reach the orchestrator service.
 
 **Validation Components:**
 
@@ -861,11 +861,11 @@ jobs:
 
 **Catalog Synchronization:**
 
-The orchestrator service stays synchronized with the `platform-automation` GitHub repository through webhooks:
+The orchestrator service stays synchronized with the `platform-automation-repository` GitHub repository through webhooks:
 
-- **Repository**: `github.com/company/platform-automation`
-- **Push Events**: When changes are merged to the main branch of `platform-automation`, GitHub sends a webhook to the PAO service
-- **Webhook Endpoint**: The service exposes `/api/v1/webhooks/github` to receive catalog update notifications from `platform-automation`
+- **Repository**: `github.com/company/platform-automation-repository`
+- **Push Events**: When changes are merged to the main branch of `platform-automation-repository`, GitHub sends a webhook to the PAO service
+- **Webhook Endpoint**: The service exposes `/api/v1/webhooks/github` to receive catalog update notifications from `platform-automation-repository`
 - **Validation**: The service validates incoming catalog changes against the schema before accepting them
 - **Cache Invalidation**: Successfully validated changes trigger cache refresh in the service
 - **Fallback**: Manual catalog refresh available via `/api/v1/catalog/refresh` endpoint if needed
@@ -886,8 +886,8 @@ Before a platform team can contribute to the catalog, they must:
    - Configure any custom fields needed for their services
 
 2. **GitHub Access**
-   - Request addition to appropriate GitHub team for the `platform-automation` repository
-   - Team lead submits PR to add team to CODEOWNERS for their category folder in `platform-automation`
+   - Request addition to appropriate GitHub team for the `platform-automation-repository` repository
+   - Team lead submits PR to add team to CODEOWNERS for their category folder in `platform-automation-repository`
    - Complete catalog training (self-paced documentation review)
 
 ### Onboarding Process
@@ -964,7 +964,7 @@ Platform team reviewers should verify:
 
 ## Implementation Guidance
 
-This section provides technical implementation details for teams setting up and maintaining the `platform-automation` catalog repository infrastructure. It covers schema definitions, validation scripts, test frameworks, and supporting tools necessary for a production-ready catalog.
+This section provides technical implementation details for teams setting up and maintaining the `platform-automation-repository` catalog repository infrastructure. It covers schema definitions, validation scripts, test frameworks, and supporting tools necessary for a production-ready catalog.
 
 ### JSON Schema Files
 - Use JSON Schema Draft-07
