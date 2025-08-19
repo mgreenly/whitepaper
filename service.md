@@ -6,7 +6,7 @@ This document contains no proprietary, confidential, or sensitive organizational
 
 ## Note on Implementation
 
-This document focuses exclusively on architectural design patterns and service specifications. Implementation details, code samples, and concrete technology implementations are intentionally excluded to maintain focus on system design and integration patterns.
+This document serves as architectural guidance and conceptual inspiration for engineering teams developing catalog repository systems. It is not intended as a precise implementation specification or detailed blueprint. Engineering teams should interpret these concepts, adapt the proposed patterns to their specific technical environment and organizational requirements, and develop their own detailed work plans accordingly. While implementation approaches may vary, the core architectural concepts, data structures, and operational patterns described herein should be represented in the final system design to ensure consistency with the overall platform vision.
 
 ## Table of Contents
 
