@@ -1,4 +1,4 @@
-# Platform Automation Orchestrator Development Roadmap
+# Platform Automation Orchestrator - Catalog Repository Roadmap
 
 ## Disclaimer
 
@@ -10,203 +10,180 @@ This document serves as architectural guidance and conceptual inspiration for en
 
 ## Table of Contents
 
-- [Q3 2025: Foundation Epic](#q3-2025-foundation-epic)
+- [Foundation Layer](#foundation-layer)
   - [Success Metrics](#success-metrics)
   - [Ordered Work Series](#ordered-work-series)
-- [Q4 2025: Production Epic](#q4-2025-production-epic)
+- [Schema & Validation Layer](#schema--validation-layer)
   - [Success Metrics](#success-metrics-1)
   - [Ordered Work Series](#ordered-work-series-1)
-- [Future Work Beyond Q4 2025](#future-work-beyond-q4-2025)
-- [Proposals](#proposals)
-  - [Database Schema Design Approach](#database-schema-design-approach)
-  - [Error Handling Strategy Across Components](#error-handling-strategy-across-components)
-  - [Variable Substitution Implementation Approach](#variable-substitution-implementation-approach)
+- [Sample Content Layer](#sample-content-layer)
+  - [Success Metrics](#success-metrics-2)
+  - [Ordered Work Series](#ordered-work-series-2)
+- [Testing & Quality Layer](#testing--quality-layer)
+  - [Success Metrics](#success-metrics-3)
+  - [Ordered Work Series](#ordered-work-series-3)
+- [Governance & Process Layer](#governance--process-layer)
+  - [Success Metrics](#success-metrics-4)
+  - [Ordered Work Series](#ordered-work-series-4)
 
-*Last Updated: 2025-08-18 04:12:00 +0000 (UTC)*
+*Last Updated: 2025-08-20*
 
-## Q3 2025: Foundation Epic 🚧 CURRENT (Aug-Oct)
+## Foundation Layer 🏗️ **PRIORITY 1** - Repository Structure & Core Documents
 
-**Epic Goal**: Establish working foundation with manual JIRA fulfillment
+**Goal**: Establish basic repository structure and essential documentation for platform teams to begin contributing
 
-**Value Delivered**: Platform teams define services in the catalog, users request services, and fulfillment occurs through JIRA actions
-
-**Note**: Q3 uses synchronous request processing only. SQS background processing will be introduced in Q4 for production scalability.
+**Dependencies**: None - starting from empty repository
 
 **Success Metrics**:
-- Developers can submit requests through DevCtl CLI and receive JIRA tickets with proper variable substitution
-- Platform teams can define services using YAML catalog items with validation and governance
-- All 19 Service API endpoints are operational and accessible via DevCtl commands
-- Three test catalog items (EKS, PostgreSQL, Parameter Store) successfully create JIRA tickets in team projects
-
+- Repository has clear structure with proper directory layout
+- Essential documentation exists for platform teams to understand the project
+- Git repository is properly configured with ignore patterns
+- Platform teams understand what they're building and why
 
 ### Ordered Work Series
 
-#### External Dependencies
-- **Database Team Request**: PostgreSQL Aurora cluster for PAO service data storage (Multi-AZ, 50GB storage, db.t3.medium) - **2 week lead time required**
-- **JIRA Access**: API credentials for Database Team (DBA project) and Compute Team (COMPUTE project) JIRA projects
-- **GitHub Repository**: platform-automation-repository with webhook endpoint configuration
-- **AWS Parameter Store**: Create Parameter Store paths for secret storage (JIRA tokens, GitHub tokens)
+#### Repository Structure Creation
+- **Foundation Work**: Create directory structure (`catalog/`, `bundles/`, `schema/`, `scripts/`, `templates/`, `tests/`)
+- **Foundation Work**: Create `.gitignore` with appropriate patterns for YAML, JSON, Ruby, temp files
+- **Foundation Work**: Create `README.md` explaining the catalog repository purpose and basic usage
+- **Foundation Work**: Create `CONTRIBUTING.md` with guidelines for platform teams
 
-#### Repository Foundation
-- **Catalog Work**: Create GitHub repository structure with `.github/CODEOWNERS`, `.gitignore`, and `README.md`
-- **Catalog Work**: Implement JSON schemas (`schema/catalog-item.json`, `schema/catalog-bundle.json`, `schema/common-types.json`)
-- **Catalog Work**: Set up GitHub Actions workflow (`.github/workflows/validate-catalog.yml`) with branch protection
-- **Catalog Work**: Create initial templates (`templates/catalog-item-template.yaml`, `templates/jira-action-template.yaml`)
-
-#### Core Service Infrastructure
-- **Service Work**: Set up PostgreSQL database schema (requests, request_actions tables)
-- **Service Work**: Implement core REST API framework with health endpoints (/api/v1/health, /api/v1/health/ready, /api/v1/version)
-- **Service Work**: Configure JIRA integration with API tokens for DBA and COMPUTE projects
-- **DevCtl Work**: Initialize Go CLI project with AWS SigV4 authentication
-- **DevCtl Work**: Implement health commands (devctl health check, devctl health ready, devctl version)
-
-#### Catalog Management Implementation
-- **Catalog Work**: Create 3 test catalog YAML files (`catalog/compute/eks-application.yaml`, `catalog/databases/postgresql-standard.yaml`, `catalog/security/parameterstore-standard.yaml`)
-- **Service Work**: Implement catalog APIs (/api/v1/catalog, /api/v1/catalog/items/{item_id}, /api/v1/catalog/items/{item_id}/schema, /api/v1/catalog/refresh) with GitHub integration and in-memory caching
-- **DevCtl Work**: Implement catalog commands (devctl catalog list/get/refresh)
-- **Documentation Work**: Add platform team onboarding process and catalog contribution workflow sections to existing repository files
-
-#### Validation and Variable System
-- **Catalog Work**: Implement validation scripts (`scripts/validate-catalog.sh`, `scripts/validate-all.sh`, `scripts/test-template.sh`, `scripts/validate-changed.sh`)
-- **Catalog Work**: Create test fixtures (`tests/valid/example-catalog-item.yaml`, `tests/invalid/missing-required-fields.yaml`, `tests/invalid/invalid-naming-conventions.yaml`)
-- **Service Work**: Implement validation APIs (/api/v1/validate/catalog-item, /api/v1/validate/request, /api/v1/preview/form, /api/v1/test/variables) with variable substitution engine (6+ scopes)
-- **DevCtl Work**: Implement validation commands (devctl validate catalog-item, devctl preview form, devctl test variables)
-
-#### Request Processing Pipeline
-- **Service Work**: Implement request submission APIs (/api/v1/requests POST/GET, /api/v1/requests/{request_id}) with JIRA ticket creation and audit logging
-- **Service Work**: Implement request management APIs (/api/v1/requests/{request_id}/status, /api/v1/requests/{request_id}/logs, /api/v1/requests/{request_id}/retry, /api/v1/requests/{request_id}/abort) with JIRA status polling
-- **DevCtl Work**: Implement request commands (devctl request submit/list/get)
-- **DevCtl Work**: Implement request management commands (devctl request status/logs with --watch/--follow options, devctl request retry/abort)
-
-#### Advanced Features and Polish
-- **Service Work**: Implement advanced APIs (/api/v1/requests/{request_id}/escalate, /api/v1/requests/{request_id}/escalation, /api/v1/webhooks/github) with manual escalation and GitHub webhook processing
-- **Service Work**: Implement error handling, retry logic with exponential backoff, and circuit breaker patterns
-- **Service Work**: Performance optimization and service observability implementation
-- **DevCtl Work**: Implement escalation commands (devctl request escalate) with advanced error handling
-- **DevCtl Work**: Binary compilation, distribution setup, and installation instructions
-
-#### Testing and Integration
-- **Catalog Work**: Implement integration test script (`scripts/integration-test.sh`)
-- **Catalog Work**: Finalize templates and add governance sections to existing files
-- **Catalog Work**: Complete integration testing with service endpoints
-- **Catalog Work**: Final validation rule refinements and catalog item polish
-- **Testing Work**: Test end-to-end workflows and provide feedback for improvements
-- **Testing Work**: Conduct user acceptance testing and gather feedback from early platform team adopters
-- **Integration Work**: End-to-end testing of complete workflow with performance validation
+**Rationale**: Platform teams need a clear structure before they can contribute. This establishes the contract for how the repository is organized.
 
 ---
 
-## Q4 2025: Production Epic 📋 PLANNED (Nov-Jan)
+## Schema & Validation Layer 📋 **PRIORITY 2** - Schema Definitions & Validation Infrastructure
 
-**Epic Goal**: Add automated fulfillment to proven manual workflows
+**Goal**: Define the contract for catalog items and bundles with robust validation
 
-**Value Delivered**: Developers can request services and receive automated provisioning (Terraform, REST API) while platform teams maintain manual fallback
+**Dependencies**: Foundation Layer must be complete
 
 **Success Metrics**:
-- Automated provisioning working for EKS app, PostgreSQL, and parameter store services
-- Platform teams can switch between manual JIRA and automated fulfillment modes seamlessly
-- Service handles 100+ concurrent requests with production-grade reliability and monitoring
-- 5+ platform teams have defined and onboarded services with both manual and automated options
-- DevCtl supports full lifecycle management including retry, abort, escalate, and Terraform operations
+- JSON schemas exist for CatalogItem and CatalogBundle with all required fields
+- Schema validation catches naming convention violations
+- Variable syntax validation prevents template errors
+- Cross-reference validation ensures bundle dependencies exist
 
 ### Ordered Work Series
 
-#### Missing Q3 Commands Implementation
-- **DevCtl Work**: Add retry, abort, and escalate commands that were specified but not implemented in Q3
-- **Service Work**: Ensure retry, abort, and escalate API endpoints are fully functional from Q3
+#### Core Schema Development
+- **Schema Work**: Create `schema/common-types.json` with shared field types, naming patterns, variable syntax
+- **Schema Work**: Create `schema/catalog-item.json` with CatalogItem structure, required name field validation, form groups structure
+- **Schema Work**: Create `schema/catalog-bundle.json` with CatalogBundle structure, component dependencies, sequential orchestration
 
-#### Terraform Action Foundation
-- **Catalog Work**: Enhance schema to support Terraform action types with repository mapping
-- **Catalog Work**: Create Terraform action templates and validation rules
-- **Service Work**: Implement background worker pool architecture (transition from synchronous to asynchronous)
-- **Service Work**: Implement Terraform action execution framework with state management
-- **DevCtl Work**: Implement Terraform-specific status tracking and log parsing
-- **DevCtl Work**: Build Terraform operation commands (plan, apply, destroy)
+#### Schema Validation Rules
+- **Schema Work**: Implement naming convention validation (kebab-case IDs, camelCase fields, PascalCase kinds)
+- **Schema Work**: Implement variable syntax validation (`{{.namespace.path.to.value}}`)
+- **Schema Work**: Implement required field validation (name field with pattern `^[a-z][a-z0-9-]{2,28}[a-z0-9]$`)
+- **Schema Work**: Implement cross-reference validation for bundle → catalog item dependencies
 
-#### REST API Action Type
-- **Service Work**: Build REST API action type with authentication and retry logic
-- **Service Work**: Implement fulfillment mode switching logic (manual ↔ automated)
-- **Documentation Work**: Add fulfillment mode switching strategy to existing service documentation
+#### Basic Validation Scripts
+- **Validation Work**: Create `scripts/validate-schema.rb` for JSON Schema compliance checking
+- **Validation Work**: Create `scripts/validate-naming.rb` for naming convention enforcement
+- **Validation Work**: Create `scripts/validate-variables.rb` for variable syntax validation
+- **Validation Work**: Create `scripts/validate-all.rb` as single entry point for all validations
 
-#### Production Catalog Items
-- **Catalog Work**: Create 5+ production-ready catalog YAML files with both manual and automated actions
-- **Catalog Work**: Implement complex variable templating with secrets scope
-- **Catalog Work**: Complete 10+ catalog YAML files across all categories
-- **Catalog Work**: Implement platform team migration tools and training workflows
-
-#### Production Infrastructure
-- **Service Work**: Configure production infrastructure with Aurora PostgreSQL and caching layer
-- **Service Work**: Implement service observability and alerting
-- **Service Work**: Performance optimization for 100+ concurrent requests
-- **Service Work**: Implement advanced error handling and recovery suggestions
-- **Service Work**: Production hardening, security review, and compliance validation
-- **Service Work**: Advanced authentication with role assumption
-- **Service Work**: Production readiness and real-time monitoring setup
-
-#### DevCtl Production Features
-- **DevCtl Work**: Add batch operations and export functionality
-- **DevCtl Work**: Add automation testing tools and advanced debugging commands
-- **DevCtl Work**: Implement performance monitoring and detailed diagnostics
-- **DevCtl Work**: Cross-account authentication support
-- **DevCtl Work**: Production CLI release with comprehensive logging and audit capabilities
-- **DevCtl Work**: CLI distribution and finalize installation instructions
-
-#### Platform Team Onboarding
-- **Testing Work**: Test automated provisioning workflows and create platform team training materials
-- **Integration Work**: Onboard first 3 platform teams and gather feedback for improvements
-- **Catalog Work**: Final catalog validation and governance process refinement
-- **Catalog Work**: Platform team onboarding automation and success metric tracking
-
-#### Final Testing and Launch
-- **Testing Work**: Complete user acceptance testing with 5+ platform teams
-- **Integration Work**: Performance tuning and final optimizations
-- **Integration Work**: Production launch preparation and monitoring setup
+**Rationale**: Schemas define the contract that everything else depends on. Without robust validation, we'll get inconsistent catalog items that break the system.
 
 ---
 
-## Future Work Beyond Q4 2025
+## Sample Content Layer 📝 **PRIORITY 3** - Reference Implementations
 
-Potential areas for future platform evolution include multi-cloud support, enterprise marketplace, AI-powered automation, and advanced compliance frameworks.
+**Goal**: Create working examples of catalog items for the three core service types
 
-**Future Problems (Not Addressed in Q3/Q4)**:
-- Change management process for schema updates
-- User feedback collection mechanism
+**Dependencies**: Schema & Validation Layer must be complete so samples can be validated
+
+**Success Metrics**:
+- Three complete catalog items exist: application (EKS), database (PostgreSQL), parameter store
+- Each sample demonstrates different field types and complexity levels
+- Samples include proper variable usage in JIRA ticket templates
+- All samples pass schema validation
+
+### Ordered Work Series
+
+#### Template Development
+- **Template Work**: Create `templates/catalog-item-template.yaml` with comprehensive field examples
+- **Template Work**: Create `templates/jira-action-template.yaml` with variable substitution examples
+- **Template Work**: Create `templates/catalog-bundle-template.yaml` for composite services
+
+#### Core Sample Catalog Items
+- **Sample Work**: Create `catalog/compute/eks-application.yaml` with form fields (appName, containerImage, replicas, instanceType)
+- **Sample Work**: Create `catalog/databases/postgresql-standard.yaml` with form fields (instanceName, instanceClass, storageSize, backupRetention)
+- **Sample Work**: Create `catalog/security/parameterstore-standard.yaml` with form fields (parameterName, parameterValue, description, encrypted)
+
+#### Sample Bundle Creation
+- **Sample Work**: Create `bundles/full-application-stack.yaml` combining EKS app + PostgreSQL + parameter store
+- **Sample Work**: Demonstrate dependency relationships and variable passing between components
+
+**Rationale**: Platform teams need concrete examples to understand how to create their own catalog items. These samples serve as both documentation and validation that our schemas work correctly.
 
 ---
 
-## Proposals
+## Testing & Quality Layer 🧪 **PRIORITY 4** - Test Infrastructure & Continuous Integration
 
-### Database Schema Design Approach
+**Goal**: Ensure catalog quality through automated testing and validation
 
-**Proposal**: Use a hybrid approach combining structured tables for core request tracking with JSONB columns for flexible action configuration and user input data. This provides both query performance for status tracking and flexibility for diverse catalog item requirements.
+**Dependencies**: Sample Content Layer needed to have content to test against
 
-**Rationale**: 
-- Structured columns (request_id, status, created_at) enable efficient indexing and querying
-- JSONB columns (request_data, action_config, error_context) provide schema flexibility
-- PostgreSQL JSONB performance and indexing capabilities support complex queries when needed
+**Success Metrics**:
+- GitHub Actions validates all changes automatically
+- Test fixtures exist for both valid and invalid scenarios
+- Integration tests verify end-to-end variable substitution
+- Pull request validation prevents broken catalog items from merging
 
-### Error Handling Strategy Across Components
+### Ordered Work Series
 
-**Proposal**: Implement a three-tier error handling strategy:
-1. **Component-Level**: Each component (Catalog, Service, DevCtl) handles its domain-specific errors with appropriate recovery
-2. **Integration-Level**: Standardized error codes and correlation IDs for cross-component error tracking
-3. **User-Level**: Consistent error formatting and actionable error messages across all interfaces
+#### Test Fixture Development
+- **Test Work**: Create `tests/valid/` directory with examples of correct catalog items
+- **Test Work**: Create `tests/invalid/` directory with examples that should fail validation
+- **Test Work**: Create `tests/invalid/missing-required-fields.yaml` to test required field validation
+- **Test Work**: Create `tests/invalid/invalid-naming-conventions.yaml` to test naming enforcement
+- **Test Work**: Create `tests/invalid/malformed-variables.yaml` to test variable syntax validation
 
-**Rationale**: 
-- Enables independent component development while maintaining integration coherence
-- Correlation IDs provide end-to-end traceability for debugging
-- Standardized error codes enable DevCtl to provide intelligent error handling and suggestions
+#### Advanced Validation Scripts
+- **Validation Work**: Create `scripts/validate-changed.rb` to validate only modified files in PR
+- **Validation Work**: Create `scripts/test-template.rb` to test variable substitution without external services
+- **Validation Work**: Create `scripts/integration-test.rb` for end-to-end testing
 
-### Variable Substitution Implementation Approach
+#### GitHub Actions Workflow
+- **CI Work**: Create `.github/workflows/validate-catalog.yml` with PR validation
+- **CI Work**: Configure branch protection rules requiring validation to pass
+- **CI Work**: Set up validation job that runs on push to main and all PRs
+- **CI Work**: Configure job to run Ruby validation scripts and report results
 
-**Proposal**: Use a template engine with explicit scoping and validation phases:
-1. **Parse Phase**: Extract all variable references and validate syntax
-2. **Scope Resolution**: Validate all variables can be resolved within available scopes
-3. **Substitution Phase**: Apply template engine with validated context data
-4. **Post-Processing**: Apply transformation functions (upper, lower, concat, etc.)
+**Rationale**: Without automated testing, catalog quality will degrade over time. This layer ensures that only valid, well-formed catalog items can be merged.
 
-**Rationale**:
-- Pre-validation prevents runtime template failures
-- Explicit scoping prevents accidental data leakage between contexts
-- Transformation functions provide necessary flexibility for different action types
-- Clear separation of concerns enables easier testing and debugging
+---
+
+## Governance & Process Layer 🏛️ **PRIORITY 5** - Team Ownership & Contribution Process
+
+**Goal**: Establish governance model for platform teams to own and maintain their catalog categories
+
+**Dependencies**: All previous layers must exist so governance can reference working examples
+
+**Success Metrics**:
+- CODEOWNERS enforces team ownership by category
+- Platform teams have clear guidance on contributing catalog items
+- Review process ensures quality while enabling team autonomy
+- Documentation guides teams from idea to production catalog item
+
+### Ordered Work Series
+
+#### Ownership & Access Control
+- **Governance Work**: Create `.github/CODEOWNERS` with team ownership by catalog category
+- **Governance Work**: Configure required reviews for schema changes (requires platform architecture team)
+- **Governance Work**: Document ownership model in README
+
+#### Platform Team Guidance
+- **Documentation Work**: Create `docs/platform-team-guide.md` with step-by-step contribution process
+- **Documentation Work**: Create `docs/variable-guide.md` explaining the four variable namespaces and scoping rules
+- **Documentation Work**: Create `docs/action-types.md` documenting JIRA ticket and future REST API actions
+- **Documentation Work**: Create `docs/troubleshooting.md` for common validation errors and fixes
+
+#### Quality & Review Process
+- **Process Work**: Document pull request template for catalog item changes
+- **Process Work**: Create review checklist for platform architecture team
+- **Process Work**: Establish process for schema evolution and backward compatibility
+- **Process Work**: Document process for testing catalog items before production deployment
+
+**Rationale**: Governance ensures long-term maintainability and quality. Platform teams need clear guidance on how to contribute effectively while maintaining system integrity.
