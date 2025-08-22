@@ -152,11 +152,9 @@ The service exposes a RESTful API organized into logical resource collections:
 
 ### API Design Patterns
 
-**Authentication & Authorization**
+**Authentication**
 - Identity federation through organizational IAM
 - Request signing for API authentication
-- Team-based access control via group membership
-- Catalog items specify allowed teams
 
 **Request/Response Patterns**
 - Consistent JSON structure with envelope
@@ -173,7 +171,7 @@ The service exposes a RESTful API organized into logical resource collections:
 ### Error Handling Architecture
 
 **Error Categories**:
-- **4xx Client Errors**: Validation failures, authorization issues
+- **4xx Client Errors**: Validation failures, authentication issues
 - **5xx Server Errors**: Service failures, integration issues
 
 **Error Response Structure**:
@@ -205,7 +203,6 @@ The initial implementation focuses on replacing multi-week delays with same-day 
    - Schema validation against catalog definition
    - Required field verification
    - Pattern matching for field constraints
-   - Team authorization check
 
 3. **Variable Resolution**
    - Parse template for variable references
@@ -325,7 +322,7 @@ The orchestrator maintains a hierarchical namespace aligned with catalog.md spec
 
 ### Variable Scoping Rules
 
-**Access Control**:
+**Namespace Access**:
 - Templates can only access defined namespaces
 - No dynamic namespace creation
 - No cross-request variable access
@@ -337,11 +334,11 @@ The orchestrator maintains a hierarchical namespace aligned with catalog.md spec
 - Failed actions don't populate outputs
 - Retry clears previous outputs
 
-## Integration Patterns
+## Fulfillment Patterns
 
-### GitHub Catalog Integration
+### Catalog Synchronization
 
-The service maintains synchronization with the catalog repository through event-driven updates:
+The service maintains synchronization with the catalog repository through GitHub webhooks:
 
 **Webhook Processing**:
 1. GitHub sends webhook on repository changes
@@ -358,13 +355,12 @@ The service maintains synchronization with the catalog repository through event-
 - In-memory cache with TTL
 - Database persistence for durability
 
-**CODEOWNERS Enforcement**:
+**CODEOWNERS Reading**:
 - Service reads CODEOWNERS file
 - Maps teams to catalog categories
-- Enforces access control on updates
-- Validates team membership for requests
+- Used for organizational reference only
 
-### JIRA Integration Architecture
+### JIRA Fulfillment Pattern
 
 **Multi-Instance Support**:
 - Configure multiple JIRA instances
@@ -386,7 +382,7 @@ The service maintains synchronization with the catalog repository through event-
 - Map JIRA states to request states
 - Return current state to caller
 
-### Future Integration Patterns
+### Future Fulfillment Patterns
 
 **REST API Actions** (Phase 2):
 - Configurable endpoints and methods
@@ -524,10 +520,9 @@ The service uses a relational database with JSONB for flexibility:
 
 ### Security Patterns
 
-**Authentication & Authorization**:
+**Authentication**:
 - Federated identity management
 - API authentication patterns
-- Team-based access control
 - Audit trail for all actions
 
 **Secret Management**:
@@ -660,11 +655,16 @@ The service uses a relational database with JSONB for flexibility:
 - Predictive analytics
 - Capacity planning
 
+**Access Control & Authorization** (Future Enhancement):
+- User authorization based on team membership
+- Catalog filtering by user permissions
+- Team-based resource access control
+- Role-based access control (RBAC)
+
 **Enterprise Features**:
 - ServiceNow integration
 - Compliance frameworks
-- Financial management
-- Advanced RBAC
+- Multi-tenancy support
 
 ### Long-Term Vision
 
