@@ -40,7 +40,7 @@ This document serves as architectural guidance and conceptual inspiration for en
 - Variable substitution and template processing
 - Catalog synchronization from GitHub repository
 - API gateway for developer interactions
-- Fulfillment action execution:
+- Fulfillment task execution:
   - JIRA ticket creation
   - REST API calls
   - GitHub commit operations
@@ -69,7 +69,7 @@ The catalog repository (`platform-automation-repository`) serves as the converge
 **CatalogItem**: Individual resource offerings
 - Metadata: Identity, ownership, and classification
 - Input Form: Dynamic field definitions with validation
-- Fulfillment Actions: JIRA tickets (Phase 1) or automated APIs (Phase 2+)
+- Fulfillment Items: JIRA tickets (Phase 1) or automated APIs (Phase 2+)
 
 **CatalogBundle**: Composite resource packages
 - Components: References to multiple CatalogItems
@@ -81,8 +81,7 @@ The catalog repository (`platform-automation-repository`) serves as the converge
 ```
 Phase 1: Foundation - Manual JIRA
 ├── All resources use JIRA tickets
-├── Platform teams fulfill manually
-└── Hours instead of weeks
+└── Platform teams fulfill manually
 
 Phase 2: Mixed Mode Automation
 ├── Some resources automated
@@ -91,8 +90,7 @@ Phase 2: Mixed Mode Automation
 
 Phase 3: Full Automation
 ├── Most resources automated
-├── JIRA for exceptions
-└── Minutes instead of hours
+└── JIRA for exceptions
 ```
 
 ### Ownership Model
@@ -145,8 +143,9 @@ The service exposes a RESTful API organized into logical resource collections:
 ### API Design Patterns
 
 **Authentication**
-- Identity federation through organizational IAM
-- Request signing for API authentication
+- AWS IAM Signature authentication (SigV4)
+- All authenticated users have full access
+- No authorization layer (future phase)
 
 **Request/Response Patterns**
 - Consistent JSON structure with envelope
@@ -180,9 +179,17 @@ The service exposes a RESTful API organized into logical resource collections:
 
 ## Request Processing Architecture
 
+### Terminology Distinction
+
+**Important**: This document distinguishes between:
+- **Fulfillment Items**: The action definitions in the catalog document (e.g., JIRA ticket creation, REST API call)
+- **Fulfillment Tasks**: The queued messages that execute those items at runtime
+
+There is a 1:1 relationship between fulfillment items and fulfillment tasks - each item defined in the catalog results in exactly one queued task.
+
 ### Asynchronous Processing Architecture
 
-The service employs an asynchronous queue-based architecture to ensure reliable fulfillment task processing and enable horizontal scaling. This design replaces multi-week manual delays with same-day delivery through automated orchestration.
+The service employs an asynchronous queue-based architecture to ensure reliable fulfillment task processing and enable horizontal scaling.
 
 **Request and Fulfillment Task Processing Pipeline**:
 
@@ -195,7 +202,8 @@ The service employs an asynchronous queue-based architecture to ensure reliable 
 2. **Request Persistence & Task Generation**
    - Persist request to database with initial state
    - Generate fulfillment tasks based on catalog definition
-   - For bundles: create one fulfillment task per component
+   - Create one fulfillment task per fulfillment item in the catalog
+   - For bundles: iterate through components, creating tasks for each fulfillment item
    - Store fulfillment tasks in database with "pending" state
    - Enqueue fulfillment task messages to SQS FIFO queue
    - Return tracking ID to client immediately
@@ -329,8 +337,8 @@ SQS FIFO queues use Message Group IDs to ensure ordering within a group while al
 ### Worker Design
 
 **Worker Architecture**:
-- Unified worker implementation for all action types
-- Dynamic routing based on action configuration
+- Unified worker implementation for all fulfillment item types
+- Dynamic routing based on fulfillment item configuration
 - Horizontal scaling based on queue metrics
 - Stateless design with database-backed state
 
@@ -501,19 +509,19 @@ The service maintains an up-to-date view of the catalog repository through event
 
 ### Additional Integration Patterns
 
-**REST API Actions**:
+**REST API Fulfillment Items**:
 - Configurable endpoints and HTTP methods
 - Template-driven headers and request bodies
 - Response capture for `.output` namespace
 - Circuit breaker pattern for resilience
 
-**Terraform Integration**:
+**Terraform Fulfillment Items**:
 - Template-based plan generation
 - State management coordination
 - Output capture for dependency chains
 - Rollback and recovery procedures
 
-**GitHub Workflow Actions**:
+**GitHub Workflow Fulfillment Items**:
 - Workflow dispatch with input parameters
 - Status tracking and monitoring
 - Output artifact collection
@@ -541,9 +549,9 @@ The service uses a relational database with JSONB for flexibility:
    - Task ID (UUID, primary key)
    - Parent request ID (foreign key)
    - Sequence index (order within request)
-   - Task type (jira-ticket, rest-api, etc.)
+   - Item type (jira-ticket, rest-api, etc.)
    - Task state (pending, queued, processing, completed, failed, skipped, stuck)
-   - Action configuration (JSONB)
+   - Item configuration (JSONB from catalog fulfillment item)
    - Execution outputs (JSONB)
    - External references (e.g., JIRA keys)
    - Error context if failed
@@ -648,8 +656,9 @@ The service uses a relational database with JSONB for flexibility:
 ### Security Patterns
 
 **Authentication**:
-- Federated identity management
-- API authentication patterns
+- AWS IAM Signature authentication (SigV4)
+- No authorization layer - all authenticated users have full access
+- Authorization controls planned for future phase
 - Audit trail for all actions
 
 **Secret Management**:
@@ -686,20 +695,15 @@ The service uses a relational database with JSONB for flexibility:
 
 ## Success Metrics & KPIs
 
-### Business Metrics
+### Operational Metrics
 
-**Primary KPIs**:
-- **Provisioning Time**: Weeks → Hours (Phase 1), Hours → Minutes (Phase 2+)
-- **Developer Satisfaction**: NPS score > 50
-- **Platform Adoption**: Progressive team onboarding
-- **Service Coverage**: Growing catalog of resources
-
-**Operational Metrics**:
-- Request volume growth rate
+- Request volume
 - Average time to fulfillment
 - Automation percentage
 - Error rate by resource type
 - Retry success rate
+- Catalog item count
+- Active user count
 
 ### Technical Metrics
 
@@ -739,12 +743,6 @@ The service uses a relational database with JSONB for flexibility:
 
 ### Phase 1: Foundation
 
-**Objectives**:
-- Eliminate multi-week provisioning delays
-- Validate document-driven architecture
-- Establish initial platform adoption
-- Build organizational confidence
-
 **Core Deliverables**:
 - Orchestration service with queue architecture
 - JIRA-based fulfillment automation
@@ -755,17 +753,12 @@ The service uses a relational database with JSONB for flexibility:
 
 **Prerequisites**: Stable Phase 1 operations
 
-**Objectives**:
-- Introduce automated provisioning alongside JIRA
-- Support mixed-mode operations
-- Expand catalog coverage
-- Enhance developer experience
-
 **New Capabilities**:
-- REST API action execution
+- REST API fulfillment item support
 - Infrastructure-as-code integration
-- Parallel processing for independent actions
+- Parallel processing for independent fulfillment tasks
 - Advanced error recovery patterns
+- Mixed-mode operations (JIRA and automated)
 
 ### Phase 3: Platform Maturity
 
@@ -776,49 +769,23 @@ The service uses a relational database with JSONB for flexibility:
 - Multi-cloud resource orchestration
 - Sophisticated error recovery
 - Policy-based automation
-
-**Intelligence Features**:
-- Usage-based recommendations
-- Anomaly detection and alerting
-- Predictive capacity planning
-- Cost optimization insights
-
-**Enterprise Enhancements**:
-- Team-based access control
+- Team-based access control (authorization layer)
 - Compliance framework integration
 - Multi-tenancy architecture
 - Advanced audit capabilities
-
-### Long-Term Vision
-
-**Platform Excellence**:
-- Complete self-service capabilities
-- Zero-touch resource provisioning
-- Intelligent automation and recommendations
-- Exceptional developer experience
-
-**Business Impact**:
-- Accelerated innovation cycles
-- Reduced operational overhead
-- Improved team productivity
-- Enhanced competitive positioning
+- Usage analytics and reporting
+- Cost tracking integration
 
 ### Implementation Strategy
 
 **Phased Adoption**:
-1. Start with well-understood resources
-2. Progressively increase complexity
-3. Transition to automation when mature
-4. Preserve backward compatibility
-
-**Organizational Enablement**:
-1. Comprehensive training programs
-2. Dedicated support channels
-3. Success story documentation
-4. Continuous feedback loops
+- Start with well-understood resources
+- Progressively increase complexity
+- Transition to automation when ready
+- Preserve backward compatibility
 
 **Risk Management**:
-1. Manual process fallback options
-2. Team-by-team rollout approach
-3. Thorough testing protocols
-4. Documented rollback procedures
+- Manual process fallback options
+- Team-by-team rollout approach
+- Thorough testing protocols
+- Documented rollback procedures
