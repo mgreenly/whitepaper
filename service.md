@@ -25,10 +25,14 @@ This document serves as architectural guidance and conceptual inspiration for en
 
 ## Strategic Context
 
-The Platform Automation Orchestrator (PAO) transforms multi-week provisioning delays into same-day resource delivery. It serves as the central orchestration capability within the Integration and Delivery Plane, providing a document-driven convergence point where platform teams define their resources through YAML documents. This enables self-service provisioning while maintaining team autonomy - reducing provisioning from weeks to hours (Phase 1: JIRA) and eventually to minutes (Phase 2+: Automation).
+The Platform Automation Orchestrator (PAO) serves as the central orchestration capability within the Integration and Delivery Plane of the Internal Developer Platform. PAO transforms multi-week provisioning delays into same-day resource delivery by providing a document-driven convergence point where platform teams define their service offerings through YAML documents.
 
-  * For full strategic context see [whitepaper.md](whitepaper.md).
-  * For catalog specifications see [catalog.md](catalog.md).
+This approach enables self-service provisioning while maintaining team autonomy, reducing provisioning times from weeks to hours in Phase 1 (JIRA-based) and eventually to minutes in subsequent phases (automation-enabled).
+
+**Reference Documentation**:
+- Strategic vision and context: [whitepaper.md](whitepaper.md)
+- Catalog schema and specifications: [catalog.md](catalog.md)
+- CLI tool documentation: [devctl.md](devctl.md)
 
 ## Architectural Overview
 
@@ -52,21 +56,22 @@ PAO operates within the **Integration and Delivery Plane**, serving as the orche
 
 ### Service Boundaries
 
-**What PAO Owns**:
+**PAO Responsibilities**:
 - Request orchestration and state management
 - Variable substitution and template processing
-- Catalog synchronization from GitHub
+- Catalog synchronization from GitHub repository
 - API gateway for developer interactions
-- Fulfillment strategies:
+- Fulfillment action execution:
   - JIRA ticket creation
   - REST API calls
   - GitHub commit operations
   - GitHub workflow dispatch
 
-**What PAO Does Not Own**:
-- Platform Team Resources (databases, compute, storage, etc. - provisioned and managed by platform teams)
-- Platform Team Resource state management (owned by platform teams)
-- JIRA ticket content and formatting (platform teams define what information is included)
+**Platform Team Responsibilities**:
+- Actual resource provisioning (databases, compute, storage)
+- Resource lifecycle management and state
+- JIRA ticket template content and required fields
+- Resource-specific validation rules and constraints
 
 ## Document-Driven Convergence Model
 
@@ -113,8 +118,8 @@ Phase 3: Full Automation
 
 ### Ownership Model
 
-- **Platform Teams**: Own resource definitions in their catalog categories
-- **Orchestration Team (PAO)**: Owns catalog repository, schema definitions, orchestration service, and CLI tool
+- **Platform Teams**: Own catalog item definitions within their designated categories, define fulfillment templates, and maintain resource-specific documentation
+- **PAO Team**: Owns the orchestration service, maintains catalog repository structure and schemas, develops and maintains the CLI tool (devctl), and ensures overall system health
 
 ## API Design Specification
 
@@ -178,9 +183,9 @@ The service exposes a RESTful API organized into logical resource collections:
 
 ### Error Handling Architecture
 
-**Error Categories**:
-- **4xx Client Errors**: Validation failures, authentication issues
-- **5xx Server Errors**: Service failures, integration issues
+**Error Classification**:
+- **4xx Client Errors**: Invalid requests, authentication failures, validation errors
+- **5xx Server Errors**: Internal failures, integration errors, resource exhaustion
 
 **Error Response Structure**:
 ```json
@@ -196,45 +201,47 @@ The service exposes a RESTful API organized into logical resource collections:
 
 ## Request Processing Architecture
 
-### Phase 1 Foundation: Asynchronous Queue-Based Processing
+### Asynchronous Processing Architecture
 
-The initial implementation focuses on replacing multi-week delays with same-day delivery through centralized JIRA ticket creation using an asynchronous queue architecture.
+The service employs an asynchronous queue-based architecture to ensure reliable request processing and enable horizontal scaling. This design replaces multi-week manual delays with same-day delivery through automated orchestration.
 
-**Processing Pipeline**:
+**Request Processing Pipeline**:
 
-1. **Request Reception**
-   - API endpoint receives resource request
-   - Request includes catalog item ID and form data
-   - Correlation ID generated for tracing
+1. **Reception & Validation**
+   - Receive request with catalog item ID and form data
+   - Generate correlation ID for distributed tracing
+   - Validate against catalog schema and constraints
+   - Verify required fields and patterns
 
-2. **Validation Stage**
-   - Schema validation against catalog definition
-   - Required field verification
-   - Pattern matching for field constraints
+2. **Queueing & Persistence**
+   - Persist request to database with initial state
+   - Enqueue message to SQS FIFO queue
+   - Return tracking ID to client immediately
+   - Enable status polling for progress
 
-3. **Variable Resolution**
-   - Parse template for variable references
+3. **Template Processing**
+   - Parse templates for variable references
    - Resolve variables from four namespaces
-   - Apply transformation functions if specified
-   - Generate final content strings
+   - Apply necessary transformations
+   - Generate final payload content
 
-4. **JIRA Ticket Creation**
-   - Connect to appropriate JIRA instance
-   - Create ticket with resolved templates
-   - Capture ticket key for reference
-   - Handle creation failures gracefully
+4. **Action Execution**
+   - Route to appropriate action handler
+   - Execute action (JIRA, REST API, etc.)
+   - Capture results and external references
+   - Handle failures with appropriate context
 
-5. **State Persistence**
-   - Store request with JSONB data
-   - Record action execution details
-   - Create audit log entries
-   - Return response to client
+5. **State Management**
+   - Update request status in database
+   - Record action outputs for subsequent use
+   - Create immutable audit log entries
+   - Trigger next action if bundle component
 
-**Processing Characteristics**:
-- Asynchronous processing via queue architecture
-- Immediate request acknowledgment with tracking ID
-- Background workers handle fulfillment
-- Status polling for progress updates
+**Key Characteristics**:
+- Asynchronous message-based processing
+- Immediate acknowledgment with tracking ID
+- Horizontal scaling through worker pools
+- Real-time status updates via API polling
 
 ### Request State Machine
 
@@ -243,13 +250,10 @@ The initial implementation focuses on replacing multi-week delays with same-day 
                     │              │
                     │              ↓
                     │          [failed] ──→ [aborted]
-                    │              │
                     │              ├──→ [retrying]
-                    │              │
-                    │              ↓
-                    │          [escalated]
-                    ↓
-                [stuck]
+                    │              └──→ [escalated]
+                    │
+                    └──→ [stuck]
 ```
 
 **State Definitions**:
@@ -280,7 +284,7 @@ For CatalogBundles, the orchestrator:
 
 The service uses AWS SQS FIFO queues to ensure ordered processing of actions within each request while allowing parallel processing across different requests.
 
-**Simple Queue Structure**:
+**Queue Structure**:
 - **Action Queue**: Primary FIFO queue for all action processing
 - **Dead Letter Queue**: FIFO queue for messages that fail after 3 receive attempts
 - **Message Group ID**: Request UUID ensures all actions for a request process in order
@@ -292,10 +296,10 @@ SQS FIFO queues use Message Group IDs to ensure ordering within a group while al
 - **Message Group ID = Request UUID**: Each request gets its own message group
 - **Ordering Guarantee**: All messages with the same group ID process in exact FIFO order
 - **Parallel Processing**: Different message groups (different requests) process simultaneously
-- **Bundle Example**: If Bundle A has 3 components and Bundle B has 4 components:
-  - Bundle A's components: A1 → A2 → A3 (all use Bundle A's request ID as group ID)
-  - Bundle B's components: B1 → B2 → B3 → B4 (all use Bundle B's request ID as group ID)
-  - Both bundles process in parallel since they have different group IDs
+- **Example**: Two bundles processing concurrently:
+  - Bundle A (3 components): A1 → A2 → A3 (group ID: Bundle A request ID)
+  - Bundle B (4 components): B1 → B2 → B3 → B4 (group ID: Bundle B request ID)
+  - Parallel processing enabled by different group IDs
 
 ### Message Flow
 
@@ -314,15 +318,15 @@ SQS FIFO queues use Message Group IDs to ensure ordering within a group while al
 
 ### Worker Design
 
-**Single Worker Type**:
-- One worker implementation handles all action types
-- Routes to appropriate handler based on action type (JIRA, REST API, etc.)
-- Simple horizontal scaling based on queue depth
-- Stateless processing - all state in database
+**Worker Architecture**:
+- Unified worker implementation for all action types
+- Dynamic routing based on action configuration
+- Horizontal scaling based on queue metrics
+- Stateless design with database-backed state
 
 ### Error Handling
 
-**Simple Failure Pattern**:
+**Failure Handling Pattern**:
 - If action fails, mark request as "failed" in database
 - No automatic retries at application level - matches existing "fail-safe" principle
 - Messages that fail to process after 3 receives move to DLQ automatically (SQS feature)
@@ -331,25 +335,25 @@ SQS FIFO queues use Message Group IDs to ensure ordering within a group while al
   - `POST /requests/{request-id}/abort` - Mark as aborted, remove from DLQ
   - `POST /requests/{request-id}/escalate` - Escalate to support team
 
-**Dead Letter Queue Purpose**:
-- Catches messages that repeatedly fail processing (worker crashes, timeouts)
-- Prevents stuck messages from blocking the main queue
-- Preserves message data for investigation
-- Messages in DLQ require human intervention via CLI
+**Dead Letter Queue (DLQ)**:
+- Captures messages that fail after maximum retry attempts
+- Prevents failed messages from blocking queue processing
+- Preserves message content for debugging and analysis
+- Requires manual intervention for resolution
 
-**CLI Queue Inspection (devctl)**:
-- View queue statistics for both main and DLQ
-- List requests by state (queued, in_progress, failed, stuck)
-- Inspect DLQ messages to understand failures
-- Move messages from DLQ back to main queue (retry)
-- Show queue position for pending requests
-- Batch operations on failed requests
+**Queue Operations (devctl)**:
+- Display queue metrics and statistics
+- List requests by processing state
+- Examine dead letter queue contents
+- Redrive DLQ messages to main queue
+- Show queue position for requests
+- Execute batch operations on failures
 
 ## Variable Substitution Engine
 
 ### Four-Namespace Variable System
 
-The orchestrator maintains a hierarchical namespace aligned with catalog.md specifications:
+The orchestrator implements a hierarchical namespace system for template variable resolution:
 
 **1. Current Namespace (`.current.*`)**
 - Contains user input from request form
@@ -408,85 +412,85 @@ The orchestrator maintains a hierarchical namespace aligned with catalog.md spec
 
 ### Variable Scoping Rules
 
-**Namespace Access**:
-- Templates can only access defined namespaces
-- No dynamic namespace creation
-- No cross-request variable access
-- Bundle components share `.current` namespace
+**Access Control**:
+- Templates access only predefined namespaces
+- No dynamic namespace creation permitted
+- Request isolation enforced (no cross-request access)
+- Bundle components share `.current` namespace values
 
-**Progressive Enhancement**:
-- `.output` namespace builds sequentially
-- Later actions see earlier outputs
-- Failed actions don't populate outputs
-- Retry clears previous outputs
+**Sequential Processing**:
+- `.output` namespace accumulates progressively
+- Subsequent actions access all prior outputs
+- Failed actions leave no output values
+- Retry operations reset output namespace
 
-## Fulfillment Patterns
+## Integration Patterns
 
 ### Catalog Synchronization
 
-The service maintains synchronization with the catalog repository through GitHub webhooks:
+The service maintains an up-to-date view of the catalog repository through event-driven synchronization:
 
-**Webhook Processing**:
-1. GitHub sends webhook on repository changes
-2. Service validates webhook signature
-3. Filters for relevant file changes (*.yaml in catalog/bundles)
-4. Validates documents against schema
-5. Updates internal catalog cache
-6. Persists to database for durability
+**Synchronization Flow**:
+1. GitHub webhook triggered on repository changes
+2. Webhook signature validation for security
+3. Filter for relevant changes (*.yaml in catalog/ and bundles/)
+4. Schema validation of modified documents
+5. Update in-memory cache for performance
+6. Persist to database for durability
 
-**Catalog Loading Strategy**:
-- Initial load on service startup
-- Event-driven updates via webhooks
-- Manual refresh endpoint for recovery
-- In-memory cache with TTL
-- Database persistence for durability
+**Loading Strategies**:
+- **Startup**: Full catalog load from repository
+- **Runtime**: Event-driven updates via webhooks
+- **Recovery**: Manual refresh endpoint available
+- **Caching**: In-memory with configurable TTL
+- **Persistence**: Database backup for resilience
 
-**CODEOWNERS Reading**:
-- Service reads CODEOWNERS file
-- Maps teams to catalog categories
-- Used for organizational reference only
+**Team Mapping**:
+- Parse CODEOWNERS file for team assignments
+- Map teams to catalog categories
+- Maintain ownership metadata for reference
 
-### JIRA Fulfillment Pattern
+### JIRA Integration
 
-**Multi-Instance Support**:
-- Configure multiple JIRA instances
-- Route by project key in templates
-- Instance-specific authentication
-- Connection pooling per instance
+**Multi-Instance Configuration**:
+- Support for multiple JIRA instances
+- Project-based routing from templates
+- Per-instance authentication and connection pooling
+- Configurable timeout and retry policies
 
-**Ticket Creation Pattern**:
-1. Resolve template variables
-2. Build ticket payload (summary, description)
-3. Add custom fields if specified
-4. Create ticket via REST API
-5. Capture ticket key and URL
-6. Handle errors with context
+**Ticket Creation Flow**:
+1. Process template with resolved variables
+2. Construct JIRA payload with required fields
+3. Include custom fields from catalog definition
+4. Submit via JIRA REST API
+5. Store ticket reference (key and URL)
+6. Map JIRA response to request state
 
-**Status Synchronization**:
-- No background polling or caching
-- Real-time queries on status requests
-- Map JIRA states to request states
-- Return current state to caller
+**Status Management**:
+- On-demand status queries (no polling)
+- Direct JIRA API calls for current state
+- State mapping between JIRA and PAO
+- Consistent status representation to clients
 
-### Future Fulfillment Patterns
+### Additional Integration Patterns
 
-**REST API Actions** (Phase 2):
-- Configurable endpoints and methods
-- Header and body templating
-- Response capture for `.output`
-- Circuit breaker for resilience
+**REST API Actions**:
+- Configurable endpoints and HTTP methods
+- Template-driven headers and request bodies
+- Response capture for `.output` namespace
+- Circuit breaker pattern for resilience
 
-**Terraform Integration** (Future):
-- Plan generation from templates
-- State management patterns
-- Output capture for dependencies
-- Rollback coordination
+**Terraform Integration**:
+- Template-based plan generation
+- State management coordination
+- Output capture for dependency chains
+- Rollback and recovery procedures
 
-**GitHub Workflows** (Future):
-- Workflow dispatch triggers
-- Input parameter mapping
-- Run status tracking
-- Output artifact processing
+**GitHub Workflow Actions**:
+- Workflow dispatch with input parameters
+- Status tracking and monitoring
+- Output artifact collection
+- Error handling and notifications
 
 ## Data Architecture
 
@@ -494,37 +498,37 @@ The service maintains synchronization with the catalog repository through GitHub
 
 The service uses a relational database with JSONB for flexibility:
 
-**Core Entities**:
+**Core Database Tables**:
 
-1. **Requests Table**
-   - Request ID (UUID primary key)
+1. **Requests**
+   - Request ID (UUID, primary key)
    - Catalog item reference
-   - User information and teams
-   - Status and state machine
-   - Request data (JSONB)
+   - User identity and team membership
+   - Current state and status
+   - Form data (JSONB)
    - Correlation ID for tracing
-   - Timestamps and audit fields
+   - Timestamps and audit metadata
 
-2. **Request Actions Table**
-   - Links to parent request
-   - Action index for ordering
+2. **Request Actions**
+   - Parent request reference
+   - Action sequence index
    - Action type and configuration
-   - Execution status and output
-   - External references (JIRA keys)
-   - Error details if failed
+   - Execution status and outputs
+   - External references (e.g., JIRA keys)
+   - Error context if failed
 
-3. **Catalog Cache Table**
+3. **Catalog Cache**
    - Catalog item definitions
-   - Version and git SHA
-   - Category and ownership
-   - Full definition (JSONB)
-   - Last synchronized timestamp
+   - Version and Git commit SHA
+   - Category and team ownership
+   - Complete definition (JSONB)
+   - Synchronization timestamp
 
-4. **Audit Logs Table**
-   - Correlation ID linking
-   - Event type and data
-   - User and system context
-   - Immutable audit trail
+4. **Audit Logs**
+   - Correlation ID for request linking
+   - Event type and payload
+   - User and system metadata
+   - Immutable event record
 
 ### JSONB Usage Patterns
 
@@ -590,24 +594,24 @@ The service uses a relational database with JSONB for flexibility:
 - Error context capture
 - Performance metrics
 
-**Monitoring Patterns**:
+**Monitoring Metrics**:
 - RED metrics (Rate, Errors, Duration)
-- Business metrics (requests/day)
-- Integration health tracking
-- Database performance monitoring
-- Cache hit rates
-- Queue depth and age of oldest message
-- Worker health status
-- Failed request count
+- Business metrics (requests per day)
+- Integration health status
+- Database performance indicators
+- Cache hit/miss ratios
+- Queue depth and message age
+- Worker processing status
+- Failed request statistics
 
-**Alerting Rules**:
-- Service availability
-- Error rate thresholds
+**Alert Conditions**:
+- Service availability below SLO
+- Error rate threshold breaches
 - Response time degradation
-- Integration failures
-- Database connection issues
-- Queue depth exceeding threshold
-- Worker not processing messages
+- Integration connection failures
+- Database connectivity issues
+- Queue backlog thresholds
+- Worker processing stalls
 
 ### Security Patterns
 
@@ -701,92 +705,88 @@ The service uses a relational database with JSONB for flexibility:
 
 ## Evolution Strategy
 
-### Phase 1: Foundation (JIRA-Only)
+### Phase 1: Foundation
 
 **Objectives**:
-- Eliminate multi-week delays
-- Prove document-driven model
-- Establish platform adoption
-- Build team confidence
+- Eliminate multi-week provisioning delays
+- Validate document-driven architecture
+- Establish initial platform adoption
+- Build organizational confidence
 
-**Deliverables**:
-- Core orchestrator service
-- JIRA ticket automation
-- Basic catalog with initial resources
-- Developer portal integration
+**Core Deliverables**:
+- Orchestration service with queue architecture
+- JIRA-based fulfillment automation
+- Initial catalog repository with schemas
+- API and developer portal integration
 
-### Phase 2: Automation Introduction
+### Phase 2: Progressive Automation
 
-**Prerequisites**: Phase 1 operational and stable
+**Prerequisites**: Stable Phase 1 operations
 
 **Objectives**:
-- Enable automated provisioning
-- Mixed manual/automated mode
-- Expand resource coverage
-- Improve developer experience
+- Introduce automated provisioning alongside JIRA
+- Support mixed-mode operations
+- Expand catalog coverage
+- Enhance developer experience
 
-**Capabilities**:
-- REST API action type
-- Terraform integration
-- Parallel action execution
-- Enhanced error handling
+**New Capabilities**:
+- REST API action execution
+- Infrastructure-as-code integration
+- Parallel processing for independent actions
+- Advanced error recovery patterns
 
 ### Phase 3: Platform Maturity
 
-**Prerequisites**: Phase 2 capabilities deployed
+**Prerequisites**: Phase 2 capabilities operational
 
-**Advanced Orchestration**:
-- Conditional workflows
-- Multi-cloud support
-- Advanced error handling
+**Advanced Capabilities**:
+- Conditional workflow execution
+- Multi-cloud resource orchestration
+- Sophisticated error recovery
+- Policy-based automation
 
-**Intelligence Layer**:
-- Recommendation engine
-- Anomaly detection
-- Predictive analytics
-- Capacity planning
+**Intelligence Features**:
+- Usage-based recommendations
+- Anomaly detection and alerting
+- Predictive capacity planning
+- Cost optimization insights
 
-**Access Control & Authorization** (Future Enhancement):
-- User authorization based on team membership
-- Catalog filtering by user permissions
-- Team-based resource access control
-- Role-based access control (RBAC)
-
-**Enterprise Features**:
-- ServiceNow integration
-- Compliance frameworks
-- Multi-tenancy support
+**Enterprise Enhancements**:
+- Team-based access control
+- Compliance framework integration
+- Multi-tenancy architecture
+- Advanced audit capabilities
 
 ### Long-Term Vision
 
-**Platform as a Product**:
-- Self-service everything
-- Zero-touch provisioning
-- Intelligent automation
-- Developer delight
+**Platform Excellence**:
+- Complete self-service capabilities
+- Zero-touch resource provisioning
+- Intelligent automation and recommendations
+- Exceptional developer experience
 
-**Organizational Impact**:
-- Innovation acceleration
-- Reduced cognitive load
-- Platform team efficiency
-- Competitive advantage
+**Business Impact**:
+- Accelerated innovation cycles
+- Reduced operational overhead
+- Improved team productivity
+- Enhanced competitive positioning
 
-### Migration Strategy
+### Implementation Strategy
 
-**Incremental Adoption**:
-1. Start with simple resources
-2. Add complexity gradually
-3. Automate when ready
-4. Maintain backward compatibility
+**Phased Adoption**:
+1. Start with well-understood resources
+2. Progressively increase complexity
+3. Transition to automation when mature
+4. Preserve backward compatibility
 
-**Team Enablement**:
-1. Training and documentation
-2. Dedicated support channel
-3. Success stories sharing
-4. Continuous improvement
+**Organizational Enablement**:
+1. Comprehensive training programs
+2. Dedicated support channels
+3. Success story documentation
+4. Continuous feedback loops
 
-**Risk Mitigation**:
-1. Fallback to manual process
-2. Gradual rollout by team
-3. Extensive testing
-4. Clear rollback procedures
+**Risk Management**:
+1. Manual process fallback options
+2. Team-by-team rollout approach
+3. Thorough testing protocols
+4. Documented rollback procedures
