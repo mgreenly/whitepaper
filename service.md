@@ -36,7 +36,7 @@ The Platform Automation Orchestrator (PAO) transforms multi-week provisioning de
 PAO operates within the **Integration and Delivery Plane**, serving as the orchestration hub that connects:
 
 - **Developer Control Plane**: Where developers interact via portal or CLI
-- **Resource Plane**: Where actual infrastructure provisioning occurs
+- **Resource Plane**: Where actual Platform Team Resource provisioning occurs
 - **Security & Compliance Plane**: For policy enforcement and secrets management
 - **Monitoring & Logging Plane**: For observability and audit trails
 
@@ -63,10 +63,9 @@ PAO operates within the **Integration and Delivery Plane**, serving as the orche
   - GitHub workflow dispatch
 
 **What PAO Does Not Own**:
-- Infrastructure provisioning (delegates to platform teams)
-- Platform resources (databases, compute, storage - owned by platform teams)
-- JIRA workflow management (owned by platform teams)
-- Infrastructure state management (owned by platform teams)
+- Platform Team Resources (databases, compute, storage, etc. - provisioned and managed by platform teams)
+- Platform Team Resource state management (owned by platform teams)
+- JIRA ticket content and formatting (platform teams define what information is included)
 
 ## Document-Driven Convergence Model
 
