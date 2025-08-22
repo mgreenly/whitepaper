@@ -111,7 +111,7 @@ The service exposes a RESTful API organized into logical resource collections:
 - `POST /catalog/refresh` - Force catalog synchronization
 
 **Request Resources** (`/api/v1/requests`)
-- `POST /requests` - Submit new resource request
+- `POST /requests` - Submit array of resource requests (catalog items and/or bundles)
 - `GET /requests` - List user's requests with filtering
 - `GET /requests/{request-id}` - Get request details including task progress
 - `GET /requests/{request-id}/status` - Get current status and processing state
@@ -159,6 +159,56 @@ The service exposes a RESTful API organized into logical resource collections:
 - Retry-safe operation design
 - Correlation IDs for request tracing
 
+### Request Payload Structure
+
+**Request Submission Format**:
+
+The `POST /requests` endpoint accepts an array of resource items, where each item can reference either a catalog item or bundle:
+
+```json
+{
+  "items": [
+    {
+      "schemaVersion": "catalog/v1",
+      "catalogItemId": "database-aurora-postgresql",
+      "input": {
+        "name": "my-database",
+        "basic": {
+          "instanceName": "prod-db-01",
+          "instanceClass": "db.r5.large"
+        },
+        "storage": {
+          "storageSize": 100,
+          "encrypted": true
+        }
+      }
+    },
+    {
+      "schemaVersion": "catalog/v1",
+      "bundleId": "full-application-stack",
+      "input": {
+        "name": "my-app-stack",
+        "application": {
+          "appName": "frontend",
+          "containerImage": "myapp:latest"
+        },
+        "database": {
+          "instanceName": "app-db"
+        }
+      }
+    }
+  ]
+}
+```
+
+**Key Characteristics**:
+- Each item contains either `catalogItemId` OR `bundleId` (mutually exclusive)
+- `schemaVersion` identifies the catalog schema version
+- `input` contains user-provided answers with nested group structure matching the form definition
+- The required `name` field appears at the top level of `input`
+- All other fields are organized within their respective groups
+- Fulfillment instructions are NOT included - they are retrieved from the catalog
+
 ### Error Handling Architecture
 
 **Error Classification**:
@@ -194,19 +244,24 @@ The service employs an asynchronous queue-based architecture to ensure reliable 
 **Request and Fulfillment Task Processing Pipeline**:
 
 1. **Request Reception & Validation**
-   - Receive request with catalog item ID and form data
+   - Receive array of items (catalog items and/or bundles)
    - Generate correlation ID for distributed tracing
-   - Validate against catalog schema and constraints
-   - Verify required fields and patterns
+   - For each item in the array:
+     - Validate `schemaVersion` and item identifier (`catalogItemId` or `bundleId`)
+     - Retrieve catalog definition from cache/database
+     - Validate input against form schema and constraints
+     - Verify required `name` field and patterns
 
 2. **Request Persistence & Task Generation**
-   - Persist request to database with initial state
-   - Generate fulfillment tasks based on catalog definition
-   - Create one fulfillment task per fulfillment item in the catalog
-   - For bundles: iterate through components, creating tasks for each fulfillment item
-   - Store fulfillment tasks in database with "pending" state
-   - Enqueue fulfillment task messages to SQS FIFO queue
-   - Return tracking ID to client immediately
+   - Create separate request record for each item in the array
+   - For each request:
+     - If catalog item: Generate fulfillment tasks from its fulfillment items
+     - If bundle: 
+       - Expand bundle into component catalog items (maintaining sequence)
+       - Generate fulfillment tasks for each component's fulfillment items
+   - Store all fulfillment tasks in database with "pending" state
+   - Enqueue fulfillment task messages to SQS FIFO queue (separate message group per request)
+   - Return array of tracking IDs to client immediately
 
 3. **Fulfillment Task Processing**
    - Worker dequeues fulfillment task from queue
@@ -285,14 +340,32 @@ Each fulfillment task within a request has its own state machine:
 
 ### Bundle Orchestration
 
-For CatalogBundles, the orchestrator:
+When a bundle is submitted in the request array, the orchestrator:
 
-1. **Component Resolution**: Load referenced CatalogItems
-2. **Dependency Ordering**: Sort components by dependencies
-3. **Sequential Execution**: Process components in order
-4. **JIRA Linking**: Create "blocks/blocked by" relationships
-5. **Output Accumulation**: Build `.output` namespace progressively
-6. **Failure Handling**: Stop on first failure
+1. **Bundle Expansion**: 
+   - Load the bundle definition from catalog
+   - Resolve all referenced CatalogItems
+   - Create a sequence of catalog items based on bundle components
+
+2. **Input Distribution**:
+   - Map user inputs to appropriate catalog items
+   - Each component receives relevant input fields from the bundle's form
+   - The required `name` field is available to all components
+
+3. **Sequential Processing**:
+   - Process components in dependency order
+   - Each component's fulfillment items execute in sequence
+   - JIRA tickets linked with "blocks/blocked by" relationships
+
+4. **Variable Namespace Management**:
+   - All components share the same `.current` namespace (user inputs)
+   - `.output` namespace accumulates across all components
+   - Each component accesses outputs from previous components
+
+5. **Failure Handling**: 
+   - Stop processing on first failure
+   - Mark remaining tasks as "skipped"
+   - Maintain partial completion state
 
 ## Queue Architecture
 
@@ -320,11 +393,20 @@ SQS FIFO queues use Message Group IDs to ensure ordering within a group while al
 ### Message Flow
 
 **Request Submission**:
-1. API validates request and generates request ID
-2. Persists request to database with "submitted" status
-3. Creates fulfillment tasks in database based on catalog definition
-4. Enqueues first fulfillment task to SQS FIFO with request ID as message group ID
-5. Returns request ID to client immediately
+1. API validates array of items and generates request IDs
+2. For each item in the array:
+   - Create separate request record with "submitted" status
+   - If bundle: expand to component catalog items
+   - Generate fulfillment tasks based on catalog definitions
+   - Assign unique message group ID (request UUID)
+3. Enqueue first fulfillment task for each request to SQS FIFO
+4. Return array of request IDs to client immediately
+
+**Parallel Request Processing**:
+- Each item in the submission array becomes an independent request
+- Requests process in parallel (different message group IDs)
+- No dependencies between items in the submission array
+- Bundle components within a single request process sequentially
 
 **Fulfillment Task Processing**:
 1. Worker dequeues fulfillment task message from queue
@@ -537,12 +619,15 @@ The service uses a relational database with JSONB for flexibility:
 
 1. **Requests**
    - Request ID (UUID, primary key)
-   - Catalog item reference
+   - Item type (catalog_item or bundle)
+   - Item reference (catalogItemId or bundleId)
+   - Original bundle ID (if expanded from bundle)
    - User identity and team membership
    - Current state (submitted, processing, completed, failed, aborted, escalated)
    - Total task count and completed task count
-   - Form data (JSONB)
+   - Input data (JSONB with nested group structure)
    - Correlation ID for tracing
+   - Submission batch ID (links requests from same submission)
    - Timestamps and audit metadata
 
 2. **Fulfillment Tasks**
