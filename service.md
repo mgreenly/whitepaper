@@ -24,7 +24,7 @@ This document serves as architectural guidance and conceptual inspiration for en
 
 ## Strategic Context
 
-The Platform Automation Orchestrator (PAO) transforms multi-week provisioning delays into same-day service delivery. It serves as the central orchestration capability within the Integration and Delivery Plane, providing a document-driven convergence point where platform teams define services through YAML documents. This enables self-service provisioning while maintaining team autonomy - reducing provisioning from weeks to hours (Phase 1: JIRA) and eventually to minutes (Phase 2+: Automation).
+The Platform Automation Orchestrator (PAO) transforms multi-week provisioning delays into same-day resource delivery. It serves as the central orchestration capability within the Integration and Delivery Plane, providing a document-driven convergence point where platform teams define their resources through YAML documents. This enables self-service provisioning while maintaining team autonomy - reducing provisioning from weeks to hours (Phase 1: JIRA) and eventually to minutes (Phase 2+: Automation).
 
   * For full strategic context see [whitepaper.md](whitepaper.md).
   * For catalog specifications see [catalog.md](catalog.md).
@@ -42,11 +42,11 @@ PAO operates within the **Integration and Delivery Plane**, serving as the orche
 
 ### Core Architectural Principles
 
-1. **Document-Driven Design**: All service definitions exist as versioned YAML documents
-2. **Catalog-Centric**: The catalog repository is the single source of truth for available services
+1. **Document-Driven Design**: All resource definitions exist as versioned YAML documents
+2. **Catalog-Centric**: The catalog repository is the single source of truth for available resources
 3. **Stateless Processing**: Each request is self-contained with all necessary context
 4. **Progressive Enhancement**: Manual processes evolve to automation without disruption
-5. **Team Autonomy**: Platform teams maintain control over their service definitions
+5. **Team Autonomy**: Platform teams maintain control over their resource definitions
 6. **Fail-Safe Operations**: Failures require human intervention - no automatic recovery that could cause damage
 
 ### Service Boundaries
@@ -54,9 +54,13 @@ PAO operates within the **Integration and Delivery Plane**, serving as the orche
 **What PAO Owns**:
 - Request orchestration and state management
 - Variable substitution and template processing
-- JIRA ticket creation and tracking
 - Catalog synchronization from GitHub
 - API gateway for developer interactions
+- Fulfillment strategies:
+  - JIRA ticket creation
+  - REST API calls
+  - GitHub commit operations
+  - GitHub workflow dispatch
 
 **What PAO Does Not Own**:
 - Infrastructure provisioning (delegates to platform teams)
@@ -70,20 +74,20 @@ PAO operates within the **Integration and Delivery Plane**, serving as the orche
 
 The catalog repository (`platform-automation-repository`) serves as the convergence point where:
 
-1. **Platform Teams Contribute**: Each team defines their services as YAML documents
+1. **Platform Teams Contribute**: Each team defines their resources as YAML documents
 2. **Schema Enforcement**: All documents conform to CatalogItem or CatalogBundle schemas
-3. **Service Discovery**: PAO consumes these documents to build the service catalog
+3. **Resource Discovery**: PAO consumes these documents to build the resource catalog
 4. **Dynamic Forms**: Input definitions generate forms in the developer portal
 5. **Fulfillment Templates**: Action definitions determine how requests are processed
 
 ### Catalog Document Types
 
-**CatalogItem**: Individual service offerings
+**CatalogItem**: Individual resource offerings
 - Metadata: Identity, ownership, and classification
 - Input Form: Dynamic field definitions with validation
 - Fulfillment Actions: JIRA tickets (Phase 1) or automated APIs (Phase 2+)
 
-**CatalogBundle**: Composite service packages
+**CatalogBundle**: Composite resource packages
 - Components: References to multiple CatalogItems
 - Dependencies: Execution order and relationships
 - Orchestration: Sequential processing with JIRA linking
@@ -92,26 +96,26 @@ The catalog repository (`platform-automation-repository`) serves as the converge
 
 ```
 Phase 1: Foundation - Manual JIRA
-├── All services use JIRA tickets
+├── All resources use JIRA tickets
 ├── Platform teams fulfill manually
 └── Hours instead of weeks
 
 Phase 2: Mixed Mode Automation
-├── Some services automated
+├── Some resources automated
 ├── Others remain JIRA-based
 └── Teams migrate at own pace
 
 Phase 3: Full Automation
-├── Most services automated
+├── Most resources automated
 ├── JIRA for exceptions
 └── Minutes instead of hours
 ```
 
 ### Ownership Model
 
-- **Platform Teams**: Own service definitions in their catalog categories
-- **Orchestration Team (PAO)**: Owns catalog repository, schema definitions, service, and CLI tool
-- **PAO Service**: Owns orchestration, catalog governance, and tooling but not service implementation
+- **Platform Teams**: Own resource definitions in their catalog categories
+- **Orchestration Team (PAO)**: Owns catalog repository, schema definitions, PAO service, and CLI tool
+- **PAO Service**: Owns orchestration, catalog governance, and tooling but not resource implementation
 
 ## API Design Specification
 
@@ -120,13 +124,13 @@ Phase 3: Full Automation
 The service exposes a RESTful API organized into logical resource collections:
 
 **Catalog Resources** (`/api/v1/catalog`)
-- `GET /catalog` - List available services with filtering
-- `GET /catalog/{item-id}` - Get service details and form schema
+- `GET /catalog` - List available resources with filtering
+- `GET /catalog/{item-id}` - Get resource details and form schema
 - `GET /catalog/{item-id}/form` - Get rendered form definition
 - `POST /catalog/refresh` - Force catalog synchronization
 
 **Request Resources** (`/api/v1/requests`)
-- `POST /requests` - Submit new service request
+- `POST /requests` - Submit new resource request
 - `GET /requests` - List user's requests with filtering
 - `GET /requests/{request-id}` - Get request details
 - `GET /requests/{request-id}/status` - Get current status
@@ -190,12 +194,12 @@ The service exposes a RESTful API organized into logical resource collections:
 
 ### Phase 1 Foundation: Synchronous JIRA Processing
 
-The initial implementation focuses on replacing multi-week delays with same-day service through centralized JIRA ticket creation.
+The initial implementation focuses on replacing multi-week delays with same-day delivery through centralized JIRA ticket creation.
 
 **Processing Pipeline**:
 
 1. **Request Reception**
-   - API endpoint receives service request
+   - API endpoint receives resource request
    - Request includes catalog item ID and form data
    - Correlation ID generated for tracing
 
@@ -568,13 +572,13 @@ The service uses a relational database with JSONB for flexibility:
 - **Provisioning Time**: Weeks → Hours (Phase 1), Hours → Minutes (Phase 2+)
 - **Developer Satisfaction**: NPS score > 50
 - **Platform Adoption**: Progressive team onboarding
-- **Service Coverage**: Growing catalog of services
+- **Service Coverage**: Growing catalog of resources
 
 **Operational Metrics**:
 - Request volume growth rate
 - Average time to fulfillment
 - Automation percentage
-- Error rate by service
+- Error rate by resource type
 - Retry success rate
 
 ### Technical Metrics
@@ -624,7 +628,7 @@ The service uses a relational database with JSONB for flexibility:
 **Deliverables**:
 - Core orchestrator service
 - JIRA ticket automation
-- Basic catalog with initial services
+- Basic catalog with initial resources
 - Developer portal integration
 
 ### Phase 2: Automation Introduction
@@ -634,7 +638,7 @@ The service uses a relational database with JSONB for flexibility:
 **Objectives**:
 - Enable automated provisioning
 - Mixed manual/automated mode
-- Expand service coverage
+- Expand resource coverage
 - Improve developer experience
 
 **Capabilities**:
@@ -681,7 +685,7 @@ The service uses a relational database with JSONB for flexibility:
 ### Migration Strategy
 
 **Incremental Adoption**:
-1. Start with simple services
+1. Start with simple resources
 2. Add complexity gradually
 3. Automate when ready
 4. Maintain backward compatibility
