@@ -26,7 +26,8 @@ This document serves as architectural guidance and conceptual inspiration for en
 
 The Platform Automation Orchestrator (PAO) transforms multi-week provisioning delays into same-day service delivery. It serves as the central orchestration capability within the Integration and Delivery Plane, providing a document-driven convergence point where platform teams define services through YAML documents. This enables self-service provisioning while maintaining team autonomy - reducing provisioning from weeks to hours (Phase 1: JIRA) and eventually to minutes (Phase 2+: Automation).
 
-For full strategic context see [whitepaper.md](whitepaper.md). For catalog specifications see [catalog.md](catalog.md).
+  * For full strategic context see [whitepaper.md](whitepaper.md).
+  * For catalog specifications see [catalog.md](catalog.md).
 
 ## Architectural Overview
 
