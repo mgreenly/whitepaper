@@ -113,8 +113,7 @@ Phase 3: Full Automation
 ### Ownership Model
 
 - **Platform Teams**: Own resource definitions in their catalog categories
-- **Orchestration Team (PAO)**: Owns catalog repository, schema definitions, PAO service, and CLI tool
-- **PAO Service**: Owns orchestration, catalog governance, and tooling but not resource implementation
+- **Orchestration Team (PAO)**: Owns catalog repository, schema definitions, orchestration service, and CLI tool
 
 ## API Design Specification
 
