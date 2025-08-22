@@ -15,6 +15,7 @@ This document serves as architectural guidance and conceptual inspiration for en
 - [Document-Driven Convergence Model](#document-driven-convergence-model)
 - [API Design Specification](#api-design-specification)
 - [Request Processing Architecture](#request-processing-architecture)
+- [Queue Architecture](#queue-architecture)
 - [Variable Substitution Engine](#variable-substitution-engine)
 - [Integration Patterns](#integration-patterns)
 - [Data Architecture](#data-architecture)
@@ -130,12 +131,19 @@ The service exposes a RESTful API organized into logical resource collections:
 **Request Resources** (`/api/v1/requests`)
 - `POST /requests` - Submit new resource request
 - `GET /requests` - List user's requests with filtering
-- `GET /requests/{request-id}` - Get request details
-- `GET /requests/{request-id}/status` - Get current status
+- `GET /requests/{request-id}` - Get request details including queue position
+- `GET /requests/{request-id}/status` - Get current status and processing state
 - `GET /requests/{request-id}/logs` - Get execution logs
-- `POST /requests/{request-id}/retry` - Retry failed request
+- `POST /requests/{request-id}/retry` - Retry failed request (re-enqueue)
 - `POST /requests/{request-id}/abort` - Abort failed request
 - `POST /requests/{request-id}/escalate` - Escalate to support
+
+**Queue Management** (`/api/v1/queue`)
+- `GET /queue/stats` - Queue depth, message age, processing rate (main and DLQ)
+- `GET /queue/messages` - List messages in main queue
+- `GET /queue/dlq/messages` - List messages in dead letter queue
+- `GET /queue/messages/{message-group-id}` - Get all messages for a request
+- `POST /queue/dlq/{message-id}/redrive` - Move message from DLQ back to main queue
 
 **Health Resources** (`/api/v1/health`)
 - `GET /health` - Service health status
@@ -188,9 +196,9 @@ The service exposes a RESTful API organized into logical resource collections:
 
 ## Request Processing Architecture
 
-### Phase 1 Foundation: Synchronous JIRA Processing
+### Phase 1 Foundation: Asynchronous Queue-Based Processing
 
-The initial implementation focuses on replacing multi-week delays with same-day delivery through centralized JIRA ticket creation.
+The initial implementation focuses on replacing multi-week delays with same-day delivery through centralized JIRA ticket creation using an asynchronous queue architecture.
 
 **Processing Pipeline**:
 
@@ -222,31 +230,38 @@ The initial implementation focuses on replacing multi-week delays with same-day 
    - Create audit log entries
    - Return response to client
 
-**Synchronous Constraints**:
-- Complete within HTTP timeout (30 seconds)
-- No background processing in Phase 1
-- Direct JIRA API calls without queuing
-- Immediate user feedback
+**Processing Characteristics**:
+- Asynchronous processing via queue architecture
+- Immediate request acknowledgment with tracking ID
+- Background workers handle fulfillment
+- Status polling for progress updates
 
 ### Request State Machine
 
 ```
-[submitted] ──→ [in_progress] ──→ [completed]
-                      │
-                      ↓
-                  [failed] ──→ [aborted]
-                      │
-                      ↓
-                  [escalated]
+[submitted] ──→ [queued] ──→ [in_progress] ──→ [completed]
+                    │              │
+                    │              ↓
+                    │          [failed] ──→ [aborted]
+                    │              │
+                    │              ├──→ [retrying]
+                    │              │
+                    │              ↓
+                    │          [escalated]
+                    ↓
+                [stuck]
 ```
 
 **State Definitions**:
 - `submitted`: Request received and validated
-- `in_progress`: Actions being executed
+- `queued`: Message in queue awaiting processing
+- `in_progress`: Worker actively processing action
 - `completed`: All actions successful
-- `failed`: Action execution failed
+- `failed`: Action execution failed, awaiting human decision
+- `retrying`: Human initiated retry, message re-queued
 - `aborted`: User chose to abandon
 - `escalated`: Transferred to manual support
+- `stuck`: Message not progressing (visibility timeout exceeded multiple times)
 
 ### Bundle Orchestration
 
@@ -258,6 +273,77 @@ For CatalogBundles, the orchestrator:
 4. **JIRA Linking**: Create "blocks/blocked by" relationships
 5. **Output Accumulation**: Build `.output` namespace progressively
 6. **Failure Handling**: Stop on first failure
+
+## Queue Architecture
+
+### SQS FIFO Queue Design
+
+The service uses AWS SQS FIFO queues to ensure ordered processing of actions within each request while allowing parallel processing across different requests.
+
+**Simple Queue Structure**:
+- **Action Queue**: Primary FIFO queue for all action processing
+- **Dead Letter Queue**: FIFO queue for messages that fail after 3 receive attempts
+- **Message Group ID**: Request UUID ensures all actions for a request process in order
+
+**How FIFO Message Groups Work**:
+
+SQS FIFO queues use Message Group IDs to ensure ordering within a group while allowing parallel processing across groups:
+
+- **Message Group ID = Request UUID**: Each request gets its own message group
+- **Ordering Guarantee**: All messages with the same group ID process in exact FIFO order
+- **Parallel Processing**: Different message groups (different requests) process simultaneously
+- **Bundle Example**: If Bundle A has 3 components and Bundle B has 4 components:
+  - Bundle A's components: A1 → A2 → A3 (all use Bundle A's request ID as group ID)
+  - Bundle B's components: B1 → B2 → B3 → B4 (all use Bundle B's request ID as group ID)
+  - Both bundles process in parallel since they have different group IDs
+
+### Message Flow
+
+**Request Submission**:
+1. API validates request and generates request ID
+2. Persists request to database with "submitted" status
+3. Enqueues message to SQS FIFO with request ID as message group ID
+4. Returns request ID to client immediately
+
+**Action Processing**:
+1. Worker dequeues message from queue
+2. Executes the action (JIRA ticket creation, API call, etc.)
+3. Updates request status in database
+4. If bundle with multiple actions, enqueues next action with same message group ID
+5. Process continues until all actions complete or one fails
+
+### Worker Design
+
+**Single Worker Type**:
+- One worker implementation handles all action types
+- Routes to appropriate handler based on action type (JIRA, REST API, etc.)
+- Simple horizontal scaling based on queue depth
+- Stateless processing - all state in database
+
+### Error Handling
+
+**Simple Failure Pattern**:
+- If action fails, mark request as "failed" in database
+- No automatic retries at application level - matches existing "fail-safe" principle
+- Messages that fail to process after 3 receives move to DLQ automatically (SQS feature)
+- Failed requests handled via API endpoints:
+  - `POST /requests/{request-id}/retry` - Re-enqueue from DLQ or create new message
+  - `POST /requests/{request-id}/abort` - Mark as aborted, remove from DLQ
+  - `POST /requests/{request-id}/escalate` - Escalate to support team
+
+**Dead Letter Queue Purpose**:
+- Catches messages that repeatedly fail processing (worker crashes, timeouts)
+- Prevents stuck messages from blocking the main queue
+- Preserves message data for investigation
+- Messages in DLQ require human intervention via CLI
+
+**CLI Queue Inspection (devctl)**:
+- View queue statistics for both main and DLQ
+- List requests by state (queued, in_progress, failed, stuck)
+- Inspect DLQ messages to understand failures
+- Move messages from DLQ back to main queue (retry)
+- Show queue position for pending requests
+- Batch operations on failed requests
 
 ## Variable Substitution Engine
 
@@ -510,6 +596,9 @@ The service uses a relational database with JSONB for flexibility:
 - Integration health tracking
 - Database performance monitoring
 - Cache hit rates
+- Queue depth and age of oldest message
+- Worker health status
+- Failed request count
 
 **Alerting Rules**:
 - Service availability
@@ -517,6 +606,8 @@ The service uses a relational database with JSONB for flexibility:
 - Response time degradation
 - Integration failures
 - Database connection issues
+- Queue depth exceeding threshold
+- Worker not processing messages
 
 ### Security Patterns
 
