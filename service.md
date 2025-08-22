@@ -136,7 +136,7 @@ The service exposes a RESTful API organized into logical resource collections:
 **Request Resources** (`/api/v1/requests`)
 - `POST /requests` - Submit new resource request
 - `GET /requests` - List user's requests with filtering
-- `GET /requests/{request-id}` - Get request details including queue position
+- `GET /requests/{request-id}` - Get request details including task progress
 - `GET /requests/{request-id}/status` - Get current status and processing state
 - `GET /requests/{request-id}/logs` - Get execution logs
 - `POST /requests/{request-id}/retry` - Retry failed request (re-enqueue)
@@ -203,69 +203,98 @@ The service exposes a RESTful API organized into logical resource collections:
 
 ### Asynchronous Processing Architecture
 
-The service employs an asynchronous queue-based architecture to ensure reliable request processing and enable horizontal scaling. This design replaces multi-week manual delays with same-day delivery through automated orchestration.
+The service employs an asynchronous queue-based architecture to ensure reliable fulfillment task processing and enable horizontal scaling. This design replaces multi-week manual delays with same-day delivery through automated orchestration.
 
-**Request Processing Pipeline**:
+**Request and Fulfillment Task Processing Pipeline**:
 
-1. **Reception & Validation**
+1. **Request Reception & Validation**
    - Receive request with catalog item ID and form data
    - Generate correlation ID for distributed tracing
    - Validate against catalog schema and constraints
    - Verify required fields and patterns
 
-2. **Queueing & Persistence**
+2. **Request Persistence & Task Generation**
    - Persist request to database with initial state
-   - Enqueue message to SQS FIFO queue
+   - Generate fulfillment tasks based on catalog definition
+   - For bundles: create one fulfillment task per component
+   - Store fulfillment tasks in database with "pending" state
+   - Enqueue fulfillment task messages to SQS FIFO queue
    - Return tracking ID to client immediately
-   - Enable status polling for progress
 
-3. **Template Processing**
+3. **Fulfillment Task Processing**
+   - Worker dequeues fulfillment task from queue
+   - Check parent request state (skip if aborted)
    - Parse templates for variable references
    - Resolve variables from four namespaces
-   - Apply necessary transformations
-   - Generate final payload content
-
-4. **Action Execution**
-   - Route to appropriate action handler
    - Execute action (JIRA, REST API, etc.)
    - Capture results and external references
-   - Handle failures with appropriate context
 
-5. **State Management**
-   - Update request status in database
-   - Record action outputs for subsequent use
+4. **State Management**
+   - Update fulfillment task status in database
+   - Update parent request progress (e.g., "3 of 5 tasks completed")
+   - Record task outputs for subsequent task use
    - Create immutable audit log entries
-   - Trigger next action if bundle component
+   - Enqueue next fulfillment task if bundle sequence
+
+5. **Completion & Cleanup**
+   - Mark request as completed when all tasks succeed
+   - Handle partial completion states
+   - Maintain full task execution history
 
 **Key Characteristics**:
-- Asynchronous message-based processing
-- Immediate acknowledgment with tracking ID
+- Fulfillment tasks are queued, not requests
+- Request state persisted immediately on submission
+- Each fulfillment task references parent request ID
 - Horizontal scaling through worker pools
-- Real-time status updates via API polling
+- Real-time progress updates via API polling
 
 ### Request State Machine
 
 ```
-[submitted] ──→ [queued] ──→ [in_progress] ──→ [completed]
-                    │              │
-                    │              ↓
-                    │          [failed] ──→ [aborted]
-                    │              ├──→ [retrying]
-                    │              └──→ [escalated]
-                    │
-                    └──→ [stuck]
+[submitted] ──→ [processing] ──→ [completed]
+                      │
+                      ↓
+                  [failed] ──→ [aborted]
+                      ├──→ [retrying]
+                      └──→ [escalated]
 ```
 
-**State Definitions**:
-- `submitted`: Request received and validated
-- `queued`: Message in queue awaiting processing
-- `in_progress`: Worker actively processing action
-- `completed`: All actions successful
-- `failed`: Action execution failed, awaiting human decision
-- `retrying`: Human initiated retry, message re-queued
-- `aborted`: User chose to abandon
-- `escalated`: Transferred to manual support
+**Request State Definitions**:
+- `submitted`: Request received, validated, and persisted
+- `processing`: One or more fulfillment tasks are active
+- `completed`: All fulfillment tasks successful
+- `failed`: One or more fulfillment tasks failed, awaiting human decision
+- `retrying`: Human initiated retry of failed tasks
+- `aborted`: User chose to abandon request
+- `escalated`: Failed tasks converted to JIRA tickets for manual fulfillment
+
+### Fulfillment Task State Machine
+
+Each fulfillment task within a request has its own state machine:
+
+```
+[pending] ──→ [queued] ──→ [processing] ──→ [completed]
+                  │             │
+                  │             ├──→ [failed]
+                  │             └──→ [skipped]
+                  │
+                  └──→ [stuck]
+```
+
+**Fulfillment Task State Definitions**:
+- `pending`: Task created but not yet queued
+- `queued`: Message in SQS FIFO queue awaiting processing
+- `processing`: Worker actively executing the task
+- `completed`: Task executed successfully
+- `failed`: Task execution failed
+- `skipped`: Task skipped due to parent request abort or previous task failure
 - `stuck`: Message not progressing (visibility timeout exceeded multiple times)
+
+**State Coordination**:
+- Request state aggregates fulfillment task states
+- Failed task triggers request state transition to "failed"
+- Abort request causes remaining tasks to transition to "skipped"
+- All tasks "completed" triggers request "completed"
 
 ### Bundle Orchestration
 
@@ -282,23 +311,23 @@ For CatalogBundles, the orchestrator:
 
 ### SQS FIFO Queue Design
 
-The service uses AWS SQS FIFO queues to ensure ordered processing of actions within each request while allowing parallel processing across different requests.
+The service uses AWS SQS FIFO queues to ensure ordered processing of fulfillment tasks within each request while allowing parallel processing across different requests.
 
 **Queue Structure**:
-- **Action Queue**: Primary FIFO queue for all action processing
-- **Dead Letter Queue**: FIFO queue for messages that fail after 3 receive attempts
-- **Message Group ID**: Request UUID ensures all actions for a request process in order
+- **Fulfillment Task Queue**: Primary FIFO queue for all fulfillment task processing
+- **Dead Letter Queue**: FIFO queue for tasks that fail after 3 receive attempts
+- **Message Group ID**: Request UUID ensures all fulfillment tasks for a request process in order
 
 **How FIFO Message Groups Work**:
 
 SQS FIFO queues use Message Group IDs to ensure ordering within a group while allowing parallel processing across groups:
 
-- **Message Group ID = Request UUID**: Each request gets its own message group
-- **Ordering Guarantee**: All messages with the same group ID process in exact FIFO order
+- **Message Group ID = Request UUID**: Each request's fulfillment tasks share the same message group
+- **Ordering Guarantee**: All fulfillment tasks with the same group ID process in exact FIFO order
 - **Parallel Processing**: Different message groups (different requests) process simultaneously
 - **Example**: Two bundles processing concurrently:
-  - Bundle A (3 components): A1 → A2 → A3 (group ID: Bundle A request ID)
-  - Bundle B (4 components): B1 → B2 → B3 → B4 (group ID: Bundle B request ID)
+  - Bundle A (3 fulfillment tasks): A1 → A2 → A3 (group ID: Bundle A request ID)
+  - Bundle B (4 fulfillment tasks): B1 → B2 → B3 → B4 (group ID: Bundle B request ID)
   - Parallel processing enabled by different group IDs
 
 ### Message Flow
@@ -306,15 +335,17 @@ SQS FIFO queues use Message Group IDs to ensure ordering within a group while al
 **Request Submission**:
 1. API validates request and generates request ID
 2. Persists request to database with "submitted" status
-3. Enqueues message to SQS FIFO with request ID as message group ID
-4. Returns request ID to client immediately
+3. Creates fulfillment tasks in database based on catalog definition
+4. Enqueues first fulfillment task to SQS FIFO with request ID as message group ID
+5. Returns request ID to client immediately
 
-**Action Processing**:
-1. Worker dequeues message from queue
-2. Executes the action (JIRA ticket creation, API call, etc.)
-3. Updates request status in database
-4. If bundle with multiple actions, enqueues next action with same message group ID
-5. Process continues until all actions complete or one fails
+**Fulfillment Task Processing**:
+1. Worker dequeues fulfillment task message from queue
+2. Checks parent request state (skips execution if aborted)
+3. Executes the task action (JIRA ticket creation, API call, etc.)
+4. Updates fulfillment task status in database
+5. If bundle with sequential tasks, enqueues next task with same message group ID
+6. Process continues until all tasks complete or one fails
 
 ### Worker Design
 
@@ -327,26 +358,43 @@ SQS FIFO queues use Message Group IDs to ensure ordering within a group while al
 ### Error Handling
 
 **Failure Handling Pattern**:
-- If action fails, mark request as "failed" in database
+- If fulfillment task fails, mark task as "failed" and parent request as "failed"
 - No automatic retries at application level - matches existing "fail-safe" principle
-- Messages that fail to process after 3 receives move to DLQ automatically (SQS feature)
+- Subsequent tasks in sequence are not queued (fail-fast approach)
 - Failed requests handled via API endpoints:
-  - `POST /requests/{request-id}/retry` - Re-enqueue from DLQ or create new message
-  - `POST /requests/{request-id}/abort` - Mark as aborted, remove from DLQ
-  - `POST /requests/{request-id}/escalate` - Escalate to support team
+  - `POST /requests/{request-id}/retry` - Retry failed and unprocessed tasks
+  - `POST /requests/{request-id}/abort` - Abort request, remaining tasks marked as "skipped"
+  - `POST /requests/{request-id}/escalate` - Convert failed and unprocessed tasks to JIRA tickets
+
+**Abort Handling**:
+- When request is aborted, update request state to "aborted" in database
+- Already-queued fulfillment tasks still dequeue but check parent request state
+- Tasks finding aborted parent mark themselves as "skipped" and exit
+- No need to remove messages from queue - cleaner than queue manipulation
+
+**Escalation Process**:
+- Creates JIRA tickets for failed task and all subsequent unprocessed tasks
+- Each JIRA ticket contains:
+  - Description of the failure and error details
+  - List of successfully completed tasks with their outputs
+  - List of tasks already converted to JIRA tickets with ticket numbers
+  - Setup details for the specific task
+- JIRA tickets are linked with "blocks/blocked by" relationships:
+  - Task 3 ticket blocked by Task 2 ticket
+  - Maintains dependency chain for manual fulfillment
 
 **Dead Letter Queue (DLQ)**:
-- Captures messages that fail after maximum retry attempts
+- Captures fulfillment task messages that fail after maximum retry attempts
 - Prevents failed messages from blocking queue processing
 - Preserves message content for debugging and analysis
 - Requires manual intervention for resolution
 
 **Queue Operations (devctl)**:
 - Display queue metrics and statistics
-- List requests by processing state
+- List fulfillment tasks by processing state
 - Examine dead letter queue contents
 - Redrive DLQ messages to main queue
-- Show queue position for requests
+- Show task progress for requests (e.g., "3 of 5 completed")
 - Execute batch operations on failures
 
 ## Variable Substitution Engine
@@ -363,11 +411,11 @@ The orchestrator implements a hierarchical namespace system for template variabl
 - Shared across all bundle components
 
 **2. Output Namespace (`.output.*`)**
-- Accumulates computed values from actions
+- Accumulates computed values from fulfillment task executions
 - Flat structure: `{{.output.userSelectedKey}}`
 - Built progressively during execution
-- Each action can add new keys
-- Available to subsequent actions
+- Each fulfillment task can add new keys
+- Available to subsequent fulfillment tasks
 
 **3. Metadata Namespace (`.metadata.*`)**
 - Static catalog item metadata
@@ -420,8 +468,8 @@ The orchestrator implements a hierarchical namespace system for template variabl
 
 **Sequential Processing**:
 - `.output` namespace accumulates progressively
-- Subsequent actions access all prior outputs
-- Failed actions leave no output values
+- Subsequent fulfillment tasks access all prior outputs
+- Failed fulfillment tasks leave no output values
 - Retry operations reset output namespace
 
 ## Integration Patterns
@@ -504,18 +552,23 @@ The service uses a relational database with JSONB for flexibility:
    - Request ID (UUID, primary key)
    - Catalog item reference
    - User identity and team membership
-   - Current state and status
+   - Current state (submitted, processing, completed, failed, aborted, escalated)
+   - Total task count and completed task count
    - Form data (JSONB)
    - Correlation ID for tracing
    - Timestamps and audit metadata
 
-2. **Request Actions**
-   - Parent request reference
-   - Action sequence index
-   - Action type and configuration
-   - Execution status and outputs
+2. **Fulfillment Tasks**
+   - Task ID (UUID, primary key)
+   - Parent request ID (foreign key)
+   - Sequence index (order within request)
+   - Task type (jira-ticket, rest-api, etc.)
+   - Task state (pending, queued, processing, completed, failed, skipped, stuck)
+   - Action configuration (JSONB)
+   - Execution outputs (JSONB)
    - External references (e.g., JIRA keys)
    - Error context if failed
+   - Processing timestamps
 
 3. **Catalog Cache**
    - Catalog item definitions
@@ -540,7 +593,7 @@ The service uses a relational database with JSONB for flexibility:
 
 **Use Cases**:
 - Request form data storage
-- Action configurations
+- Fulfillment task configurations
 - Catalog definitions
 - Audit event data
 
