@@ -24,29 +24,7 @@ This document serves as architectural guidance and conceptual inspiration for en
 
 ## Strategic Context
 
-### The Problem
-
-Our development teams face multi-week delays when provisioning new applications due to a fragmented process requiring multiple JIRA tickets across various platform teams (compute, storage, networking, databases). This creates:
-
-- **Innovation Bottleneck**: Teams wait weeks for basic resources
-- **Cognitive Overhead**: Engineers navigate complex internal processes instead of building software
-- **Coordination Friction**: Multiple handoffs between platform teams with no unified view
-- **Lost Opportunity**: Delayed time-to-market and reduced competitive advantage
-
-### The Solution Architecture
-
-The Platform Automation Orchestrator (PAO) serves as the central capability within the Integration and Delivery Plane of our Reference Architecture. It provides:
-
-- **Document-Driven Convergence**: Platform teams define services through YAML documents in a central catalog
-- **Self-Service Portal**: Developers request services through a unified interface
-- **Progressive Enhancement**: Teams start with manual JIRA fulfillment and evolve to automation at their own pace
-- **Non-Disruptive Integration**: Works within existing organizational structure without requiring reorganization
-
-### Value Proposition
-
-**Immediate Impact**: Reduce provisioning from weeks to hours for JIRA-based services  
-**Future State**: Reduce provisioning to minutes for fully automated services  
-**Organizational Benefit**: Platform teams maintain ownership while developers gain self-service
+The Platform Automation Orchestrator (PAO) transforms multi-week provisioning delays into same-day service delivery. It serves as the central orchestration capability within the Integration and Delivery Plane, providing a document-driven convergence point where platform teams define services through YAML documents. This enables self-service provisioning while maintaining team autonomy - reducing provisioning from weeks to hours (Phase 1: JIRA) and eventually to minutes (Phase 2+: Automation).
 
 For full strategic context see [whitepaper.md](whitepaper.md). For catalog specifications see [catalog.md](catalog.md).
 
@@ -81,7 +59,7 @@ PAO operates within the **Integration and Delivery Plane**, serving as the orche
 
 **What PAO Does Not Own**:
 - Infrastructure provisioning (delegates to platform teams)
-- Service implementation details (owned by platform teams)
+- Platform resources (databases, compute, storage - owned by platform teams)
 - JIRA workflow management (owned by platform teams)
 - Infrastructure state management (owned by platform teams)
 
