@@ -10,7 +10,6 @@ This document serves as architectural guidance and conceptual inspiration for en
 
 ## Table of Contents
 
-- [Strategic Context](#strategic-context)
 - [Architectural Overview](#architectural-overview)
 - [Document-Driven Convergence Model](#document-driven-convergence-model)
 - [API Design Specification](#api-design-specification)
@@ -23,27 +22,7 @@ This document serves as architectural guidance and conceptual inspiration for en
 - [Success Metrics & KPIs](#success-metrics--kpis)
 - [Evolution Strategy](#evolution-strategy)
 
-## Strategic Context
-
-The Platform Automation Orchestrator (PAO) serves as the central orchestration capability within the Integration and Delivery Plane of the Internal Developer Platform. PAO transforms multi-week provisioning delays into same-day resource delivery by providing a document-driven convergence point where platform teams define their service offerings through YAML documents.
-
-This approach enables self-service provisioning while maintaining team autonomy, reducing provisioning times from weeks to hours in Phase 1 (JIRA-based) and eventually to minutes in subsequent phases (automation-enabled).
-
-**Reference Documentation**:
-- Strategic vision and context: [whitepaper.md](whitepaper.md)
-- Catalog schema and specifications: [catalog.md](catalog.md)
-- CLI tool documentation: [devctl.md](devctl.md)
-
 ## Architectural Overview
-
-### Position in Reference Architecture
-
-PAO operates within the **Integration and Delivery Plane**, serving as the orchestration hub that connects:
-
-- **Developer Control Plane**: Where developers interact via portal or CLI
-- **Resource Plane**: Where actual Platform Team Resource provisioning occurs
-- **Security & Compliance Plane**: For policy enforcement and secrets management
-- **Monitoring & Logging Plane**: For observability and audit trails
 
 ### Core Architectural Principles
 
