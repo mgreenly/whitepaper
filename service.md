@@ -82,9 +82,8 @@ PAO operates within the **Integration and Delivery Plane**, serving as the orche
 **What PAO Does Not Own**:
 - Infrastructure provisioning (delegates to platform teams)
 - Service implementation details (owned by platform teams)
-- Approval workflows (handled in JIRA)
-- Resource lifecycle management (owned by platform teams)
-- Cost management and billing (separate systems)
+- JIRA workflow management (owned by platform teams)
+- Infrastructure state management (owned by platform teams)
 
 ## Document-Driven Convergence Model
 
@@ -103,7 +102,7 @@ The catalog repository (`platform-automation-repository`) serves as the converge
 **CatalogItem**: Individual service offerings
 - Metadata: Identity, ownership, and classification
 - Input Form: Dynamic field definitions with validation
-- Fulfillment Actions: JIRA tickets (Q3) or automated APIs (future)
+- Fulfillment Actions: JIRA tickets (Phase 1) or automated APIs (Phase 2+)
 
 **CatalogBundle**: Composite service packages
 - Components: References to multiple CatalogItems
@@ -113,17 +112,17 @@ The catalog repository (`platform-automation-repository`) serves as the converge
 ### Progressive Enhancement Model
 
 ```
-Phase 1 (Q3): Manual JIRA
+Phase 1: Foundation - Manual JIRA
 ├── All services use JIRA tickets
 ├── Platform teams fulfill manually
 └── Hours instead of weeks
 
-Phase 2 (Q4): Mixed Mode  
+Phase 2: Mixed Mode Automation
 ├── Some services automated
 ├── Others remain JIRA-based
 └── Teams migrate at own pace
 
-Phase 3 (Future): Full Automation
+Phase 3: Full Automation
 ├── Most services automated
 ├── JIRA for exceptions
 └── Minutes instead of hours
@@ -132,9 +131,8 @@ Phase 3 (Future): Full Automation
 ### Ownership Model
 
 - **Platform Teams**: Own service definitions in their catalog categories
-- **Architecture Team**: Owns schema definitions and governance
-- **DevX Team**: Owns bundles and cross-domain integration
-- **PAO Service**: Owns orchestration but not implementation
+- **Orchestration Team (PAO)**: Owns catalog repository, schema definitions, service, and CLI tool
+- **PAO Service**: Owns orchestration, catalog governance, and tooling but not service implementation
 
 ## API Design Specification
 
@@ -211,7 +209,7 @@ The service exposes a RESTful API organized into logical resource collections:
 
 ## Request Processing Architecture
 
-### Q3 Foundation: Synchronous JIRA Processing
+### Phase 1 Foundation: Synchronous JIRA Processing
 
 The initial implementation focuses on replacing multi-week delays with same-day service through centralized JIRA ticket creation.
 
@@ -248,7 +246,7 @@ The initial implementation focuses on replacing multi-week delays with same-day 
 
 **Synchronous Constraints**:
 - Complete within HTTP timeout (30 seconds)
-- No background processing in Q3
+- No background processing in Phase 1
 - Direct JIRA API calls without queuing
 - Immediate user feedback
 
@@ -409,7 +407,7 @@ The service maintains synchronization with the catalog repository through event-
 
 ### Future Integration Patterns
 
-**REST API Actions** (Q4+):
+**REST API Actions** (Phase 2):
 - Configurable endpoints and methods
 - Header and body templating
 - Response capture for `.output`
@@ -499,7 +497,7 @@ The service uses a relational database with JSONB for flexibility:
 - Active requests: Indefinite
 - Completed requests: 90 days
 - Failed requests: 180 days
-- Audit logs: 1 year minimum
+- Audit logs: Configurable retention period
 - Catalog versions: Last 10 versions
 
 ## Operational Patterns
@@ -588,10 +586,10 @@ The service uses a relational database with JSONB for flexibility:
 ### Business Metrics
 
 **Primary KPIs**:
-- **Provisioning Time**: Weeks → Hours (Q3), Hours → Minutes (Q4+)
+- **Provisioning Time**: Weeks → Hours (Phase 1), Hours → Minutes (Phase 2+)
 - **Developer Satisfaction**: NPS score > 50
-- **Platform Adoption**: 80% of teams onboarded within 6 months
-- **Service Coverage**: 50+ services in catalog within 1 year
+- **Platform Adoption**: Progressive team onboarding
+- **Service Coverage**: Growing catalog of services
 
 **Operational Metrics**:
 - Request volume growth rate
@@ -616,19 +614,19 @@ The service uses a relational database with JSONB for flexibility:
 
 ### Volume Projections
 
-**Q3 2025 (JIRA Only)**:
+**Phase 1 (JIRA Only)**:
 - 10-50 requests/day
 - 5-10 concurrent users
 - 20-30 catalog items
-- 3-5 platform teams
+- Initial platform teams
 
-**Q4 2025 (Mixed Mode)**:
+**Phase 2 (Mixed Mode)**:
 - 100-200 requests/day
 - 20-30 concurrent users
 - 50-70 catalog items
-- 10-15 platform teams
+- Expanded platform teams
 
-**2026 (Scaled Adoption)**:
+**Phase 3 (Scaled Adoption)**:
 - 500-1000 requests/day
 - 50-100 concurrent users
 - 100+ catalog items
@@ -636,7 +634,7 @@ The service uses a relational database with JSONB for flexibility:
 
 ## Evolution Strategy
 
-### Q3 2025: Foundation (JIRA-Only)
+### Phase 1: Foundation (JIRA-Only)
 
 **Objectives**:
 - Eliminate multi-week delays
@@ -647,10 +645,12 @@ The service uses a relational database with JSONB for flexibility:
 **Deliverables**:
 - Core orchestrator service
 - JIRA ticket automation
-- Basic catalog with 20+ services
+- Basic catalog with initial services
 - Developer portal integration
 
-### Q4 2025: Automation Introduction
+### Phase 2: Automation Introduction
+
+**Prerequisites**: Phase 1 operational and stable
 
 **Objectives**:
 - Enable automated provisioning
@@ -664,13 +664,14 @@ The service uses a relational database with JSONB for flexibility:
 - Parallel action execution
 - Enhanced error handling
 
-### 2026: Platform Maturity
+### Phase 3: Platform Maturity
+
+**Prerequisites**: Phase 2 capabilities deployed
 
 **Advanced Orchestration**:
 - Conditional workflows
-- Approval gates
 - Multi-cloud support
-- Cost governance
+- Advanced error handling
 
 **Intelligence Layer**:
 - Recommendation engine
