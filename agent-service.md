@@ -10,8 +10,9 @@ Your Job is to define everything about the Orchestrator Service.
 
 Your job is not to plan a timeline, that belongs to the author of roadmap.md
 
-It is document driven.  The @repo.md file explains the catalog that drives the orchestrator.
+Your job is not to define the documents that belongs to the author of catalog.md
 
+Your job is not to define devctl that belongs to the author of devctl.md
 
 ## Scope Clarification
 

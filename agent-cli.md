@@ -12,11 +12,11 @@ Your job is not to plan a timeline, that belongs to the author of roadmap.md
 
 ## Guidance
 
-  * when I reference "this document" or "the document" I am refering to devctl.md
+  * when I reference "this document" or "the document" I am refering to cli.md
 
 ## Critical Restrictions
-  * you own agent-devctl.md (this file)
-  * you own devctl.md
+  * you own agent-cli.md (this file)
+  * you own cli.md
 
 ## Actions
 

@@ -6,285 +6,714 @@ This document contains no proprietary, confidential, or sensitive organizational
 
 ## Note on Implementation
 
-This document serves as architectural guidance and conceptual inspiration for engineering teams developing catalog repository systems. It is not intended as a precise implementation specification or detailed blueprint. Engineering teams should interpret these concepts, adapt the proposed patterns to their specific technical environment and organizational requirements, and develop their own detailed work plans accordingly. While implementation approaches may vary, the core architectural concepts, data structures, and operational patterns described herein should be represented in the final system design to ensure consistency with the overall platform vision.
+This document serves as architectural guidance and conceptual inspiration for engineering teams developing orchestration services. It is not intended as a precise implementation specification or detailed blueprint. Engineering teams should interpret these concepts, adapt the proposed patterns to their specific technical environment and organizational requirements, and develop their own detailed work plans accordingly. While implementation approaches may vary, the core architectural concepts, data structures, and operational patterns described herein should be represented in the final system design to ensure consistency with the overall platform vision.
 
 ## Table of Contents
 
-- [Overview](#overview)
-- [Core API Specification](#core-api-specification)
-- [Q3 Synchronous Processing Architecture](#q3-synchronous-processing-architecture)
-- [Architecture & Technology Stack](#architecture--technology-stack)
-- [Implementation Requirements](#implementation-requirements)
-- [Performance & Success Metrics](#performance--success-metrics)
-- [Deployment Architecture](#deployment-architecture)
-- [Service Configuration](#service-configuration)
-- [SQL Schema](#sql-schema)
-- [Future Enhancements](#future-enhancements)
+- [Strategic Context](#strategic-context)
+- [Architectural Overview](#architectural-overview)
+- [Document-Driven Convergence Model](#document-driven-convergence-model)
+- [API Design Specification](#api-design-specification)
+- [Request Processing Architecture](#request-processing-architecture)
+- [Variable Substitution Engine](#variable-substitution-engine)
+- [Integration Patterns](#integration-patterns)
+- [Data Architecture](#data-architecture)
+- [Operational Patterns](#operational-patterns)
+- [Success Metrics & KPIs](#success-metrics--kpis)
+- [Evolution Strategy](#evolution-strategy)
 
-## Overview
+## Strategic Context
 
-The Platform Automation Orchestrator (PAO) is a cloud-native REST service that transforms manual provisioning processes into automated self-service workflows by providing a document-driven convergence point where platform teams define services through schema YAML documents.
+### The Problem
 
-**Business Problem**: Multi-week provisioning delays due to fragmented JIRA workflows across platform teams  
-**Solution**: Central orchestration service with automated fulfillment that falls back to manual JIRA when needed  
-**Value**: Significant reduction in provisioning time
+Our development teams face multi-week delays when provisioning new applications due to a fragmented process requiring multiple JIRA tickets across various platform teams (compute, storage, networking, databases). This creates:
 
-For strategic context see [whitepaper.md](whitepaper.md). For catalog design see [catalog.md](catalog.md).
+- **Innovation Bottleneck**: Teams wait weeks for basic resources
+- **Cognitive Overhead**: Engineers navigate complex internal processes instead of building software
+- **Coordination Friction**: Multiple handoffs between platform teams with no unified view
+- **Lost Opportunity**: Delayed time-to-market and reduced competitive advantage
 
-## Core API Specification
+### The Solution Architecture
 
-The Platform Automation Orchestrator provides a comprehensive REST API with 19 endpoints organized into functional categories:
+The Platform Automation Orchestrator (PAO) serves as the central capability within the Integration and Delivery Plane of our Reference Architecture. It provides:
 
-**Catalog Management** (4 endpoints)
-- Browse services, get details, form schemas, force refresh
+- **Document-Driven Convergence**: Platform teams define services through YAML documents in a central catalog
+- **Self-Service Portal**: Developers request services through a unified interface
+- **Progressive Enhancement**: Teams start with manual JIRA fulfillment and evolve to automation at their own pace
+- **Non-Disruptive Integration**: Works within existing organizational structure without requiring reorganization
 
-**Request Lifecycle** (9 endpoints)  
-- Submit, list, get details, status, logs, retry, abort, escalate requests
+### Value Proposition
 
-**System Health** (3 endpoints)
-- Health status, readiness probe, version info
+**Immediate Impact**: Reduce provisioning from weeks to hours for JIRA-based services  
+**Future State**: Reduce provisioning to minutes for fully automated services  
+**Organizational Benefit**: Platform teams maintain ownership while developers gain self-service
 
-**Platform Team Tools** (3 endpoints)
-- Validate catalog items, preview forms, test variables
+For full strategic context see [whitepaper.md](whitepaper.md). For catalog specifications see [catalog.md](catalog.md).
 
-**System Integration** (1 endpoint)
-- GitHub webhook handler for catalog synchronization
+## Architectural Overview
 
-### Key API Patterns
+### Position in Reference Architecture
 
-**Authentication**: AWS IAM with SigV4 request signing. Users associated with teams through IAM groups, with catalog items specifying allowed teams for access control.
+PAO operates within the **Integration and Delivery Plane**, serving as the orchestration hub that connects:
 
-**Pagination**: Cursor-based pagination (limit/cursor parameters) with stateless base64-encoded tokens.
+- **Developer Control Plane**: Where developers interact via portal or CLI
+- **Resource Plane**: Where actual infrastructure provisioning occurs
+- **Security & Compliance Plane**: For policy enforcement and secrets management
+- **Monitoring & Logging Plane**: For observability and audit trails
 
-**Error Handling**: Standardized error codes including VALIDATION_ERROR, UNAUTHORIZED, RATE_LIMIT_EXCEEDED, INTERNAL_ERROR, EXTERNAL_SERVICE_ERROR, REQUEST_NOT_FOUND, ACTION_FAILED, INVALID_STATE_TRANSITION.
+### Core Architectural Principles
 
-## Q3 Synchronous Processing Architecture
+1. **Document-Driven Design**: All service definitions exist as versioned YAML documents
+2. **Catalog-Centric**: The catalog repository is the single source of truth for available services
+3. **Stateless Processing**: Each request is self-contained with all necessary context
+4. **Progressive Enhancement**: Manual processes evolve to automation without disruption
+5. **Team Autonomy**: Platform teams maintain control over their service definitions
+6. **Fail-Safe Operations**: Failures require human intervention - no automatic recovery that could cause damage
 
-The Q3 Foundation Epic establishes synchronous request processing for JIRA-based fulfillment, providing the foundation for Q4's automated provisioning.
+### Service Boundaries
 
-**Core Principles**:
-- **Synchronous Processing**: All requests processed within HTTP handlers (3-5 seconds)
-- **JIRA-Only Actions**: Single action type for manual fulfillment via JIRA tickets
-- **Direct Database Integration**: PostgreSQL connection pooling without background workers
-- **Real-time Status**: Direct JIRA API queries for status updates (no caching)
+**What PAO Owns**:
+- Request orchestration and state management
+- Variable substitution and template processing
+- JIRA ticket creation and tracking
+- Catalog synchronization from GitHub
+- API gateway for developer interactions
 
-**Request Processing Flow**:
-1. **Request Reception**: HTTP handler receives POST to `/api/v1/requests`
-2. **Validation Pipeline**: Multi-stage validation (schema, business rules, authorization)
-3. **Database Transaction**: Store request with correlation ID in single transaction
-4. **JIRA Action Execution**: Synchronous JIRA API call with variable substitution
-5. **State Update**: Update request status and store JIRA ticket reference
-6. **Response**: Return request ID and JIRA ticket details to client
+**What PAO Does Not Own**:
+- Infrastructure provisioning (delegates to platform teams)
+- Service implementation details (owned by platform teams)
+- Approval workflows (handled in JIRA)
+- Resource lifecycle management (owned by platform teams)
+- Cost management and billing (separate systems)
 
-**State Transitions**:
-- `submitted` → `in_progress` → `completed`/`failed`
-- `failed` → `aborted`/`escalated`
+## Document-Driven Convergence Model
 
-**Variable Substitution System**:
-Hierarchical scope resolution supporting 6+ core scopes (fields, metadata, request, system, environment, outputs). Multi-phase processing: parse, validate, resolve, transform, output. Pre-execution validation prevents runtime template failures.
+### The Convergence Point
 
-**JIRA Integration Pattern**:
-Multi-instance support with flexible authentication (API token, OAuth2). Real-time status queries without caching. Template processing for ticket creation with variable substitution.
+The catalog repository (`platform-automation-repository`) serves as the convergence point where:
 
-**Data Model**:
-Core entities (Request, RequestAction) with JSONB storage for flexible state. Database indexes optimized for user queries, status filtering, correlation tracking, and team-based access control. Complete audit trail with correlation ID tracking.
+1. **Platform Teams Contribute**: Each team defines their services as YAML documents
+2. **Schema Enforcement**: All documents conform to CatalogItem or CatalogBundle schemas
+3. **Service Discovery**: PAO consumes these documents to build the service catalog
+4. **Dynamic Forms**: Input definitions generate forms in the developer portal
+5. **Fulfillment Templates**: Action definitions determine how requests are processed
 
-## Architecture & Technology Stack
+### Catalog Document Types
 
-### Core Design Principles
+**CatalogItem**: Individual service offerings
+- Metadata: Identity, ownership, and classification
+- Input Form: Dynamic field definitions with validation
+- Fulfillment Actions: JIRA tickets (Q3) or automated APIs (future)
 
-1. **Schema-Driven**: All services defined via schema YAML documents
-2. **Smart Fulfillment**: Automated actions with manual fallback. No automatic error recovery; failures require human intervention
-3. **Document-Driven Convergence**: Platform teams collaborate through central document store
-4. **Progressive Enhancement**: Teams evolve from manual to automated at their own pace
-5. **Container-First**: EKS deployment with persistent services and horizontal scaling
+**CatalogBundle**: Composite service packages
+- Components: References to multiple CatalogItems
+- Dependencies: Execution order and relationships
+- Orchestration: Sequential processing with JIRA linking
 
-### Service Components
+### Progressive Enhancement Model
 
-**Catalog Management Engine**: GitHub repository integration with webhook processing, schema validation, PostgreSQL persistence with in-memory caching, CODEOWNERS enforcement.
+```
+Phase 1 (Q3): Manual JIRA
+├── All services use JIRA tickets
+├── Platform teams fulfill manually
+└── Hours instead of weeks
 
-**Request Orchestration System**: Complete request lifecycle management, variable substitution with 6+ scopes, circuit breaker architecture, state tracking and audit trail.
+Phase 2 (Q4): Mixed Mode  
+├── Some services automated
+├── Others remain JIRA-based
+└── Teams migrate at own pace
 
-**Multi-Action Fulfillment Engine**: JIRA, REST API, Terraform, GitHub workflows. Sequential execution with dependency management. Limited retry logic; failures require manual intervention.
+Phase 3 (Future): Full Automation
+├── Most services automated
+├── JIRA for exceptions
+└── Minutes instead of hours
+```
 
-### Technology Stack
+### Ownership Model
 
-**Runtime**: Go, HTTP router, OpenAPI 3.0, JSON Schema validation  
-**Storage**: PostgreSQL 14+ with JSONB support  
-**Integrations**: GitHub/GitLab APIs, JIRA REST API, AWS Parameter Store  
-**Deployment**: EKS containers, Application Load Balancer, Helm charts
+- **Platform Teams**: Own service definitions in their catalog categories
+- **Architecture Team**: Owns schema definitions and governance
+- **DevX Team**: Owns bundles and cross-domain integration
+- **PAO Service**: Owns orchestration but not implementation
 
-### Schema Integration & Dynamic Forms
+## API Design Specification
 
-PAO implements the catalog.md schema specification for metadata, presentation, fulfillment, lifecycle, and monitoring. Transforms catalog form definitions into dynamic web forms and CLI interfaces with field type mapping (string→text-input, number→number-input, boolean→checkbox, etc.).
+### RESTful API Architecture
 
-**Form Validation Pipeline**: Client-side validation → Pre-submit validation → Server-side validation → Request creation → Background processing
+The service exposes a RESTful API organized into logical resource collections:
 
-### Action Types & JIRA Framework
+**Catalog Resources** (`/api/v1/catalog`)
+- `GET /catalog` - List available services with filtering
+- `GET /catalog/{item-id}` - Get service details and form schema
+- `GET /catalog/{item-id}/form` - Get rendered form definition
+- `POST /catalog/refresh` - Force catalog synchronization
 
-**Supported Actions**: JIRA ticket creation (Q3), REST API integration, Terraform configuration, GitHub workflow dispatch (Q4+)
+**Request Resources** (`/api/v1/requests`)
+- `POST /requests` - Submit new service request
+- `GET /requests` - List user's requests with filtering
+- `GET /requests/{request-id}` - Get request details
+- `GET /requests/{request-id}/status` - Get current status
+- `GET /requests/{request-id}/logs` - Get execution logs
+- `POST /requests/{request-id}/retry` - Retry failed request
+- `POST /requests/{request-id}/abort` - Abort failed request
+- `POST /requests/{request-id}/escalate` - Escalate to support
 
-**JIRA Integration**: Multi-instance support with flexible authentication (API token, OAuth2). Template processing with variable substitution. Real-time status queries without caching. Status mapping from JIRA states to request states.
+**Health Resources** (`/api/v1/health`)
+- `GET /health` - Service health status
+- `GET /health/ready` - Readiness probe
+- `GET /version` - Version information
 
-### Templating Engine Architecture
+**Platform Tools** (`/api/v1/tools`)
+- `POST /tools/validate` - Validate catalog item
+- `POST /tools/preview` - Preview form rendering
+- `POST /tools/test-variables` - Test variable substitution
 
-**Template Format**: Go Template Engine for native parsing, built-in functions, type-safe access, and extensible function registry.
+**Integration Endpoints**
+- `POST /webhooks/github` - GitHub catalog updates
 
-**Three-Scope Variable Resolution**:
-- **User Scope**: Form field responses with namespace isolation (`{{.User.GroupID_FieldID}}`)
-- **System Scope**: Platform values (`{{.System.Timestamp}}`, `{{.System.RequestID}}`, `{{.System.UserEmail}}`)
-- **Fulfillment Scope**: Action execution results with flat namespace (`{{.Fulfillment.KeyName}}`)
+### API Design Patterns
 
-**Function Categories**: String (upper, lower, trim, replace), Encoding (base64, json, url), Generation (uuid, timestamp), Validation (required, matches), Platform (slugify, sanitize, hash)
+**Authentication & Authorization**
+- Identity federation through organizational IAM
+- Request signing for API authentication
+- Team-based access control via group membership
+- Catalog items specify allowed teams
 
-**Context Management**: Immutable User/System scopes, mutable Fulfillment scope. Template compilation caching for performance. Sandboxed execution with timeout controls and output size limits.
+**Request/Response Patterns**
+- Consistent JSON structure with envelope
+- Standardized error response format
+- Cursor-based pagination for lists
+- Field filtering and sparse fieldsets
 
-### Variable System
+**Idempotency & Safety**
+- GET requests are safe and cacheable
+- POST requests include idempotency keys
+- Retry-safe operation design
+- Correlation IDs for request tracing
 
-**Core Variable Scopes**:
-- `{{fields.field_id}}` - User form input values
-- `{{metadata.id}}` - Service metadata (id, name, version, category, owner)
-- `{{request.id}}` - Request context (id, user.email, user.teams, timestamp, correlation_id)
-- `{{system.date}}` - System-generated variables (date, timestamp, uuid, hostname)
-- `{{environment.VAR}}` - Environment variables
-- `{{outputs.action_id.field}}` - Previous action outputs for chaining
+### Error Handling Architecture
 
-**Template Processing**: Mustache-style syntax with nested object access, array indexing, conditionals, and iteration.
+**Error Categories**:
+- **4xx Client Errors**: Validation failures, authorization issues
+- **5xx Server Errors**: Service failures, integration issues
 
-**Transformation Functions**: upper, lower, concat, replace, json, base64, uuid, timestamp
+**Error Response Structure**:
+```json
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Human-readable description",
+    "details": [{"field": "name", "issue": "pattern mismatch"}],
+    "correlation_id": "uuid"
+  }
+}
+```
 
-**Validation & Error Handling**: Pre-execution validation, missing variable detection, type checking, circular dependency detection, detailed error messages.
+## Request Processing Architecture
 
-### Manual Failure Resolution
+### Q3 Foundation: Synchronous JIRA Processing
 
-**Failure Context Preservation**: System preserves detailed failure information including partial state inventory, error context, cleanup guidance, and request metadata.
+The initial implementation focuses on replacing multi-week delays with same-day service through centralized JIRA ticket creation.
 
-**Human Decision Options**: Retry failed action, abort request, or escalate to manual support via structured JIRA ticket.
+**Processing Pipeline**:
 
-**Status Workflow**: Failed requests remain in "failed" status until human decision. Retry keeps "failed" status until resolution. Abort changes to "aborted". Escalate changes to "escalated" with JIRA reference.
+1. **Request Reception**
+   - API endpoint receives service request
+   - Request includes catalog item ID and form data
+   - Correlation ID generated for tracing
 
-## Implementation Requirements
+2. **Validation Stage**
+   - Schema validation against catalog definition
+   - Required field verification
+   - Pattern matching for field constraints
+   - Team authorization check
 
-### Core Features
+3. **Variable Resolution**
+   - Parse template for variable references
+   - Resolve variables from four namespaces
+   - Apply transformation functions if specified
+   - Generate final content strings
 
-**API Endpoints**: Catalog browsing, request submission/tracking, health checks, dynamic form generation, platform team validation tools
+4. **JIRA Ticket Creation**
+   - Connect to appropriate JIRA instance
+   - Create ticket with resolved templates
+   - Capture ticket key for reference
+   - Handle creation failures gracefully
 
-**Action Types**: JIRA ticket creation with variable substitution, REST API calls, GitHub workflow dispatch, Terraform configuration management
+5. **State Persistence**
+   - Store request with JSONB data
+   - Record action execution details
+   - Create audit log entries
+   - Return response to client
 
-**External Integrations**: GitHub repository integration, JIRA REST API, PostgreSQL database
+**Synchronous Constraints**:
+- Complete within HTTP timeout (30 seconds)
+- No background processing in Q3
+- Direct JIRA API calls without queuing
+- Immediate user feedback
 
-**Reliability**: Circuit breaker architecture, limited retry logic, connection pooling. All failures require manual intervention; no automatic recovery.
+### Request State Machine
 
-### Request Processing Architecture
+```
+[submitted] ──→ [in_progress] ──→ [completed]
+                      │
+                      ↓
+                  [failed] ──→ [aborted]
+                      │
+                      ↓
+                  [escalated]
+```
 
-**Q3 Synchronous Processing**: Request validation → JIRA action execution (1-2s) → Database transaction → Immediate response
+**State Definitions**:
+- `submitted`: Request received and validated
+- `in_progress`: Actions being executed
+- `completed`: All actions successful
+- `failed`: Action execution failed
+- `aborted`: User chose to abandon
+- `escalated`: Transferred to manual support
 
-**Request States**: submitted → in_progress → completed/failed/aborted/escalated
+### Bundle Orchestration
 
-**State Transition Rules**: Strict validation, audit logging, terminal states immutable. Only failed requests can be retried.
+For CatalogBundles, the orchestrator:
 
-**Volume Expectations**: Very low volume service (10-50 requests/day, 100/hour peak, 5-10 concurrent users)
+1. **Component Resolution**: Load referenced CatalogItems
+2. **Dependency Ordering**: Sort components by dependencies
+3. **Sequential Execution**: Process components in order
+4. **JIRA Linking**: Create "blocks/blocked by" relationships
+5. **Output Accumulation**: Build `.output` namespace progressively
+6. **Failure Handling**: Stop on first failure
+
+## Variable Substitution Engine
+
+### Four-Namespace Variable System
+
+The orchestrator maintains a hierarchical namespace aligned with catalog.md specifications:
+
+**1. Current Namespace (`.current.*`)**
+- Contains user input from request form
+- Structure: `{{.current.name}}` (required field)
+- Group fields: `{{.current.groupId.fieldId}}`
+- Immutable during request processing
+- Shared across all bundle components
+
+**2. Output Namespace (`.output.*`)**
+- Accumulates computed values from actions
+- Flat structure: `{{.output.userSelectedKey}}`
+- Built progressively during execution
+- Each action can add new keys
+- Available to subsequent actions
+
+**3. Metadata Namespace (`.metadata.*`)**
+- Static catalog item metadata
+- Structure: `{{.metadata.catalogItemId.field}}`
+- Includes standard fields (id, name, version)
+- Includes custom metadata fields
+- Read-only during execution
+
+**4. System Namespace (`.system.*`)**
+- Platform-provided context
+- Request context: `{{.system.requestId}}`
+- User context: `{{.system.user.email}}`
+- Environment: `{{.system.platform.region}}`
+- Generated values: `{{.system.timestamp}}`
+
+### Template Processing Architecture
+
+**Processing Phases**:
+
+1. **Parse Phase**
+   - Identify variable references `{{.namespace.path}}`
+   - Extract namespace and path components
+   - Build dependency graph
+
+2. **Validation Phase**
+   - Verify namespace exists
+   - Check path accessibility
+   - Validate circular dependencies
+   - Type compatibility checks
+
+3. **Resolution Phase**
+   - Fetch values from namespaces
+   - Apply type conversions
+   - Handle missing values (empty string)
+   - Process nested paths
+
+4. **Transformation Phase**
+   - Apply transformation functions
+   - Format for target context (JSON, YAML)
+   - Escape special characters
+   - Handle array/object serialization
+
+### Variable Scoping Rules
+
+**Access Control**:
+- Templates can only access defined namespaces
+- No dynamic namespace creation
+- No cross-request variable access
+- Bundle components share `.current` namespace
+
+**Progressive Enhancement**:
+- `.output` namespace builds sequentially
+- Later actions see earlier outputs
+- Failed actions don't populate outputs
+- Retry clears previous outputs
+
+## Integration Patterns
 
 ### GitHub Catalog Integration
 
-**Catalog Synchronization**: GitHub webhooks trigger catalog updates. Webhook endpoint validates changes against schema, refreshes cache, updates PostgreSQL.
+The service maintains synchronization with the catalog repository through event-driven updates:
 
-**Processing Flow**: Signature verification → Event parsing → File filtering → Asynchronous processing → Error isolation
+**Webhook Processing**:
+1. GitHub sends webhook on repository changes
+2. Service validates webhook signature
+3. Filters for relevant file changes (*.yaml in catalog/bundles)
+4. Validates documents against schema
+5. Updates internal catalog cache
+6. Persists to database for durability
 
-**Cache Strategy**: In-memory cache with PostgreSQL persistence. Event-driven invalidation. CODEOWNERS enforcement for governance.
+**Catalog Loading Strategy**:
+- Initial load on service startup
+- Event-driven updates via webhooks
+- Manual refresh endpoint for recovery
+- In-memory cache with TTL
+- Database persistence for durability
 
-## Performance & Success Metrics
+**CODEOWNERS Enforcement**:
+- Service reads CODEOWNERS file
+- Maps teams to catalog categories
+- Enforces access control on updates
+- Validates team membership for requests
 
-**Performance Targets**: API response < 500ms, request submission < 3s, 99.5% uptime, 100 requests/hour throughput, 5-10 concurrent users
+### JIRA Integration Architecture
 
-**Business Impact**: Significant provisioning time reduction, high platform adoption, high developer satisfaction, high automation rate
+**Multi-Instance Support**:
+- Configure multiple JIRA instances
+- Route by project key in templates
+- Instance-specific authentication
+- Connection pooling per instance
 
-**Operational Excellence**: Low error rate, strong security compliance, fast incident resolution, efficient support
+**Ticket Creation Pattern**:
+1. Resolve template variables
+2. Build ticket payload (summary, description)
+3. Add custom fields if specified
+4. Create ticket via REST API
+5. Capture ticket key and URL
+6. Handle errors with context
 
-## Deployment Architecture
+**Status Synchronization**:
+- No background polling or caching
+- Real-time queries on status requests
+- Map JIRA states to request states
+- Return current state to caller
 
-**Recommendation**: EKS Container Deployment over AWS Lambda
+### Future Integration Patterns
 
-**Cost Analysis**: EKS ~$1,536/year vs Lambda ~$2,500/year (including RDS Proxy). Annual savings of $814-$964.
+**REST API Actions** (Q4+):
+- Configurable endpoints and methods
+- Header and body templating
+- Response capture for `.output`
+- Circuit breaker for resilience
 
-**EKS Benefits**: No cold starts, consistent performance (sub-200ms), persistent connections, better observability, simplified operations (10-20 hours/year engineering savings)
+**Terraform Integration** (Future):
+- Plan generation from templates
+- State management patterns
+- Output capture for dependencies
+- Rollback coordination
 
-**Lambda Issues**: Cold start latency (1-3s, 10-15% of requests), connection overhead, variable performance, complex debugging
+**GitHub Workflows** (Future):
+- Workflow dispatch triggers
+- Input parameter mapping
+- Run status tracking
+- Output artifact processing
 
-**Volume Projections**: 3,100-10,400 requests/day current, growing to 15,000-20,000/day
+## Data Architecture
 
-**Implementation Strategy**: Deploy 2 API pods (1 vCPU + 2GB RAM), horizontal autoscaling (2-6 pods), persistent database connections, comprehensive monitoring
+### Persistence Strategy
 
-**Security & Compliance**: AWS IAM with SigV4 signing, audit logging with correlation IDs, AWS Parameter Store for secrets, request validation
+The service uses a relational database with JSONB for flexibility:
 
-## Service Configuration
+**Core Entities**:
 
-**Container Requirements**: HTTP server on port 8080, health endpoints (/api/v1/health, /api/v1/health/ready), environment variables, graceful shutdown, 1-2 CPU cores, 2-4GB RAM
+1. **Requests Table**
+   - Request ID (UUID primary key)
+   - Catalog item reference
+   - User information and teams
+   - Status and state machine
+   - Request data (JSONB)
+   - Correlation ID for tracing
+   - Timestamps and audit fields
 
-**Security**: AWS IAM with SigV4 signing, AWS Parameter Store for secrets, Aurora PostgreSQL with IAM auth
+2. **Request Actions Table**
+   - Links to parent request
+   - Action index for ordering
+   - Action type and configuration
+   - Execution status and output
+   - External references (JIRA keys)
+   - Error details if failed
 
-**Database Connection Pooling**: EKS-optimized settings (50 max open, 20 idle, 1h lifetime, 10m idle timeout)
+3. **Catalog Cache Table**
+   - Catalog item definitions
+   - Version and git SHA
+   - Category and ownership
+   - Full definition (JSONB)
+   - Last synchronized timestamp
 
-**Caching Strategy**: In-memory with TTLs (catalog items: 1h, categories: 6h, request status: 5m, form schemas: 2h), 512MB max memory, LRU eviction
+4. **Audit Logs Table**
+   - Correlation ID linking
+   - Event type and data
+   - User and system context
+   - Immutable audit trail
 
-**Service Components**: API server (port 8080), catalog processor (5m intervals), request processor (10 workers), status updater (5m intervals)
+### JSONB Usage Patterns
 
-**Configuration Management**: Environment variables with validation, AWS Parameter Store integration for secrets, structured configuration loading with defaults
+**Advantages**:
+- Schema flexibility for evolving forms
+- Native JSON operations in queries
+- Indexing on JSONB paths
+- Efficient storage of variable data
 
-## SQL Schema
+**Use Cases**:
+- Request form data storage
+- Action configurations
+- Catalog definitions
+- Audit event data
 
-### Core Tables
+### Indexing Strategy
 
-**requests**: Core request tracking with UUID primary key, catalog_item_id, user details, status (submitted/in_progress/completed/failed/aborted/escalated), request_data (JSONB), correlation_id for audit trail, escalation_ticket_id for manual support
+**Performance Indexes**:
+- User email for request queries
+- Status for filtering
+- Correlation ID for tracing
+- Created timestamp for sorting
+- JIRA ticket key for lookups
 
-**request_actions**: Individual action execution tracking with request_id foreign key, action_index for sequencing, action_type (jira-ticket in Q3), action_config (JSONB), status, output (JSONB), error_details, external_reference (JIRA ticket key)
+**JSONB Indexes**:
+- GIN index on user teams array
+- Path indexes for common queries
+- Expression indexes for computed values
 
-**catalog_items**: GitHub repository cache with id, name, description, version, category, owner details, definition (JSONB), file_path, git_sha for synchronization
+### Data Retention
 
-**audit_logs**: Complete audit trail with correlation_id, request_id/action_id references, event_type, event_data (JSONB), user context, source_system
+**Retention Policies**:
+- Active requests: Indefinite
+- Completed requests: 90 days
+- Failed requests: 180 days
+- Audit logs: 1 year minimum
+- Catalog versions: Last 10 versions
 
-### Database Features
+## Operational Patterns
 
-**Indexes**: Optimized for user request queries, status filtering, correlation tracking, JIRA reference lookup, team-based access control (GIN index on user_teams array)
+### Deployment Architecture
 
-**Triggers**: Auto-update timestamps, audit logging for all request changes with correlation tracking
+**Container-Based Deployment**:
+- Stateless service containers
+- Horizontal scaling capability
+- Health check endpoints
+- Graceful shutdown handling
+- Resource limits defined
 
-**Constraints**: Foreign key relationships with appropriate cascading, check constraints for data integrity, escalation validation
+**High Availability**:
+- Multiple service instances
+- Load balancer distribution
+- Database connection pooling
+- Circuit breakers for integrations
+- Fallback to manual processes
 
-**Maintenance**: Automated cleanup for completed requests (90 days), audit logs (1 year), regular vacuum/analyze operations
+### Observability Architecture
 
-**Migration Management**: Schema versioning table with version tracking, description, timestamps, and checksums
+**Logging Strategy**:
+- Structured JSON logging
+- Correlation ID threading
+- Request/response logging
+- Error context capture
+- Performance metrics
 
-## Future Enhancements
+**Monitoring Patterns**:
+- RED metrics (Rate, Errors, Duration)
+- Business metrics (requests/day)
+- Integration health tracking
+- Database performance monitoring
+- Cache hit rates
 
-### Q4 2025 and Beyond
+**Alerting Rules**:
+- Service availability
+- Error rate thresholds
+- Response time degradation
+- Integration failures
+- Database connection issues
 
-**Advanced Action Types**: Terraform Cloud/Enterprise integration, AWS Lambda invocation, CloudFormation/CDK, Ansible playbooks, secure script execution
+### Security Patterns
 
-**Enhanced Orchestration**: Parallel action execution, conditional workflows, approval gates, automated rollback, circuit breaker patterns
+**Authentication & Authorization**:
+- Federated identity management
+- API authentication patterns
+- Team-based access control
+- Audit trail for all actions
 
-**Developer Experience**: Real-time status updates (WebSocket), interactive debugging, request templates, bulk operations, dependency visualization
+**Secret Management**:
+- External secret storage
+- Rotation capabilities
+- Encryption at rest
+- Secure transmission
 
-**Platform Team Tools**: Catalog analytics, A/B testing framework, validation sandbox, auto-generated documentation, cost estimation
+**Data Protection**:
+- Sensitive data classification
+- PII handling rules
+- Encryption standards
+- Retention policies
 
-**Security & Compliance**: Policy as Code (OPA), compliance reporting, secret rotation, access reviews, data classification
+### Operational Procedures
 
-**Multi-Cloud & Hybrid**: Azure/GCP/on-premises support, cloud provider abstraction, hybrid workflows, cost optimization, disaster recovery
+**Incident Response**:
+- Clear escalation paths
+- Runbook documentation
+- Rollback procedures
+- Communication protocols
 
-**AI & Machine Learning**: Intelligent recommendations, anomaly detection, predictive scaling, natural language processing, automated optimization
+**Maintenance Windows**:
+- Zero-downtime deployments
+- Database migration patterns
+- Cache warming strategies
+- Graceful degradation
 
-**Enterprise Integration**: ServiceNow bi-directional integration, Active Directory/LDAP, enterprise monitoring, compliance frameworks (SOC2, PCI-DSS, HIPAA), financial management
+**Capacity Planning**:
+- Usage trend analysis
+- Scaling triggers defined
+- Resource forecasting
+- Performance testing
 
-**Advanced Analytics**: End-to-end tracing, performance profiling, capacity planning, business metrics integration, custom dashboards
+## Success Metrics & KPIs
 
-**Ecosystem Extensions**: Marketplace integration, plugin architecture, API gateway enhancements, event streaming, GraphQL support
+### Business Metrics
 
-### Technology Evolution
+**Primary KPIs**:
+- **Provisioning Time**: Weeks → Hours (Q3), Hours → Minutes (Q4+)
+- **Developer Satisfaction**: NPS score > 50
+- **Platform Adoption**: 80% of teams onboarded within 6 months
+- **Service Coverage**: 50+ services in catalog within 1 year
 
-**Architecture Patterns**: Event-driven architecture, microservices decomposition, CQRS, saga pattern for distributed transactions
+**Operational Metrics**:
+- Request volume growth rate
+- Average time to fulfillment
+- Automation percentage
+- Error rate by service
+- Retry success rate
 
-**Infrastructure**: Kubernetes deployment options, service mesh integration (Istio/Linkerd), GitOps patterns (ArgoCD/Flux), Infrastructure as Code (Pulumi/CDK)
+### Technical Metrics
 
-**Data & Analytics**: Data lake integration, real-time stream processing (Kafka), machine learning pipelines (MLOps), time-series databases
+**Performance SLIs**:
+- API response time < 500ms (p95)
+- Request submission < 3 seconds
+- Catalog refresh < 30 seconds
+- JIRA ticket creation < 2 seconds
 
-**Implementation Phases**: Q4 2025 (Terraform, parallel execution), Q1 2026 (multi-cloud, AI), Q2 2026 (enterprise integrations), Q3 2026 (advanced analytics)
+**Reliability SLOs**:
+- Service availability: 99.5%
+- Request success rate: 95%
+- Data durability: 99.999%
+- Catalog accuracy: 100%
+
+### Volume Projections
+
+**Q3 2025 (JIRA Only)**:
+- 10-50 requests/day
+- 5-10 concurrent users
+- 20-30 catalog items
+- 3-5 platform teams
+
+**Q4 2025 (Mixed Mode)**:
+- 100-200 requests/day
+- 20-30 concurrent users
+- 50-70 catalog items
+- 10-15 platform teams
+
+**2026 (Scaled Adoption)**:
+- 500-1000 requests/day
+- 50-100 concurrent users
+- 100+ catalog items
+- All platform teams
+
+## Evolution Strategy
+
+### Q3 2025: Foundation (JIRA-Only)
+
+**Objectives**:
+- Eliminate multi-week delays
+- Prove document-driven model
+- Establish platform adoption
+- Build team confidence
+
+**Deliverables**:
+- Core orchestrator service
+- JIRA ticket automation
+- Basic catalog with 20+ services
+- Developer portal integration
+
+### Q4 2025: Automation Introduction
+
+**Objectives**:
+- Enable automated provisioning
+- Mixed manual/automated mode
+- Expand service coverage
+- Improve developer experience
+
+**Capabilities**:
+- REST API action type
+- Terraform integration
+- Parallel action execution
+- Enhanced error handling
+
+### 2026: Platform Maturity
+
+**Advanced Orchestration**:
+- Conditional workflows
+- Approval gates
+- Multi-cloud support
+- Cost governance
+
+**Intelligence Layer**:
+- Recommendation engine
+- Anomaly detection
+- Predictive analytics
+- Capacity planning
+
+**Enterprise Features**:
+- ServiceNow integration
+- Compliance frameworks
+- Financial management
+- Advanced RBAC
+
+### Long-Term Vision
+
+**Platform as a Product**:
+- Self-service everything
+- Zero-touch provisioning
+- Intelligent automation
+- Developer delight
+
+**Organizational Impact**:
+- Innovation acceleration
+- Reduced cognitive load
+- Platform team efficiency
+- Competitive advantage
+
+### Migration Strategy
+
+**Incremental Adoption**:
+1. Start with simple services
+2. Add complexity gradually
+3. Automate when ready
+4. Maintain backward compatibility
+
+**Team Enablement**:
+1. Training and documentation
+2. Dedicated support channel
+3. Success stories sharing
+4. Continuous improvement
+
+**Risk Mitigation**:
+1. Fallback to manual process
+2. Gradual rollout by team
+3. Extensive testing
+4. Clear rollback procedures
